@@ -19,7 +19,7 @@ import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRail
@@ -92,7 +92,7 @@ fun ExpoScreen(
                 current = section,
                 onSelect = { section = it },
             )
-            HorizontalDivider(
+            VerticalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
             when (section) {
