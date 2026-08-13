@@ -9,7 +9,20 @@ Mapa de producto y **flujo kanban completo** (Detectado → Changelog, Debate, C
 
 ## Estado
 
-Scaffold de documentación. **Aún no hay proyecto Android.** El equipo de este repo crea el módulo `app` aquí.
+Proyecto Android **v0.1 en construcción** (`:app`, Compose + Material 3, Room/KSP, Gradle KTS + Version Catalog). Stack alineado con Personal Commander (AGP 9.3.1, Kotlin 2.4.10, Compose BOM 2026.06.01, minSdk 24 / target 36).
+
+### Abrir en Android Studio
+
+1. `File → Open` y seleccionar esta carpeta (`AndroidStudioProjects/PersonalBar`).
+2. Esperar a que Gradle sincronice.
+3. Añadir `local.properties` si no existe con `sdk.dir=` apuntando a tu SDK (está gitignored).
+4. Run sobre un dispositivo/emulador (requiere API 24+; se desarrolla contra API 37).
+
+Build por CLI:
+
+```bash
+./gradlew assembleDebug
+```
 
 ## Hermanos
 
