@@ -37,7 +37,7 @@ class SerializationTest {
             bebida = emptyList(),
             comida = emptyList(),
             servidos = emptyList(),
-            mesas = listOf(Mesa(salaId = "sala-terraza", indiceZona = 3)),
+            mesas = listOf(Mesa(id = "mesa-1", salaId = "sala-terraza", indiceZona = 3)),
         )
         val json = LanJson.encodeToString(estado)
         assertEquals(estado, LanJson.decodeFromString<EstadoResponse>(json))

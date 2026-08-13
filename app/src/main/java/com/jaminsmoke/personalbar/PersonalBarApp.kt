@@ -6,6 +6,7 @@ import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.InMemoryBarRepository
 import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Mesa
+import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
@@ -64,8 +65,10 @@ private fun demoRepository(): BarRepository {
         Producto(id = "tostada", nombre = "Tostada con tomate", categoria = "Comida"),
     )
     val mesas = listOf(
-        Mesa(salaId = "sala-terraza", indiceZona = 3),
-        Mesa(salaId = "sala-terraza", indiceZona = 7),
+        Mesa(id = "mesa-1", salaId = "sala-terraza", indiceZona = 1, numero = 1, forma = MesaForma.REDONDA, capacidad = 2, posX = 40f, posY = 40f),
+        Mesa(id = "mesa-2", salaId = "sala-terraza", indiceZona = 2, numero = 2, forma = MesaForma.REDONDA, capacidad = 2, posX = 200f, posY = 40f),
+        Mesa(id = "mesa-3", salaId = "sala-terraza", indiceZona = 3, numero = 3, forma = MesaForma.CUADRADA, capacidad = 4, posX = 40f, posY = 200f),
+        Mesa(id = "mesa-7", salaId = "sala-terraza", indiceZona = 7, numero = 4, forma = MesaForma.RECTANGULAR, capacidad = 8, posX = 360f, posY = 40f),
     )
     val repo = InMemoryBarRepository(
         establecimientoInicial = establecimiento,

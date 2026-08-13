@@ -47,6 +47,26 @@ Bar es el **host de sala**. Servidor Ktor (CIO). Puerto fijo: **8787**.
 
 Un nodo Bar = un establecimiento en v0.1. Las mesas cuelgan de una sala (`salaId`); el ID de red es `idZona` (p. ej. `T3` = Terraza 3).
 
+### Contrato del mapa (`/v1/estado`)
+
+Bar es la **fuente de verdad del layout**; Commander lo replica en solo-lectura cuando está admitido. La identidad de red de una mesa es `idZona` (prefijo de sala + `indiceZona`), nunca el `id` local.
+
+| Campo de mesa (layout) | Tipo | Notas |
+|---|---|---|
+| `id` | string | id local (no viaja como identidad) |
+| `salaId` | string | referencia a `Sala.id` (se reconcilia por nombre/orden) |
+| `indiceZona` | int | índice dentro de la sala (B1, T2…) |
+| `numero` | int | número global |
+| `alias` | string? | nombre visible opcional |
+| `forma` | enum | `REDONDA` / `CUADRADA` / `RECTANGULAR` / `RECTANGULAR_XL` |
+| `capacidad` | int | plazas |
+| `posX`/`posY` | float | posición en el grid (40dp) |
+| `girada` | bool | girar rectangulares |
+| `bloqueada` | bool | hold comercial |
+| `reservaActivaId` | string? | reserva activa (tabla `reservas`) |
+
+El estado operativo (LIBRE/OCUPADA/EN_COCINA) se deriva de las rondas/tickets en Bar y del ciclo de comanda en Commander; no viaja como campo de layout. Los enums serializan por nombre (compatibles con Gson y kotlinx.serialization).
+
 ### Payload de ronda (`POST /v1/rondas`)
 
 ```json

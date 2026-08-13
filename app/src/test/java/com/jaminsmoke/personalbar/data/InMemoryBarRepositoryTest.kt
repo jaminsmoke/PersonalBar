@@ -109,7 +109,7 @@ class InMemoryBarRepositoryTest {
     fun crudSalas() {
         val repo = InMemoryBarRepository(
             salasIniciales = listOf(Sala("sala-terraza", "Terraza", 1)),
-            mesasIniciales = listOf(Mesa(salaId = "sala-terraza", indiceZona = 3)),
+            mesasIniciales = listOf(Mesa(id = "mesa-1", salaId = "sala-terraza", indiceZona = 3)),
         )
         assertTrue(repo.crearSala("Interior"))
         assertEquals(2, repo.salas.value.size)

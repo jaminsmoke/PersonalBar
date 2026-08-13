@@ -45,6 +45,7 @@ import com.jaminsmoke.personalbar.ui.components.PbColumnHeader
 import com.jaminsmoke.personalbar.ui.components.PbEmptyQueue
 import com.jaminsmoke.personalbar.ui.components.PbRoomStatus
 import com.jaminsmoke.personalbar.ui.components.PbTicketCard
+import com.jaminsmoke.personalbar.ui.mapa.MapaScreen
 
 /** Entradas del sidebar (navigation rail) del puesto de barra. */
 enum class PbSection(val route: String, val labelRes: Int, val icon: ImageVector) {
@@ -101,7 +102,7 @@ fun ExpoScreen(
                     foodQueue = uiState.foodQueue,
                     modifier = Modifier.weight(1f),
                 )
-                PbSection.MAPA -> PbSectionPlaceholder(stringResource(R.string.nav_mapa))
+                PbSection.MAPA -> MapaScreen()
                 PbSection.ALTA_QR -> PbSectionPlaceholder(stringResource(R.string.nav_alta_qr))
                 PbSection.AJUSTES -> AjustesScreen()
             }
