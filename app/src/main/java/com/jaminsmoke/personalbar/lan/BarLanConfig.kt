@@ -4,4 +4,5 @@ package com.jaminsmoke.personalbar.lan
 object BarLanConfig {
     const val PORT: Int = 8787
     const val ROLE: String = "bar"
+    const val VERSION: String = "0.1"
 }

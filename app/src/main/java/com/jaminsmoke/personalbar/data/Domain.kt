@@ -1,15 +1,20 @@
 package com.jaminsmoke.personalbar.data
 
+import kotlinx.serialization.Serializable
+
 /**
  * Destino de un ticket en la expo. Barra = bebida, Cocina = comida.
  * Cuando exista Kitchen, COCINA migra allí; Bar se queda BARRA.
  */
+@Serializable
 enum class Destino { BARRA, COCINA }
 
 /** Estado de un ticket en la cola: PENDIENTE → LISTO → SERVIDO (sale de la cola). */
+@Serializable
 enum class TicketEstado { PENDIENTE, LISTO, SERVIDO }
 
 /** Estado de una línea dentro de un ticket. */
+@Serializable
 enum class LineaEstado { PENDIENTE, SERVIDA }
 
 /**

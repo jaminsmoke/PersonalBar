@@ -1,5 +1,6 @@
 package com.jaminsmoke.personalbar.data
 
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -25,7 +26,15 @@ interface BarRepository {
     /** Catálogo canónico del nodo. */
     val catalogo: StateFlow<List<Producto>>
 
-    fun crearRonda(ronda: Ronda)
-    fun marcarListo(ticketId: String)
-    fun marcarServido(ticketId: String)
+    /** Eventos de sala (listo/servido) para re-enviar por SSE a Commander. */
+    val eventos: SharedFlow<SalaEvent>
+
+    /** @return true si la ronda se procesó; false si ya existía (idempotente). */
+    fun crearRonda(ronda: Ronda): Boolean
+
+    /** @return true si el ticket se encontró y se marcó listo. */
+    fun marcarListo(ticketId: String): Boolean
+
+    /** @return true si el ticket se encontró y pasó a servidos. */
+    fun marcarServido(ticketId: String): Boolean
 }
