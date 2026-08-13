@@ -24,6 +24,24 @@ Build por CLI:
 ./gradlew assembleDebug
 ```
 
+## Nodo LAN
+
+Bar es el **host de sala**. Puerto fijo: **8787**.
+
+| Endpoint | Método | Respuesta |
+|---|---|---|
+| `/health` | GET | `{"ok":true,"role":"bar","sala":"vacia","version":"0.1"}` |
+
+```bash
+# Desde el host hacia el emulador (tras adb reverse)
+adb reverse tcp:8787 tcp:8787
+curl http://127.0.0.1:8787/health
+```
+
+Cleartext solo en rangos LAN privados (`network_security_config`). Identidad = HTTPS a PersonalHostel-Identity, nunca este puerto.
+
+Los Commanders descubren Bar escaneando el /24 contra el puerto 8787 (patrón `EscaneadorRed` de Commander). El FGS «Sala activa» y el registro de camareros son ítems aparte.
+
 ## Hermanos
 
 - [PersonalComander](https://github.com/jaminsmoke/PersonalComander) — sala (cliente). Red LAN diferida hasta que Bar reciba rondas.

@@ -1,9 +1,13 @@
 package com.jaminsmoke.personalbar.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.jaminsmoke.personalbar.PersonalBarApp
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /** Destino de un ticket en la expo. Barra = bebida, Cocina = comida. */
 enum class Destino { BARRA, COCINA }
@@ -30,7 +34,6 @@ class ExpoViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ExpoUiState())
     val uiState: StateFlow<ExpoUiState> = _uiState.asStateFlow()
 
-    /** Datos de prueba para validar el layout. Se sustituye con datos reales de ronda. */
     init {
         _uiState.value = ExpoUiState(
             drinkQueue = listOf(
@@ -58,7 +61,12 @@ class ExpoViewModel : ViewModel() {
                     destino = Destino.COCINA,
                 ),
             ),
-            roomActive = true,
+            roomActive = false,
         )
+        viewModelScope.launch {
+            PersonalBarApp.get().roomActive.collect { active ->
+                _uiState.update { it.copy(roomActive = active) }
+            }
+        }
     }
 }
