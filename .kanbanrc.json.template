@@ -1,15 +1,64 @@
 {
-  "projectId": "REPLACE_ME",
-  "repoId": "REPLACE_ME",
+  "projectId": "PVT_kwHOBM87Yc4BgQqa",
+  "repoId": "R_kgDOT3ZYFw",
   "repo": "jaminsmoke/PersonalBar",
-  "fields": {},
+  "fields": {
+    "Status": "PVTSSF_lAHOBM87Yc4BgQqazhadpJw",
+    "Created": "PVTF_lAHOBM87Yc4BgQqazhadpKY",
+    "Updated": "PVTF_lAHOBM87Yc4BgQqazhadpKc",
+    "Closed": "PVTF_lAHOBM87Yc4BgQqazhadpKg",
+    "Prioridad": "PVTSSF_lAHOBM87Yc4BgQqazhadp4c",
+    "Tipo": "PVTSSF_lAHOBM87Yc4BgQqazhadp4g",
+    "Área principal": "PVTSSF_lAHOBM87Yc4BgQqazhadp4k",
+    "Versión": "PVTSSF_lAHOBM87Yc4BgQqazhadp4s",
+    "Decision": "PVTSSF_lAHOBM87Yc4BgQqazhadp4w",
+    "HighLighted": "PVTSSF_lAHOBM87Yc4BgQqazhadp40",
+    "Inicio": "PVTF_lAHOBM87Yc4BgQqazhadp5s",
+    "Completado": "PVTF_lAHOBM87Yc4BgQqazhadp5w",
+    "Inicio exacto": "PVTF_lAHOBM87Yc4BgQqazhadp6o",
+    "Completado exacto": "PVTF_lAHOBM87Yc4BgQqazhadp7k"
+  },
   "options": {
-    "status": {},
-    "version": {},
-    "priority": {},
-    "decision": {},
-    "tipo": {},
-    "area": {},
-    "highlighted": {}
+    "status": {
+      "Detectado": "451fb0ae",
+      "Debate": "4317a752",
+      "Roadmap": "08ccd509",
+      "Ejecutando": "11184e93",
+      "Verificando": "2295012f",
+      "Changelog": "daea85f2"
+    },
+    "version": {
+      "Sin asignar": "922e3f39",
+      "v0.1": "f30fc32b"
+    },
+    "priority": {
+      "Alta": "d3cbda61",
+      "Media": "f1c57563",
+      "Baja": "0827749e"
+    },
+    "decision": {
+      "Pendiente": "484aca36",
+      "Aprobado": "8f4a2542",
+      "Diferido": "6d8377fc",
+      "Cancelado": "16b9260a"
+    },
+    "tipo": {
+      "Bug": "3d67ab9c",
+      "Feature": "75e3f753",
+      "Mejora": "99a84c50",
+      "Tarea": "ff1825fc"
+    },
+    "area": {
+      "UI/UX": "bde8a607",
+      "Datos": "5a39a175",
+      "Sync": "4799996c",
+      "Android": "d56d2c52",
+      "Build/CI": "14ad5226",
+      "Docs": "20fde77d"
+    },
+    "highlighted": {
+      "Yes": "eb420dfc",
+      "No": "550f382d"
+    }
   }
 }
