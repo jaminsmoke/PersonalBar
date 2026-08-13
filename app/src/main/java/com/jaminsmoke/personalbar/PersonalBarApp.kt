@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class PersonalBarApp : Application() {
 
-    val lanServer: BarLanServer by lazy { BarLanServer() }
+    val lanServer: BarLanServer by lazy { BarLanServer(repository) }
 
     /** Fuente de verdad del nodo (en memoria en v0.1; Room será otra implementación). */
     val repository: BarRepository by lazy { demoRepository() }

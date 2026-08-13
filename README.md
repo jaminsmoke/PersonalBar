@@ -26,16 +26,53 @@ Build por CLI:
 
 ## Nodo LAN
 
-Bar es el **host de sala**. Puerto fijo: **8787**.
+Bar es el **host de sala**. Servidor Ktor (CIO). Puerto fijo: **8787**.
 
-| Endpoint | Método | Respuesta |
+| Endpoint | Método | Descripción |
 |---|---|---|
 | `/health` | GET | `{"ok":true,"role":"bar","sala":"vacia","version":"0.1"}` |
+| `/v1/rondas` | POST | Recibe una ronda (idempotente por `id`) → 201 con los tickets BARRA/COCINA |
+| `/v1/tickets/{id}/listo` | POST | Marca listo un ticket (por destino) |
+| `/v1/tickets/{id}/servido` | POST | Marca servido; el ticket sale de cola → servidos |
+| `/v1/estado` | GET | Estado completo (colas, servidos, mesas, versión) |
+| `/v1/eventos` | SSE | Push de eventos `ticket.listo` / `ticket.servido` |
+
+### Payload de ronda (`POST /v1/rondas`)
+
+```json
+{
+  "id": "r-123",
+  "mesaId": "T3",
+  "numero": 1,
+  "camarero": "Lucía",
+  "creadoEn": 1730000000000,
+  "lineas": [
+    { "productoId": "cana", "nombreProducto": "Caña", "cantidad": 2 },
+    { "productoId": "croquetas", "nombreProducto": "Croquetas", "cantidad": 1 }
+  ]
+}
+```
+
+Bar parte la ronda en tickets **BARRA** (bebida) y **COCINA** (comida); el destino se deriva de la categoría del producto. Listo/servido es **por destino** (cañas ≠ pizza).
+
+### Probar desde el host
 
 ```bash
-# Desde el host hacia el emulador (tras adb reverse)
-adb reverse tcp:8787 tcp:8787
-curl http://127.0.0.1:8787/health
+adb forward tcp:18787 tcp:8787
+
+# Health
+curl http://127.0.0.1:18787/health
+
+# Enviar una ronda
+curl -X POST http://127.0.0.1:18787/v1/rondas \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"r-1","mesaId":"T3","numero":1,"camarero":"Lucía","lineas":[{"productoId":"cana","nombreProducto":"Caña","cantidad":2}]}'
+
+# Estado
+curl http://127.0.0.1:18787/v1/estado
+
+# Eventos (SSE)
+curl -N http://127.0.0.1:18787/v1/eventos
 ```
 
 Cleartext solo en rangos LAN privados (`network_security_config`). Identidad = HTTPS a PersonalHostel-Identity, nunca este puerto.

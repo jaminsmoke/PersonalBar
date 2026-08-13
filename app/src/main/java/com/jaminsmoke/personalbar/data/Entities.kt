@@ -1,10 +1,13 @@
 package com.jaminsmoke.personalbar.data
 
+import kotlinx.serialization.Serializable
+
 /**
  * Mesa canónica del nodo. La identidad en red es [idZona] (zona + indiceZona),
  * no un id local autoincrementable: la misma mesa debe reconocerse igual en todos
  * los dispositivos de la sala.
  */
+@Serializable
 data class Mesa(
     val zona: String,
     val indiceZona: Int,
@@ -22,6 +25,7 @@ data class Mesa(
 }
 
 /** Producto del catálogo canónico del nodo. La categoría deriva el destino. */
+@Serializable
 data class Producto(
     val id: String,
     val nombre: String,
@@ -31,6 +35,7 @@ data class Producto(
 )
 
 /** Línea de una ronda/ticket: producto + cantidad. */
+@Serializable
 data class Linea(
     val productoId: String,
     val nombreProducto: String,
@@ -42,6 +47,7 @@ data class Linea(
  * Ticket de expo: una ronda partida por destino. Listo/servido es por ticket
  * (no por mesa): las cañas pueden estar listas sin la pizza.
  */
+@Serializable
 data class Ticket(
     val id: String,
     val rondaId: String,
@@ -51,6 +57,7 @@ data class Ticket(
 )
 
 /** Ronda enviada por Commander: la unidad que Bar parte en tickets BARRA/COCINA. */
+@Serializable
 data class Ronda(
     val id: String,
     val mesaId: String,          // Mesa.idZona ("T3")
