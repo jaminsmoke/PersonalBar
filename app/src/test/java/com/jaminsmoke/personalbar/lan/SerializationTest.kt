@@ -1,8 +1,10 @@
 package com.jaminsmoke.personalbar.lan
 
+import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.Ronda
+import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -30,10 +32,12 @@ class SerializationTest {
     fun estadoResponseRoundTrip() {
         val estado = EstadoResponse(
             version = "0.1",
+            establecimiento = Establecimiento("local-1", "La Terraza"),
+            salas = listOf(Sala("sala-terraza", "Terraza", 1)),
             bebida = emptyList(),
             comida = emptyList(),
             servidos = emptyList(),
-            mesas = listOf(Mesa("Terraza", 3)),
+            mesas = listOf(Mesa(salaId = "sala-terraza", indiceZona = 3)),
         )
         val json = LanJson.encodeToString(estado)
         assertEquals(estado, LanJson.decodeFromString<EstadoResponse>(json))

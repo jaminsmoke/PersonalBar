@@ -1,8 +1,10 @@
 package com.jaminsmoke.personalbar.lan
 
 import com.jaminsmoke.personalbar.data.BarRepository
+import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.Ronda
+import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
 import com.jaminsmoke.personalbar.data.Ticket
 import io.ktor.http.ContentType
@@ -34,6 +36,8 @@ val LanJson: Json = Json {
 @Serializable
 data class EstadoResponse(
     val version: String,
+    val establecimiento: Establecimiento,
+    val salas: List<Sala>,
     val bebida: List<Ticket>,
     val comida: List<Ticket>,
     val servidos: List<Ticket>,
@@ -47,7 +51,10 @@ fun Application.barModule(repository: BarRepository) {
 
     routing {
         get("/health") {
-            call.respondText(HealthPayload.json(), ContentType.Application.Json)
+            call.respondText(
+                HealthPayload.json(establecimiento = repository.establecimiento.value.nombre),
+                ContentType.Application.Json,
+            )
         }
 
         post("/v1/rondas") {
@@ -81,6 +88,8 @@ fun Application.barModule(repository: BarRepository) {
             call.respond(
                 EstadoResponse(
                     version = BarLanConfig.VERSION,
+                    establecimiento = repository.establecimiento.value,
+                    salas = repository.salas.value,
                     bebida = repository.bebidaQueue.value,
                     comida = repository.comidaQueue.value,
                     servidos = repository.servidos.value,

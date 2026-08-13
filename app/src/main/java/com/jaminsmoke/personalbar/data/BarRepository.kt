@@ -8,6 +8,12 @@ import kotlinx.coroutines.flow.StateFlow
  * Room será otra implementación del mismo seam sin tocar UI/ViewModel.
  */
 interface BarRepository {
+    /** Cuenta del establecimiento (un nodo = un establecimiento en v0.1). */
+    val establecimiento: StateFlow<Establecimiento>
+
+    /** Salas del mapa (primer nivel del layout). */
+    val salas: StateFlow<List<Sala>>
+
     /** Cola de bebida (tickets BARRA en PENDIENTE/LISTO). */
     val bebidaQueue: StateFlow<List<Ticket>>
 
@@ -37,4 +43,13 @@ interface BarRepository {
 
     /** @return true si el ticket se encontró y pasó a servidos. */
     fun marcarServido(ticketId: String): Boolean
+
+    /** @return true si se creó la sala; false si el nombre ya existe o está vacío. */
+    fun crearSala(nombre: String): Boolean
+
+    /** @return true si se renombró; false si no existe o el nombre ya está en uso. */
+    fun renombrarSala(salaId: String, nombre: String): Boolean
+
+    /** @return true si se eliminó; false si no existe o tiene mesas. */
+    fun eliminarSala(salaId: String): Boolean
 }

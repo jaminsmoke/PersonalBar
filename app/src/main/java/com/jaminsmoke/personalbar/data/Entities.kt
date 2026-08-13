@@ -3,13 +3,34 @@ package com.jaminsmoke.personalbar.data
 import kotlinx.serialization.Serializable
 
 /**
- * Mesa canónica del nodo. La identidad en red es [idZona] (zona + indiceZona),
+ * Cuenta del establecimiento (negocio/local). Fuente de verdad en Bar.
+ * v0.1: un nodo = un establecimiento; Identity (v0.2) aportará la identidad externa.
+ */
+@Serializable
+data class Establecimiento(
+    val idEstable: String,
+    val nombre: String,
+)
+
+/**
+ * Sala de servicio del mapa (barra, interior, terraza…). Primer nivel del layout;
+ * las mesas cuelgan de una sala.
+ */
+@Serializable
+data class Sala(
+    val id: String,
+    val nombre: String,
+    val orden: Int,
+)
+
+/**
+ * Mesa canónica del nodo. La identidad en red es el idZona (sala + indiceZona),
  * no un id local autoincrementable: la misma mesa debe reconocerse igual en todos
  * los dispositivos de la sala.
  */
 @Serializable
 data class Mesa(
-    val zona: String,
+    val salaId: String,          // referencia a Sala.id
     val indiceZona: Int,
     val alias: String? = null,
     val forma: String = "CUADRADA",
@@ -17,11 +38,11 @@ data class Mesa(
     val posX: Float = 0f,
     val posY: Float = 0f,
 ) {
-    /** ID dentro de la zona, p. ej. "B1" para Barra 1. Identidad estable en red. */
-    val idZona: String get() = "${zonaPrefijo(zona)}$indiceZona"
+    /** ID dentro de la sala, p. ej. "B1" para Barra 1. Requiere el nombre de la sala. */
+    fun idZona(nombreSala: String): String = "${zonaPrefijo(nombreSala)}$indiceZona"
 
     /** Nombre visible: alias del usuario si existe; si no, el ID de zona (B1, T2…). */
-    val nombreVisible: String get() = alias ?: idZona
+    fun nombreVisible(nombreSala: String): String = alias ?: idZona(nombreSala)
 }
 
 /** Producto del catálogo canónico del nodo. La categoría deriva el destino. */
@@ -60,7 +81,7 @@ data class Ticket(
 @Serializable
 data class Ronda(
     val id: String,
-    val mesaId: String,          // Mesa.idZona ("T3")
+    val mesaId: String,          // idZona ("T3")
     val numero: Int,             // número de ronda de la mesa
     val camarero: String? = null,
     val creadoEn: Long = System.currentTimeMillis(),
