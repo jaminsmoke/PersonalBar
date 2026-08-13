@@ -1,5 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Personal Bar</string>
-    <string name="home_placeholder">Puesto de barra · nodo de sala\nColas de tickets próximamente</string>
+
+    <!-- Sidebar -->
+    <string name="nav_colas">Colas</string>
+    <string name="nav_mapa">Mapa</string>
+    <string name="nav_alta_qr">Alta QR</string>
+    <string name="nav_ajustes">Ajustes</string>
+
+    <!-- Sala -->
+    <string name="sala_activa">Sala activa</string>
+    <string name="sala_inactiva">Sala inactiva</string>
+
+    <!-- Colas -->
+    <string name="cola_bebida">Bebida</string>
+    <string name="cola_comida">Comida</string>
+    <string name="cola_bebida_vacia_titulo">Sin bebidas pendientes</string>
+    <string name="cola_bebida_vacia_subtitulo">Cuando llegue una ronda con bebida, el ticket aparecerá aquí.</string>
+    <string name="cola_comida_vacia_titulo">Sin comida pendiente</string>
+    <string name="cola_comida_vacia_subtitulo">Cuando llegue una ronda con comida, el ticket aparecerá aquí.</string>
+
+    <!-- Ticket -->
+    <string name="ticket_ronda">Ronda %1$d</string>
+    <string name="ticket_camarero">Camarero: %1$s</string>
+
+    <!-- Placeholder de secciones -->
+    <string name="section_placeholder">Sección «%1$s» próximamente</string>
 </resources>
