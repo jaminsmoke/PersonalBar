@@ -14,6 +14,12 @@ interface BarRepository {
     /** Salas del mapa (primer nivel del layout). */
     val salas: StateFlow<List<Sala>>
 
+    /** Mesas canónicas del nodo. */
+    val mesas: StateFlow<List<Mesa>>
+
+    /** Reservas (holds comerciales) activas/canceladas. */
+    val reservas: StateFlow<List<Reserva>>
+
     /** Cola de bebida (tickets BARRA en PENDIENTE/LISTO). */
     val bebidaQueue: StateFlow<List<Ticket>>
 
@@ -25,9 +31,6 @@ interface BarRepository {
 
     /** Rondas recibidas. */
     val rondas: StateFlow<List<Ronda>>
-
-    /** Mesas canónicas del nodo. */
-    val mesas: StateFlow<List<Mesa>>
 
     /** Catálogo canónico del nodo. */
     val catalogo: StateFlow<List<Producto>>
@@ -52,4 +55,31 @@ interface BarRepository {
 
     /** @return true si se eliminó; false si no existe o tiene mesas. */
     fun eliminarSala(salaId: String): Boolean
+
+    /** @return true si se creó la mesa (auto-posicionada en celda libre). */
+    fun crearMesa(salaId: String, forma: MesaForma, capacidad: Int, alias: String?): Boolean
+
+    /** @return true si se actualizó la configuración de la mesa. */
+    fun editarMesa(mesaId: String, alias: String?, capacidad: Int, forma: MesaForma): Boolean
+
+    /** @return true si se borró; false si no existe o tiene reserva activa. */
+    fun borrarMesa(mesaId: String): Boolean
+
+    /** @return true si se movió la mesa a (posX, posY). */
+    fun moverMesa(mesaId: String, posX: Float, posY: Float): Boolean
+
+    /** @return true si se giró (re-encuadrando en celda libre si hace falta). */
+    fun girarMesa(mesaId: String): Boolean
+
+    /** @return true si se reservó; false si ocupada/bloqueada/ya reservada o nombre vacío. */
+    fun reservar(mesaId: String, nombre: String, paraEpoch: Long?): Boolean
+
+    /** @return true si se canceló la reserva activa de la mesa. */
+    fun cancelarReserva(mesaId: String): Boolean
+
+    /** @return true si se bloqueó; false si ocupada o inexistente. */
+    fun bloquearMesa(mesaId: String): Boolean
+
+    /** @return true si se desbloqueó; false si inexistente. */
+    fun desbloquearMesa(mesaId: String): Boolean
 }

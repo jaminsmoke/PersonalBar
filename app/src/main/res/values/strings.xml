@@ -39,4 +39,38 @@
 
     <!-- Placeholder de secciones -->
     <string name="section_placeholder">Sección «%1$s» próximamente</string>
+
+    <!-- Mapa -->
+    <string name="mapa_todas_salas">Todas</string>
+    <string name="mapa_nueva_sala">Nueva sala</string>
+    <string name="mapa_renombrar_sala">Renombrar sala</string>
+    <string name="mapa_eliminar_sala">Eliminar sala</string>
+    <string name="mapa_nueva_mesa">Nueva mesa</string>
+    <string name="mapa_crear_mesa">Crear mesa</string>
+    <string name="mapa_editar_mesa">Editar mesa</string>
+    <string name="mapa_borrar_mesa_titulo">¿Borrar mesa?</string>
+    <string name="mapa_alias">Alias</string>
+    <string name="mapa_capacidad">Capacidad</string>
+    <string name="mapa_forma">Forma</string>
+    <string name="mapa_reservar_titulo">Reservar mesa</string>
+    <string name="mapa_nombre_reserva">Nombre de la reserva</string>
+    <string name="mapa_reservar">Reservar</string>
+    <string name="mapa_menu_editar">Editar</string>
+    <string name="mapa_menu_borrar">Borrar</string>
+    <string name="mapa_menu_girar">Girar</string>
+    <string name="mapa_menu_reservar">Reservar</string>
+    <string name="mapa_menu_cancelar_reserva">Cancelar reserva</string>
+    <string name="mapa_menu_bloquear">Bloquear</string>
+    <string name="mapa_menu_desbloquear">Desbloquear</string>
+    <string name="mapa_estado_libre">Libre</string>
+    <string name="mapa_estado_ocupada">Ocupada</string>
+    <string name="mapa_estado_en_cocina">En cocina</string>
+    <string name="mapa_estado_reservada">Reservada</string>
+    <string name="mapa_estado_bloqueada">Bloqueada</string>
+    <string name="mapa_sin_mesas_titulo">Sin mesas</string>
+    <string name="mapa_sin_mesas_subtitulo">Crea la primera mesa de esta sala</string>
+    <string name="mapa_zoom_in">Acercar</string>
+    <string name="mapa_zoom_out">Alejar</string>
+    <string name="mapa_encajar">Encajar</string>
+    <string name="mapa_cancelar">Cancelar</string>
 </resources>

@@ -24,19 +24,23 @@ data class Sala(
 )
 
 /**
- * Mesa canónica del nodo. La identidad en red es el idZona (sala + indiceZona),
- * no un id local autoincrementable: la misma mesa debe reconocerse igual en todos
- * los dispositivos de la sala.
+ * Mesa canónica del nodo. Identidad local [id] (in-memory, como `Sala.id`);
+ * identidad de red es [idZona] (prefijo de sala + [indiceZona]), nunca el id local.
  */
 @Serializable
 data class Mesa(
-    val salaId: String,          // referencia a Sala.id
+    val id: String,
+    val salaId: String,
     val indiceZona: Int,
+    val numero: Int = 0,
     val alias: String? = null,
-    val forma: String = "CUADRADA",
+    val forma: MesaForma = MesaForma.CUADRADA,
     val capacidad: Int = 4,
     val posX: Float = 0f,
     val posY: Float = 0f,
+    val girada: Boolean = false,
+    val bloqueada: Boolean = false,
+    val reservaActivaId: String? = null,
 ) {
     /** ID dentro de la sala, p. ej. "B1" para Barra 1. Requiere el nombre de la sala. */
     fun idZona(nombreSala: String): String = "${zonaPrefijo(nombreSala)}$indiceZona"
@@ -86,4 +90,15 @@ data class Ronda(
     val camarero: String? = null,
     val creadoEn: Long = System.currentTimeMillis(),
     val lineas: List<Linea>,
+)
+
+/** Reserva (hold comercial) sobre una mesa. [mesaId] referencia [Mesa.id] local. */
+@Serializable
+data class Reserva(
+    val id: String,
+    val mesaId: String,
+    val nombre: String,
+    val paraEpoch: Long? = null,
+    val creadaEn: Long = System.currentTimeMillis(),
+    val canceladaEn: Long? = null,
 )
