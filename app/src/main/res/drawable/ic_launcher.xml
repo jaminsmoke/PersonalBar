@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Fondo oscuro del icono -->
+    <path
+        android:fillColor="#FF101416"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- Copa de barra estilizada en gold -->
+    <path
+        android:fillColor="#FFE9C349"
+        android:pathData="M34,28h40l-6,8h-28z" />
+    <path
+        android:fillColor="#FFE9C349"
+        android:pathData="M40,40h28l-1,30c0,3 -2,5 -5,5h-16c-3,0 -5,-2 -5,-5z" />
+    <path
+        android:fillColor="#FF101416"
+        android:pathData="M44,44h20v20h-20z" />
+</vector>
