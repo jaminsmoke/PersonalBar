@@ -1,19 +1,17 @@
 # Personal Bar
 
-Puesto de **barra** y **nodo de sala** de la familia Personal.  
-Los Personal Commander se conectan aquí. La identidad de los camareros no vive en este repo (ver Personal Hostelería Server).
+Puesto de **barra** y **nodo de sala** de la familia **PersonalHostel**.  
+Repo: https://github.com/jaminsmoke/PersonalBar
 
-Mapa de intenciones para agentes: [`AGENTS.md`](AGENTS.md).
+Los Personal Commander se conectan aquí. La identidad de los camareros es [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity).
+
+Mapa de intenciones: [`AGENTS.md`](AGENTS.md). Kanban: [`tools/README.md`](tools/README.md).
 
 ## Estado
 
-Scaffold de documentación. **Aún no hay proyecto Android.** El equipo de este repo debe crear el módulo `app` aquí (no en PersonalComander).
+Scaffold de documentación. **Aún no hay proyecto Android.** El equipo de este repo crea el módulo `app` aquí.
 
-## Repos hermanos
+## Hermanos
 
-- `../PersonalComander` — puesto de sala (cliente). Ítem de red **diferido** hasta que Bar reciba rondas.
-- `../PersonalHosteleriaServer` — identidad (Docker `localhost:8080`).
-
-## Remoto
-
-Aún no. Cuando exista GitHub, este repo es de su propio equipo; Commander/Bar se ven entre sí en local.
+- [PersonalComander](https://github.com/jaminsmoke/PersonalComander) — sala (cliente). Red LAN diferida hasta que Bar reciba rondas.
+- [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity) — identidad (Docker `localhost:8080`).

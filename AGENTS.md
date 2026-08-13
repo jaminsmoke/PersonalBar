@@ -1,5 +1,14 @@
 # AGENTS.md — Personal Bar
 
+Familia **PersonalHostel** (Comander, Bar, Kitchen, TPV, servidor de identidad).
+
+- Repo: `jaminsmoke/PersonalBar`
+- Kanban: GitHub Project de este repo (no el de Commander)
+- CLI: `bun run tools/kanban-cli/cli.ts`  (ver `tools/README.md`)
+- Skills: `tools/agent-skills/jarvis-github-kanban` y `jarvis-github-agentuse`
+
+Al crear, mover o cerrar ítems: leer esas skills. Ciclo Detectado → Debate → Roadmap → Ejecutando → Verificando → Changelog. En Debate, 4 opciones y **parar a preguntar**. Convertir draft→issue solo al entrar en Ejecutando. Labels: 1 `tipo:*` + 1 `area:*`.
+
 ## Qué es esto
 
 App Android de **puesto de barra** y **nodo de sala LAN** de la familia Personal. Quien está en barra (poco se mueve) recibe las rondas de los Personal Commander, las prepara (comida y bebida **por separado**) y avisa cuando están listas para recoger.

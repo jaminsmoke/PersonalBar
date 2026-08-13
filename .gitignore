@@ -12,3 +12,8 @@ captures/
 keystore.properties
 .env
 .kotlin/
+.kanbanrc.json
+.agents/
+.claude/
+skills-lock.json
+tools/kanban-cli/node_modules/
