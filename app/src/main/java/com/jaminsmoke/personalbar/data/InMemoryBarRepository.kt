@@ -14,13 +14,18 @@ import kotlinx.coroutines.flow.update
  * sobreviven a reiniciar la app; el seam [BarRepository] permite enchufar Room después.
  */
 class InMemoryBarRepository(
+    establecimientoInicial: Establecimiento = Establecimiento("local-1", "Mi local"),
+    salasIniciales: List<Sala> = emptyList(),
     catalogoInicial: List<Producto> = emptyList(),
     mesasIniciales: List<Mesa> = emptyList(),
 ) : BarRepository {
 
     private val catalogoPorId = catalogoInicial.associateBy { it.id }
     private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>()
+    private var salaSeq = 0
 
+    private val _establecimiento = MutableStateFlow(establecimientoInicial)
+    private val _salas = MutableStateFlow(salasIniciales)
     private val _bebidaQueue = MutableStateFlow<List<Ticket>>(emptyList())
     private val _comidaQueue = MutableStateFlow<List<Ticket>>(emptyList())
     private val _servidos = MutableStateFlow<List<Ticket>>(emptyList())
@@ -29,6 +34,8 @@ class InMemoryBarRepository(
     private val _catalogo = MutableStateFlow(catalogoInicial)
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
+    override val establecimiento: StateFlow<Establecimiento> = _establecimiento.asStateFlow()
+    override val salas: StateFlow<List<Sala>> = _salas.asStateFlow()
     override val bebidaQueue: StateFlow<List<Ticket>> = _bebidaQueue.asStateFlow()
     override val comidaQueue: StateFlow<List<Ticket>> = _comidaQueue.asStateFlow()
     override val servidos: StateFlow<List<Ticket>> = _servidos.asStateFlow()
@@ -62,6 +69,32 @@ class InMemoryBarRepository(
         _servidos.update { it + servido }
         _eventos.tryEmit(SalaEvent.servido(ticketId))
         return true
+    }
+
+    override fun crearSala(nombre: String): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        if (_salas.value.any { it.nombre.equals(n, ignoreCase = true) }) return false
+        val orden = (_salas.value.maxOfOrNull { it.orden } ?: 0) + 1
+        val sala = Sala(id = "sala-${++salaSeq}", nombre = n, orden = orden)
+        _salas.update { it + sala }
+        return true
+    }
+
+    override fun renombrarSala(salaId: String, nombre: String): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        if (_salas.value.any { it.id != salaId && it.nombre.equals(n, ignoreCase = true) }) return false
+        if (_salas.value.none { it.id == salaId }) return false
+        _salas.update { list -> list.map { if (it.id == salaId) it.copy(nombre = n) else it } }
+        return true
+    }
+
+    override fun eliminarSala(salaId: String): Boolean {
+        if (_mesas.value.any { it.salaId == salaId }) return false
+        val antes = _salas.value.size
+        _salas.update { it.filterNot { s -> s.id == salaId } }
+        return _salas.value.size < antes
     }
 
     private fun transformTicket(ticketId: String, transform: (Ticket) -> Ticket): Boolean {

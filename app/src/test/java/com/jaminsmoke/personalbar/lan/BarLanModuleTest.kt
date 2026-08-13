@@ -17,6 +17,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BarLanModuleTest {
@@ -39,6 +40,15 @@ class BarLanModuleTest {
         application { barModule(repository) }
         val resp = client.get("/health")
         assertEquals(HttpStatusCode.OK, resp.status)
+    }
+
+    @Test
+    fun healthIncluyeEstablecimientoYMantieneSala() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+        val body = client.get("/health").bodyAsText()
+        assertTrue(body.contains("\"establecimiento\":\"Mi local\""))
+        assertTrue(body.contains("\"sala\":\"Mi local\""))
     }
 
     @Test
@@ -87,8 +97,10 @@ class BarLanModuleTest {
         val resp = client.get("/v1/estado")
         assertEquals(HttpStatusCode.OK, resp.status)
         val estado = LanJson.decodeFromString<EstadoResponse>(resp.bodyAsText())
+        assertEquals("local-1", estado.establecimiento.idEstable)
         assertEquals(1, estado.bebida.size)
         assertEquals(1, estado.comida.size)
+        assertTrue(estado.salas.isEmpty())
     }
 
     @Test

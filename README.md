@@ -30,12 +30,22 @@ Bar es el **host de sala**. Servidor Ktor (CIO). Puerto fijo: **8787**.
 
 | Endpoint | Método | Descripción |
 |---|---|---|
-| `/health` | GET | `{"ok":true,"role":"bar","sala":"vacia","version":"0.1"}` |
+| `/health` | GET | `{"ok":true,"role":"bar","establecimiento":"La Terraza","sala":"La Terraza","version":"0.1"}` (`sala` = alias deprecado) |
 | `/v1/rondas` | POST | Recibe una ronda (idempotente por `id`) → 201 con los tickets BARRA/COCINA |
 | `/v1/tickets/{id}/listo` | POST | Marca listo un ticket (por destino) |
 | `/v1/tickets/{id}/servido` | POST | Marca servido; el ticket sale de cola → servidos |
-| `/v1/estado` | GET | Estado completo (colas, servidos, mesas, versión) |
+| `/v1/estado` | GET | Estado completo (establecimiento, salas, colas, servidos, mesas, versión) |
 | `/v1/eventos` | SSE | Push de eventos `ticket.listo` / `ticket.servido` |
+
+### Glosario
+
+| Término | Significado | Dueño |
+|---|---|---|
+| **Establecimiento** (negocio/local) | cuenta del bar, fuente de verdad | Bar (este repo) |
+| **Sala** | zona del mapa (barra, interior, terraza…) | mapa del establecimiento, en Bar |
+| **Camarero** | identidad + QR | Identity |
+
+Un nodo Bar = un establecimiento en v0.1. Las mesas cuelgan de una sala (`salaId`); el ID de red es `idZona` (p. ej. `T3` = Terraza 3).
 
 ### Payload de ronda (`POST /v1/rondas`)
 
@@ -77,7 +87,7 @@ curl -N http://127.0.0.1:18787/v1/eventos
 
 Cleartext solo en rangos LAN privados (`network_security_config`). Identidad = HTTPS a PersonalHostel-Identity, nunca este puerto.
 
-Los Commanders descubren Bar escaneando el /24 contra el puerto 8787 (patrón `EscaneadorRed` de Commander). El FGS «Sala activa» y el registro de camareros son ítems aparte.
+Los Commanders descubren Bar escaneando el /24 contra el puerto 8787 (patrón `EscaneadorRed` de Commander). El FGS «Local activo» y el registro de camareros son ítems aparte.
 
 ## Hermanos
 

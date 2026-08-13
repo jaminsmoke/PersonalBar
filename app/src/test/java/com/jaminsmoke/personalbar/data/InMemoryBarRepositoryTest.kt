@@ -9,7 +9,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-
 class InMemoryBarRepositoryTest {
 
     private val catalogo = listOf(
@@ -104,5 +103,29 @@ class InMemoryBarRepositoryTest {
         val repo = repo()
         assertFalse(repo.marcarListo("no-existe"))
         assertFalse(repo.marcarServido("no-existe"))
+    }
+
+    @Test
+    fun crudSalas() {
+        val repo = InMemoryBarRepository(
+            salasIniciales = listOf(Sala("sala-terraza", "Terraza", 1)),
+            mesasIniciales = listOf(Mesa(salaId = "sala-terraza", indiceZona = 3)),
+        )
+        assertTrue(repo.crearSala("Interior"))
+        assertEquals(2, repo.salas.value.size)
+
+        // duplicado (ignora mayúsculas)
+        assertFalse(repo.crearSala("interior"))
+
+        assertTrue(repo.renombrarSala("sala-terraza", "Patio"))
+        assertEquals("Patio", repo.salas.value.first { it.id == "sala-terraza" }.nombre)
+
+        // no se puede eliminar una sala con mesas
+        assertFalse(repo.eliminarSala("sala-terraza"))
+
+        // sí se puede eliminar una sala vacía
+        val interior = repo.salas.value.first { it.nombre == "Interior" }
+        assertTrue(repo.eliminarSala(interior.id))
+        assertEquals(1, repo.salas.value.size)
     }
 }

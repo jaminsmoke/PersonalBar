@@ -2,11 +2,13 @@ package com.jaminsmoke.personalbar
 
 import android.app.Application
 import com.jaminsmoke.personalbar.data.BarRepository
+import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.InMemoryBarRepository
 import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.Ronda
+import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.lan.BarLanServer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Application del nodo de sala. Arranca el servidor LAN en [onCreate] y expone el
- * repositorio (fuente de verdad). El FGS «Sala activa» es un ítem separado.
+ * repositorio (fuente de verdad). El FGS «Local activo» es un ítem separado.
  */
 class PersonalBarApp : Application() {
 
@@ -47,8 +49,14 @@ class PersonalBarApp : Application() {
     }
 }
 
-/** Semilla demo v0.1: catálogo, mesas y dos rondas para poblar las colas. */
+/** Semilla demo v0.1: establecimiento, salas, catálogo, mesas y dos rondas para poblar las colas. */
 private fun demoRepository(): BarRepository {
+    val establecimiento = Establecimiento(idEstable = "local-1", nombre = "La Terraza")
+    val salas = listOf(
+        Sala(id = "sala-terraza", nombre = "Terraza", orden = 1),
+        Sala(id = "sala-interior", nombre = "Interior", orden = 2),
+        Sala(id = "sala-barra", nombre = "Barra", orden = 3),
+    )
     val catalogo = listOf(
         Producto(id = "cana", nombre = "Caña", categoria = "Bebida"),
         Producto(id = "tinto-verano", nombre = "Tinto de verano", categoria = "Bebida"),
@@ -56,10 +64,15 @@ private fun demoRepository(): BarRepository {
         Producto(id = "tostada", nombre = "Tostada con tomate", categoria = "Comida"),
     )
     val mesas = listOf(
-        Mesa(zona = "Terraza", indiceZona = 3),
-        Mesa(zona = "Terraza", indiceZona = 7),
+        Mesa(salaId = "sala-terraza", indiceZona = 3),
+        Mesa(salaId = "sala-terraza", indiceZona = 7),
     )
-    val repo = InMemoryBarRepository(catalogoInicial = catalogo, mesasIniciales = mesas)
+    val repo = InMemoryBarRepository(
+        establecimientoInicial = establecimiento,
+        salasIniciales = salas,
+        catalogoInicial = catalogo,
+        mesasIniciales = mesas,
+    )
     repo.crearRonda(
         Ronda(
             id = "r1",

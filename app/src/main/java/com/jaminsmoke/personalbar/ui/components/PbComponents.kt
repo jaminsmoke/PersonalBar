@@ -22,7 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jaminsmoke.personalbar.R
 
-/** Indicador de estado de sala: activo (mint) o inactivo (gris). */
+/** Indicador de estado del local: activo (mint) o inactivo (gris). */
 @Composable
 fun PbRoomStatus(
     active: Boolean,
@@ -50,7 +50,7 @@ fun PbRoomStatus(
         Spacer(Modifier.width(8.dp))
         Text(
             text = stringResource(
-                if (active) R.string.sala_activa else R.string.sala_inactiva
+                if (active) R.string.local_activo else R.string.local_inactivo
             ),
             style = MaterialTheme.typography.labelMedium,
             color = accent,

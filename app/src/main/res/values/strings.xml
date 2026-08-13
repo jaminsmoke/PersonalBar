@@ -8,9 +8,22 @@
     <string name="nav_alta_qr">Alta QR</string>
     <string name="nav_ajustes">Ajustes</string>
 
-    <!-- Sala -->
-    <string name="sala_activa">Sala activa</string>
-    <string name="sala_inactiva">Sala inactiva</string>
+    <!-- Local -->
+    <string name="local_activo">Local activo</string>
+    <string name="local_inactivo">Local inactivo</string>
+
+    <!-- Ajustes -->
+    <string name="ajustes_titulo_establecimiento">Establecimiento</string>
+    <string name="ajustes_titulo_salas">Salas</string>
+    <string name="ajustes_nueva_sala">Nueva sala</string>
+    <string name="ajustes_anadir">Añadir</string>
+    <string name="ajustes_renombrar">Renombrar</string>
+    <string name="ajustes_eliminar">Eliminar</string>
+    <string name="ajustes_sala_creada">Sala creada</string>
+    <string name="ajustes_sala_renombrada">Sala renombrada</string>
+    <string name="ajustes_sala_eliminada">Sala eliminada</string>
+    <string name="ajustes_error_nombre">Nombre vacío o ya en uso</string>
+    <string name="ajustes_error_eliminar">No se puede eliminar: tiene mesas</string>
 
     <!-- Colas -->
     <string name="cola_bebida">Bebida</string>

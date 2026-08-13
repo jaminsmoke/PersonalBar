@@ -103,7 +103,7 @@ fun ExpoScreen(
                 )
                 PbSection.MAPA -> PbSectionPlaceholder(stringResource(R.string.nav_mapa))
                 PbSection.ALTA_QR -> PbSectionPlaceholder(stringResource(R.string.nav_alta_qr))
-                PbSection.AJUSTES -> PbSectionPlaceholder(stringResource(R.string.nav_ajustes))
+                PbSection.AJUSTES -> AjustesScreen()
             }
         }
     }
