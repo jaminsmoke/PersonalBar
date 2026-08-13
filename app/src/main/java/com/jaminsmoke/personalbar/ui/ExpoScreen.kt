@@ -142,8 +142,8 @@ private fun PbSidebar(
 
 @Composable
 private fun ExpoColas(
-    drinkQueue: List<TicketStub>,
-    foodQueue: List<TicketStub>,
+    drinkQueue: List<ExpoTicket>,
+    foodQueue: List<ExpoTicket>,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -172,7 +172,7 @@ private fun ExpoColas(
 @Composable
 private fun PbQueueColumn(
     title: String,
-    tickets: List<TicketStub>,
+    tickets: List<ExpoTicket>,
     emptyIcon: ImageVector,
     emptyTitle: String,
     emptySubtitle: String,
@@ -192,7 +192,7 @@ private fun PbQueueColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(tickets, key = { it.mesa + it.ronda + it.destino }) { ticket ->
+                items(tickets, key = { it.id }) { ticket ->
                     PbTicketCard(
                         mesa = ticket.mesa,
                         ronda = ticket.ronda,
