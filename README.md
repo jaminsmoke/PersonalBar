@@ -5,7 +5,7 @@ Repo: https://github.com/jaminsmoke/PersonalBar
 
 Los Personal Commander se conectan aquí. La identidad de los camareros es [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity).
 
-Mapa de intenciones: [`AGENTS.md`](AGENTS.md). Kanban: [`tools/README.md`](tools/README.md).
+Mapa de producto y **flujo kanban completo** (Detectado → Changelog, Debate, CLI): [`AGENTS.md`](AGENTS.md). Setup corto de la CLI: [`tools/README.md`](tools/README.md).
 
 ## Estado
 

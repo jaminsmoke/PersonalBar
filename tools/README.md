@@ -1,28 +1,19 @@
 # Tools (PersonalHostel)
 
-Kanban CLI y skills para agentes. Copiados desde el patrón de Personal Comander (`jaminsmoke/jarvis-skills`).
+Kanban CLI y skills para agentes. El **flujo completo** (Detectado → Changelog, Debate con 4 opciones, labels, verificación) está en [`AGENTS.md`](../AGENTS.md) — léelo antes de crear o mover ítems.
+
+Skills: `tools/agent-skills/jarvis-github-kanban/SKILL.md` y `jarvis-github-agentuse/SKILL.md`.
 
 ```bash
 cd tools/kanban-cli
 bun install
 cd ../..
 
-# Copiar IDs locales (gitignored)
 copy .kanbanrc.json.template .kanbanrc.json   # Windows
 # cp .kanbanrc.json.template .kanbanrc.json
 
-# Validar contra el GitHub Project
 bun run tools/kanban-cli/cli.ts config validate
-
-# Listar ítems
 bun run tools/kanban-cli/cli.ts list
 ```
 
-Skills (leer antes de crear ítems): `tools/agent-skills/jarvis-github-kanban/SKILL.md` y `jarvis-github-agentuse/SKILL.md`.
-
-Tras crear o cambiar opciones de un SingleSelect, regenerar IDs:
-
-```bash
-bun run tools/kanban-cli/cli.ts config generate --project PVT_...
-# Restaurar repoId y repo; luego config validate
-```
+Tras crear o cambiar opciones de un SingleSelect, regenerar IDs (ver AGENTS.md: `config generate`, restaurar `repoId`/`repo`, `config validate`, actualizar `.kanbanrc.json.template`). Nunca `convert-draft` con `repoId` = `REPLACE_ME`.
