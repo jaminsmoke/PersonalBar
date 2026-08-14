@@ -38,6 +38,9 @@ interface BarRepository {
     /** Lista blanca de camareros del establecimiento (mirror de Identity). */
     val camareros: StateFlow<List<Camarero>>
 
+    /** Camareros ACTIVA marcados «de servicio» en el puesto (varios a la vez). */
+    val deServicio: StateFlow<List<Camarero>>
+
     /** Configuración de la conexión con Identity (v0.1 in-memory). */
     val identityConfig: StateFlow<IdentityConfig>
 
@@ -92,11 +95,21 @@ interface BarRepository {
     /** @return true si se desbloqueó; false si inexistente. */
     fun desbloquearMesa(mesaId: String): Boolean
 
-    /** @return true si se dio de alta; false si ya existe activa. */
-    fun altaCamarero(camareroId: String, credencialId: String?): Boolean
+    /**
+     * @return true si se dio de alta; false si ya existe activa.
+     * [nombre]/[email] se rellenan desde Identity si están disponibles
+     * (Bar no edita datos de la cuenta; solo los recoge).
+     */
+    fun altaCamarero(camareroId: String, credencialId: String?, nombre: String? = null, email: String? = null): Boolean
 
     /** @return true si se revocó; false si no existe. */
     fun revocarCamarero(camareroId: String): Boolean
+
+    /** @return true si el camarero ACTIVA existe y pasa a estar de servicio. */
+    fun ponerDeServicio(camareroId: String): Boolean
+
+    /** @return true si el camarero estaba de servicio y se quita (no revoca). */
+    fun quitarDeServicio(camareroId: String): Boolean
 
     /** Actualiza la configuración de la conexión con Identity (estado de la UI). */
     fun setIdentityConfig(config: IdentityConfig)

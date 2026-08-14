@@ -33,4 +33,53 @@ class CamarerosRepositoryTest {
     fun revocarInexistenteFalla() {
         assertFalse(repo.revocarCamarero("no-existe"))
     }
+
+    @Test
+    fun altaConDatosRellenaNombreYEmail() {
+        // Bar recoge la info de la cuenta desde Identity (no la edita).
+        assertTrue(repo.altaCamarero(camareroId, "cred-1", nombre = "Lucía", email = "lucia@laterraza.es"))
+        val alta = repo.camareros.value.first()
+        assertEquals("Lucía", alta.nombre)
+        assertEquals("lucia@laterraza.es", alta.email)
+
+        // Re-alta sin datos conserva los ya recogidos.
+        repo.revocarCamarero(camareroId)
+        assertTrue(repo.altaCamarero(camareroId, "cred-2"))
+        assertEquals("Lucía", repo.camareros.value.first().nombre)
+        assertEquals("lucia@laterraza.es", repo.camareros.value.first().email)
+    }
+
+    @Test
+    fun deServicioVariosALaVez() {
+        val id2 = "22222222-2222-4222-8222-222222222222"
+        repo.altaCamarero(camareroId, "cred-1", nombre = "Ana")
+        repo.altaCamarero(id2, "cred-2", nombre = "Marcos")
+
+        assertTrue(repo.deServicio.value.isEmpty())
+
+        // Dos de servicio a la vez.
+        assertTrue(repo.ponerDeServicio(camareroId))
+        assertTrue(repo.ponerDeServicio(id2))
+        assertEquals(2, repo.deServicio.value.size)
+
+        // Poner dos veces es idempotente.
+        assertTrue(repo.ponerDeServicio(camareroId))
+        assertEquals(2, repo.deServicio.value.size)
+
+        // Quitar uno no afecta al otro.
+        assertTrue(repo.quitarDeServicio(camareroId))
+        assertEquals(listOf(id2), repo.deServicio.value.map { it.id })
+        assertFalse(repo.quitarDeServicio(camareroId))
+    }
+
+    @Test
+    fun deServicioSoloCamarerosActivos() {
+        repo.altaCamarero(camareroId, "cred-1", nombre = "Ana")
+        assertTrue(repo.ponerDeServicio(camareroId))
+        repo.revocarCamarero(camareroId)
+        // Al revocar sale de servicio (y ya no es ACTIVA → no aparece).
+        assertTrue(repo.deServicio.value.isEmpty())
+        // Un camarero no dado de alta no puede ponerse de servicio.
+        assertFalse(repo.ponerDeServicio("no-existe"))
+    }
 }

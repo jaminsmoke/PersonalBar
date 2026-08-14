@@ -26,6 +26,28 @@ class MigrationTest {
     )
 
     @Test
+    fun migracion_v2_a_v3_anade_deServicio() {
+        // 1. BD en v2 con datos
+        helper.createDatabase(TEST_DB, 2).use { db ->
+            db.execSQL(
+                "INSERT INTO camareros (id, nombre, email, rol, estado, credencialId, altaEn) " +
+                    "VALUES ('c-1', 'Ana', 'ana@x.es', 'STAFF', 'ACTIVA', NULL, 0)"
+            )
+        }
+
+        // 2. Migrar y validar contra 3.json
+        val db = helper.runMigrationsAndValidate(TEST_DB, 3, true, AppDatabase.MIGRATION_2_3)
+        db.use {
+            val cursor = it.query("SELECT deServicio FROM camareros WHERE id = 'c-1'")
+            cursor.use { c ->
+                assertNotNull("La columna deServicio existe tras migrar", c)
+                c.moveToFirst()
+                assertEquals("Default: nadie de servicio hasta marcarlo en la barra", 0, c.getInt(0))
+            }
+        }
+    }
+
+    @Test
     fun migracion_v1_a_v2_anade_numeroCola() {
         // 1. BD en v1 con datos
         helper.createDatabase(TEST_DB, 1).use { db ->

@@ -105,6 +105,12 @@ Cleartext en internet para identidad: no. Identidad = HTTPS al servidor Identity
 
 Strings en español (`res/values`). Marca dark premium / gold alineada a Commander si se comparte tema; no copiar el APK entero.
 
+## Oficios (división acordada 14-08-2026)
+
+- **Commander** es la app **específica de camareros**: crea y gestiona la cuenta (incluido el nick visible en los establecimientos, ítem `PVTI_lAHOBM87Yc4BgJWOzg2gWTY`).
+- **Bar** es el puesto de **gestión del negocio**: asigna camareros al establecimiento (lista blanca) y **recoge** la info de las cuentas desde Identity, pero **no crea ni edita** datos de camareros (no hay editor local de nombre).
+- En el puesto pueden estar **varios camareros de servicio a la vez** (`Camarero.deServicio`); el «en mano» (último chip pulsado) es quien prepara.
+
 ## Qué no hacer
 
 - No copiar Personal Comander y «cambiar el título».

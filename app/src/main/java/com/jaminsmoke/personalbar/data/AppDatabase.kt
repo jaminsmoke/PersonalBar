@@ -8,7 +8,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Base de datos del nodo (fuente de verdad durable). v2 añade `tickets.numeroCola`
- * (id de cola visible/hablable por destino). Schema exportado a `app/schemas/`
+ * (id de cola visible/hablable por destino); v3 añade `camareros.deServicio`
+ * (varios preparadores activos en el puesto). Schema exportado a `app/schemas/`
  * para versionar migraciones futuras igual que Commander.
  */
 @Database(
@@ -24,7 +25,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Camarero::class,
         IdentityConfig::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -40,6 +41,16 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE tickets ADD COLUMN numeroCola INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v2→v3: `camareros.deServicio` (flag del turno del puesto; por defecto
+         * nadie está de servicio hasta que se marque en la barra «Quién soy»).
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE camareros ADD COLUMN deServicio INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

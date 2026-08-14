@@ -35,7 +35,10 @@ data class ExpoUiState(
     val foodQueue: List<ExpoTicket> = emptyList(),
     val roomActive: Boolean = false,
     val camareros: List<Camarero> = emptyList(),
-    val activeCamarero: Camarero? = null,
+    /** Camareros ACTIVA marcados de servicio en el puesto (varios a la vez). */
+    val deServicio: List<Camarero> = emptyList(),
+    /** El que prepara ahora (último chip pulsado); sin él no se marca Preparado. */
+    val enMano: Camarero? = null,
 )
 
 /** Base intermedia del combine (evita el overload de 6 flows). */
@@ -53,9 +56,9 @@ class ExpoViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ExpoUiState())
     val uiState: StateFlow<ExpoUiState> = _uiState.asStateFlow()
 
-    /** Sesión activa del puesto: qué camarero está preparando. */
-    private val _activeCamarero = MutableStateFlow<Camarero?>(null)
-    val activeCamarero: StateFlow<Camarero?> = _activeCamarero.asStateFlow()
+    /** Quién prepara ahora («en mano»): último chip pulsado de los de servicio. */
+    private val _enMano = MutableStateFlow<Camarero?>(null)
+    val enMano: StateFlow<Camarero?> = _enMano.asStateFlow()
 
     init {
         val base = combine(
@@ -68,16 +71,25 @@ class ExpoViewModel : ViewModel() {
             ColasBase(bebida, comida, rondas, active, camareros)
         }
         viewModelScope.launch {
-            combine(base, _activeCamarero) { b, activo ->
+            combine(base, repository.deServicio, _enMano) { b, deServicio, enMano ->
                 val rondasPorId = b.rondas.associateBy { it.id }
                 ExpoUiState(
                     drinkQueue = b.bebida.map { it.toExpoTicket(rondasPorId) },
                     foodQueue = b.comida.map { it.toExpoTicket(rondasPorId) },
                     roomActive = b.active,
                     camareros = b.camareros.filter { it.estado == CamareroEstado.ACTIVA },
-                    activeCamarero = activo,
+                    deServicio = deServicio,
+                    enMano = enMano,
                 )
-            }.collect { _uiState.value = it }
+            }.collect { state ->
+                _uiState.value = state
+                // Tras arranque/recarga (Room) el «en mano» no se persiste: si hay
+                // camareros de servicio y nadie tiene el ticket en mano, el primero
+                // de la lista lo toma (coherente con la sesión múltiple del puesto).
+                if (state.enMano == null && state.deServicio.isNotEmpty()) {
+                    _enMano.value = state.deServicio.first()
+                }
+            }
         }
     }
 
@@ -91,18 +103,33 @@ class ExpoViewModel : ViewModel() {
         }
     }
 
-    /** Sesión activa: quién está preparando en el puesto. */
-    fun setPreparador(camareroId: String) {
-        _activeCamarero.value = repository.camareros.value.firstOrNull { it.id == camareroId }
+    /**
+     * Alterna «de servicio» del camarero en el puesto (añadir/quitar, no sustituir).
+     * Al ponerlo de servicio queda además como «en mano» (el que prepara ahora).
+     */
+    fun alternarDeServicio(camareroId: String) {
+        val camarero = repository.camareros.value.firstOrNull { it.id == camareroId } ?: return
+        if (camarero.deServicio) {
+            repository.quitarDeServicio(camareroId)
+            if (_enMano.value?.id == camareroId) _enMano.value = null
+        } else {
+            repository.ponerDeServicio(camareroId)
+            _enMano.value = repository.camareros.value.firstOrNull { it.id == camareroId }
+        }
+    }
+
+    /** Fija el «en mano» (último chip pulsado) sin cambiar la lista de servicio. */
+    fun seleccionarEnMano(camareroId: String) {
+        _enMano.value = repository.camareros.value.firstOrNull { it.id == camareroId }
     }
 
     fun clearPreparador() {
-        _activeCamarero.value = null
+        _enMano.value = null
     }
 
-    /** Marca el ticket como preparado por la sesión activa. Sin sesión, no-op. */
+    /** Marca el ticket como preparado por el que está «en mano». Sin él, no-op. */
     fun marcarPreparado(ticketId: String) {
-        val preparador = _activeCamarero.value ?: return
+        val preparador = _enMano.value ?: return
         repository.marcarPreparado(ticketId, preparador.nombre ?: preparador.id.take(8))
     }
 

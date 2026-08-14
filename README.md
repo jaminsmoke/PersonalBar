@@ -139,6 +139,14 @@ Dos canales de alta:
 
 La lista local (persistida en Room) sigue siendo la fuente para la LAN; Identity es el espejo (alta/revocación reflejada). La validación del login de red del Commander contra esta lista se completa cuando Commander envíe su QR.
 
+**División de oficios**: la **cuenta de camarero** (y su nick visible) se crea y gestiona en **Commander** — la app específica de camareros (ítem `PVTI_lAHOBM87Yc4BgJWOzg2gWTY`). **Bar** es el puesto de **gestión del negocio**: asigna camareros al establecimiento (lista blanca) y **recoge** la info de la cuenta desde Identity, pero **no crea ni edita** datos de camareros. En el puesto, varios camareros pueden estar **de servicio a la vez** (chips «Quién soy»); el que prepara («en mano») es el último chip pulsado.
+
+### Varios preparadores en el puesto
+
+- `Camarero.deServicio` (migración Room v3): lista de camareros **de servicio** en el turno, persistida (sobrevive a reinicios).
+- La barra «Quién soy» muestra **chips múltiples**: tap = añadir/quitar de servicio; el texto «de servicio» fija el chip como **«en mano»** (el que prepara al tocar «Marcar preparado»).
+- `nombre`/`email` se rellenan desde Identity cuando el dato existe (invitación por email / sync); **sin editor local** — Bar no edita la cuenta.
+
 ## Persistencia (Room)
 
 El nodo **persiste todo en Room** (`personalbar.db`, esquema v1 exportado a `app/schemas/`): establecimiento, salas/mesas (layout), catálogo, rondas, tickets (colas + servidos), reservas, camareros (lista blanca), invitaciones y la config de Identity.

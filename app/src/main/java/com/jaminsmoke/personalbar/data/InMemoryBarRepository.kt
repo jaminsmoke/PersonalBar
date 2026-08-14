@@ -55,6 +55,11 @@ class InMemoryBarRepository(
     private val _invitaciones = MutableStateFlow(invitacionesIniciales)
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
+    /** Derivado síncrono de [Camarero.deServicio]: se recalcula en cada mutación de camareros. */
+    private val _deServicio = MutableStateFlow(
+        camarerosIniciales.filter { it.estado == CamareroEstado.ACTIVA && it.deServicio }
+    )
+
     override val establecimiento: StateFlow<Establecimiento> = _establecimiento.asStateFlow()
     override val salas: StateFlow<List<Sala>> = _salas.asStateFlow()
     override val mesas: StateFlow<List<Mesa>> = _mesas.asStateFlow()
@@ -65,6 +70,7 @@ class InMemoryBarRepository(
     override val rondas: StateFlow<List<Ronda>> = _rondas.asStateFlow()
     override val catalogo: StateFlow<List<Producto>> = _catalogo.asStateFlow()
     override val camareros: StateFlow<List<Camarero>> = _camareros.asStateFlow()
+    override val deServicio: StateFlow<List<Camarero>> = _deServicio.asStateFlow()
     override val identityConfig: StateFlow<IdentityConfig> = _identityConfig.asStateFlow()
     override val invitaciones: StateFlow<List<Invitacion>> = _invitaciones.asStateFlow()
     override val eventos: SharedFlow<SalaEvent> = _eventos.asSharedFlow()
@@ -272,23 +278,56 @@ class InMemoryBarRepository(
 
     // ── Camareros (lista blanca) ──────────────────────────────────────────────
 
-    override fun altaCamarero(camareroId: String, credencialId: String?): Boolean {
+    override fun altaCamarero(camareroId: String, credencialId: String?, nombre: String?, email: String?): Boolean {
         val existente = _camareros.value.firstOrNull { it.id == camareroId }
         if (existente != null && existente.estado == CamareroEstado.ACTIVA) return false
-        val camarero = Camarero(id = camareroId, credencialId = credencialId)
+        val camarero = Camarero(
+            id = camareroId,
+            credencialId = credencialId,
+            nombre = nombre ?: existente?.nombre,
+            email = email ?: existente?.email,
+        )
         _camareros.update { list ->
             val idx = list.indexOfFirst { it.id == camareroId }
             if (idx >= 0) list.toMutableList().also { it[idx] = camarero } else list + camarero
         }
+        refrescarDeServicio()
         return true
     }
 
     override fun revocarCamarero(camareroId: String): Boolean {
         if (_camareros.value.none { it.id == camareroId }) return false
         _camareros.update { list ->
-            list.map { if (it.id == camareroId) it.copy(estado = CamareroEstado.REVOCADA) else it }
+            list.map { if (it.id == camareroId) it.copy(estado = CamareroEstado.REVOCADA, deServicio = false) else it }
         }
+        refrescarDeServicio()
         return true
+    }
+
+    override fun ponerDeServicio(camareroId: String): Boolean {
+        val camarero = _camareros.value.firstOrNull { it.id == camareroId } ?: return false
+        if (camarero.estado != CamareroEstado.ACTIVA) return false
+        if (camarero.deServicio) return true
+        _camareros.update { list ->
+            list.map { if (it.id == camareroId) it.copy(deServicio = true) else it }
+        }
+        refrescarDeServicio()
+        return true
+    }
+
+    override fun quitarDeServicio(camareroId: String): Boolean {
+        val camarero = _camareros.value.firstOrNull { it.id == camareroId } ?: return false
+        if (!camarero.deServicio) return false
+        _camareros.update { list ->
+            list.map { if (it.id == camareroId) it.copy(deServicio = false) else it }
+        }
+        refrescarDeServicio()
+        return true
+    }
+
+    /** Recalcula el derivado «de servicio» tras cualquier cambio en la lista blanca. */
+    private fun refrescarDeServicio() {
+        _deServicio.value = _camareros.value.filter { it.estado == CamareroEstado.ACTIVA && it.deServicio }
     }
 
     // ── Identity (config + invitaciones + espejo) ─────────────────────────────
@@ -311,5 +350,6 @@ class InMemoryBarRepository(
 
     override fun sincronizarMiembros(camareroIds: List<String>) {
         camareroIds.forEach { id -> altaCamarero(id, null) }
+        refrescarDeServicio()
     }
 }

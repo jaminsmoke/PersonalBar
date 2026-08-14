@@ -230,4 +230,29 @@ class RoomBarRepositoryTest {
         assertEquals(2, repo2.camareros.first().size)
         assertEquals(setOf("cam-a", "cam-b"), repo2.camareros.first().map { it.id }.toSet())
     }
+
+    // ═══ De servicio: varios preparadores + persistencia ═══
+
+    @Test
+    fun de_servicio_varios_y_persistido() = runBlocking {
+        val repo1 = nuevoRepo()
+        repo1.sincronizarMiembros(listOf("cam-a", "cam-b"))
+        repo1.ponerDeServicio("cam-a")
+        repo1.ponerDeServicio("cam-b")
+        repo1.awaitPersistencia()
+
+        // Dos de servicio a la vez.
+        assertEquals(2, repo1.deServicio.first().size)
+
+        // Recarga: el turno sobrevive (coherente con la persistencia del nodo).
+        val repo2 = nuevoRepo()
+        assertEquals(2, repo2.deServicio.first().size)
+        assertEquals(setOf("cam-a", "cam-b"), repo2.deServicio.first().map { it.id }.toSet())
+
+        // Quitar uno no afecta al otro; y sobrevive a la recarga.
+        assertTrue(repo2.quitarDeServicio("cam-a"))
+        repo2.awaitPersistencia()
+        val repo3 = nuevoRepo()
+        assertEquals(listOf("cam-b"), repo3.deServicio.first().map { it.id })
+    }
 }

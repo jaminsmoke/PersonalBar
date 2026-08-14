@@ -53,6 +53,8 @@
     <string name="cola_sin_sesion">Sin sesión</string>
     <string name="cola_quitar_sesion">Quitar sesión</string>
     <string name="sin_camareros_aviso">Sin camareros de alta: añádelos en la sección Camareros</string>
+    <string name="cola_de_servicio_corto">de servicio</string>
+    <string name="cola_en_mano">Prepara: %1$s</string>
 
     <!-- Mapa -->
     <string name="mapa_todas_salas">Todas</string>

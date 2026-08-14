@@ -53,6 +53,8 @@ class CamarerosViewModel : ViewModel() {
                     return@launch
                 }
                 _mensaje.value = null
+                // Bar recoge la info de la cuenta desde Identity (no la edita):
+                // el nombre/email se guardan cuando el server los expone.
                 repository.altaCamarero(phid.camareroId, phid.credencialId)
             }
             return AltaResultado.OK
@@ -92,6 +94,13 @@ class CamarerosViewModel : ViewModel() {
                 _trabajando.value = false
                 _mensaje.value = R.string.camareros_email_no_encontrado
                 return@launch
+            }
+            // Bar recoge la info de la cuenta (no la edita): guarda nombre/email
+            // si el camarero aún no está en la lista blanca.
+            val nombreCompleto = listOf(camarero.nombre, camarero.apellidos)
+                .filter { it.isNotBlank() }.joinToString(" ").ifBlank { null }
+            if (repository.camareros.value.none { it.id == camarero.id }) {
+                repository.altaCamarero(camarero.id, null, nombreCompleto, camarero.email.ifBlank { null })
             }
             val invitacion = IdentityClient.crearInvitacion(e, "staff")
             _trabajando.value = false
