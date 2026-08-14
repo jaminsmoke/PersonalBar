@@ -13,19 +13,29 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.TicketEstado
+import com.jaminsmoke.personalbar.ui.theme.PbGoldGradientBottom
+import com.jaminsmoke.personalbar.ui.theme.PbGoldGradientTop
+import com.jaminsmoke.personalbar.ui.theme.PbOnSecondary
 import com.jaminsmoke.personalbar.ui.theme.PbOnTicketPendiente
 import com.jaminsmoke.personalbar.ui.theme.PbOnTicketPreparado
 import com.jaminsmoke.personalbar.ui.theme.PbTicketPendiente
@@ -102,8 +112,10 @@ fun PbColumnHeader(
 
 /**
  * Tarjeta de ticket del puesto: mesa, ronda, pedido por, preparado por, estado y
- * acciones. `onPreparar`/`onRecoger` nulos ocultan el botón (sin sesión activa o
- * en vista solo-lectura, p. ej. el mapa). Los defaults mantienen el uso en MapaScreen.
+ * acciones («sello» Preparar/Recoger). En la expo, con `onRecoger` presente pero sin
+ * preparador (`onPreparar` nulo), reserva el slot y muestra la pista «sin preparador».
+ * En solo-lectura (ambos nulos, p. ej. el mapa) no se pinta acción. Los defaults
+ * mantienen el uso en MapaScreen.
  */
 @Composable
 fun PbTicketCard(
@@ -196,22 +208,95 @@ fun PbTicketCard(
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
-            if (estado == TicketEstado.PENDIENTE && onPreparar != null) {
-                TextButton(
-                    onClick = onPreparar,
-                    modifier = Modifier.padding(top = 8.dp),
-                ) {
-                    Text(stringResource(R.string.accion_preparado))
-                }
-            }
-            if (estado == TicketEstado.PREPARADO && onRecoger != null) {
-                TextButton(
-                    onClick = onRecoger,
-                    modifier = Modifier.padding(top = 8.dp),
-                ) {
-                    Text(stringResource(R.string.accion_recogido))
-                }
-            }
+            PbTicketAction(
+                estado = estado,
+                onPreparar = onPreparar,
+                onRecoger = onRecoger,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Acción «sello» de la tarjeta de cola: botón ancho con icono + verbo y relleno
+ * por estado. PENDIENTE → «Preparar» (ink); PREPARADO → «Recoger» (gold). En la
+ * expo, si está accionable (`onRecoger` presente) pero no hay preparador en mano
+ * (`onPreparar` nulo), reserva el slot con la pista «sin preparador». En
+ * solo-lectura (ambos nulos, p. ej. el mapa) no pinta nada.
+ */
+@Composable
+fun PbTicketAction(
+    estado: TicketEstado,
+    onPreparar: (() -> Unit)?,
+    onRecoger: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    when {
+        estado == TicketEstado.PENDIENTE && onPreparar != null -> {
+            PbTicketSello(
+                text = stringResource(R.string.accion_preparado),
+                icon = Icons.Outlined.CheckCircle,
+                fill = SolidColor(PbOnTicketPendiente),
+                contentColor = PbTicketPendiente,
+                onClick = onPreparar,
+                modifier = modifier,
+            )
+        }
+        estado == TicketEstado.PREPARADO && onRecoger != null -> {
+            PbTicketSello(
+                text = stringResource(R.string.accion_recogido),
+                icon = Icons.AutoMirrored.Outlined.ExitToApp,
+                fill = Brush.verticalGradient(listOf(PbGoldGradientTop, PbGoldGradientBottom)),
+                contentColor = PbOnSecondary,
+                onClick = onRecoger,
+                modifier = modifier,
+            )
+        }
+        estado == TicketEstado.PENDIENTE && onRecoger != null -> {
+            Text(
+                text = stringResource(R.string.accion_sin_preparador),
+                style = MaterialTheme.typography.bodySmall,
+                color = PbOnTicketPendiente.copy(alpha = 0.7f),
+                modifier = modifier,
+            )
+        }
+        // else: solo-lectura (p. ej. mapa) → sin acción
+    }
+}
+
+/** Botón «sello» a todo lo ancho: relleno (sólido o degradado), icono y verbo. */
+@Composable
+private fun PbTicketSello(
+    text: String,
+    icon: ImageVector,
+    fill: Brush,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(fill)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                tint = contentColor,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.titleSmall,
+                color = contentColor,
+            )
         }
     }
 }
