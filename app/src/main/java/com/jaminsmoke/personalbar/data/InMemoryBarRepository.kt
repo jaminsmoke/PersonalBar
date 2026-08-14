@@ -35,7 +35,6 @@ class InMemoryBarRepository(
     siguienteColaInicial: Map<Destino, Int> = emptyMap(),
 ) : BarRepository {
 
-    private val catalogoPorId = catalogoInicial.associateBy { it.id }
     private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>().also { it.addAll(rondasIniciales.map { r -> r.id }) }
     private var salaSeq = maxNumSuffix("sala", salasIniciales.map { it.id })
     private var mesaSeq = maxNumSuffix("mesa", mesasIniciales.map { it.id })
@@ -83,7 +82,7 @@ class InMemoryBarRepository(
     override fun crearRonda(ronda: Ronda): Boolean {
         if (!rondasRecibidas.add(ronda.id)) return false
         _rondas.update { it + ronda }
-        val tickets = RondaSplitter.split(ronda, catalogoPorId)
+        val tickets = RondaSplitter.split(ronda, _catalogo.value.associateBy { it.id })
             .map { t -> t.copy(numeroCola = siguienteCola(t.destino)) }
         _bebidaQueue.update { it + tickets.filter { t -> t.destino == Destino.BARRA } }
         _comidaQueue.update { it + tickets.filter { t -> t.destino == Destino.COCINA } }
@@ -93,6 +92,43 @@ class InMemoryBarRepository(
     private fun siguienteCola(destino: Destino): Int =
         (siguienteColaPorDestino[destino] ?: 0) + 1
             .also { siguienteColaPorDestino[destino] = it }
+
+    // ── Productos (catálogo) ─────────────────────────────────────────────────
+
+    override fun crearProducto(nombre: String, categoria: String, precio: Double): Boolean {
+        val n = nombre.trim()
+        val c = categoria.trim()
+        if (n.isEmpty() || c.isEmpty()) return false
+        val base = slugProducto(n).ifEmpty { "producto" }
+        var id = base
+        var sufijo = 2
+        while (_catalogo.value.any { it.id == id }) {
+            id = "$base-$sufijo"
+            sufijo++
+        }
+        _catalogo.update { it + Producto(id = id, nombre = n, categoria = c, precio = precio.coerceAtLeast(0.0)) }
+        return true
+    }
+
+    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean): Boolean {
+        val n = nombre.trim()
+        val c = categoria.trim()
+        if (n.isEmpty() || c.isEmpty()) return false
+        if (_catalogo.value.none { it.id == id }) return false
+        _catalogo.update { list ->
+            list.map {
+                if (it.id == id) it.copy(nombre = n, categoria = c, precio = precio.coerceAtLeast(0.0), disponible = disponible)
+                else it
+            }
+        }
+        return true
+    }
+
+    override fun borrarProducto(id: String): Boolean {
+        val antes = _catalogo.value.size
+        _catalogo.update { it.filterNot { p -> p.id == id } }
+        return _catalogo.value.size < antes
+    }
 
     override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
         val pendiente = _bebidaQueue.value.any { it.id == ticketId && it.estado == TicketEstado.PENDIENTE } ||

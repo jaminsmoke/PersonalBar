@@ -207,4 +207,63 @@ class InMemoryBarRepositoryTest {
         assertTrue(repo.eliminarSala(interior.id))
         assertEquals(1, repo.salas.value.size)
     }
+
+    @Test
+    fun crearProductoGeneraSlugEstable() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Coca-Cola", "Bebida", 2.5))
+        val p = repo.catalogo.value.single()
+        assertEquals("coca-cola", p.id)
+        assertEquals("Coca-Cola", p.nombre)
+        assertEquals("Bebida", p.categoria)
+        assertEquals(2.5, p.precio, 0.0)
+        // editar nombre no cambia el id (identidad de red estable)
+        assertTrue(repo.editarProducto("coca-cola", "Coca Cola Zero", "Bebida", 3.0, true))
+        assertEquals("coca-cola", repo.catalogo.value.single().id)
+        assertEquals("Coca Cola Zero", repo.catalogo.value.single().nombre)
+    }
+
+    @Test
+    fun crearProductoRechazaCamposVacios() {
+        val repo = InMemoryBarRepository()
+        assertFalse(repo.crearProducto("", "Bebida", 1.0))
+        assertFalse(repo.crearProducto("Nombre", "", 1.0))
+        assertTrue(repo.catalogo.value.isEmpty())
+    }
+
+    @Test
+    fun crearProductoConSlugDuplicadoSufija() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 2.0))
+        assertTrue(repo.crearProducto("Cana", "Bebida", 2.5))
+        val ids = repo.catalogo.value.map { it.id }.toSet()
+        assertEquals(2, ids.size)
+        assertTrue("cana" in ids)
+        assertTrue("cana-2" in ids)
+    }
+
+    @Test
+    fun borrarProductoEliminaYNoExisteDevuelveFalse() {
+        val repo = repo()
+        assertTrue(repo.borrarProducto("cana"))
+        assertEquals(1, repo.catalogo.value.size)
+        assertFalse(repo.borrarProducto("cana"))
+    }
+
+    @Test
+    fun editarProductoNoExistenteDevuelveFalse() {
+        assertFalse(repo().editarProducto("no-existe", "X", "Bebida", 1.0, true))
+    }
+
+    @Test
+    fun productoNuevoParticipaEnElSplit() {
+        val repo = repo()
+        assertTrue(repo.crearProducto("Pizza", "Comida", 9.0))
+        val pizza = repo.catalogo.value.first { it.nombre == "Pizza" }
+        assertTrue(repo.crearRonda(Ronda("r1", "T3", 1, lineas = listOf(Linea(pizza.id, "Pizza", 1)))))
+        assertEquals(1, repo.comidaQueue.value.size)
+        assertEquals(Destino.COCINA, repo.comidaQueue.value[0].destino)
+        assertEquals("Pizza", repo.comidaQueue.value[0].lineas.single().nombreProducto)
+        assertTrue(repo.bebidaQueue.value.isEmpty())
+    }
 }
