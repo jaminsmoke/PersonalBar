@@ -61,6 +61,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.ui.components.PbColumnHeader
+import com.jaminsmoke.personalbar.ui.components.PbConectividadStatus
 import com.jaminsmoke.personalbar.ui.components.PbEmptyQueue
 import com.jaminsmoke.personalbar.ui.components.PbRoomStatus
 import com.jaminsmoke.personalbar.ui.components.PbTicketCard
@@ -95,6 +96,8 @@ fun ExpoScreen(
                 },
                 actions = {
                     SesionHeader()
+                    PbConectividadStatus()
+                    Spacer(Modifier.width(8.dp))
                     PbRoomStatus(
                         active = uiState.roomActive,
                         onToggle = viewModel::toggleLocal,

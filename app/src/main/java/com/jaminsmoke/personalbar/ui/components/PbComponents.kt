@@ -21,6 +21,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +32,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.TicketEstado
@@ -298,5 +301,30 @@ private fun PbTicketSello(
                 color = contentColor,
             )
         }
+    }
+}
+
+/** Indicador de conectividad de red: verde «Conectado» / rojo «Sin conexión». */
+@Composable
+fun PbConectividadStatus(modifier: Modifier = Modifier) {
+    val isOnline by PersonalBarApp.get().conectividad.isOnline.collectAsState()
+    val accent = if (isOnline) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+    Row(
+        modifier = modifier
+            .background(accent.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(accent, CircleShape),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(if (isOnline) R.string.conexion_online else R.string.conexion_offline),
+            style = MaterialTheme.typography.labelMedium,
+            color = accent,
+        )
     }
 }

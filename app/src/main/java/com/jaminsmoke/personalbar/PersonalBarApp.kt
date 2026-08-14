@@ -10,6 +10,7 @@ import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.RoomBarRepository
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.lan.BarLanServer
+import com.jaminsmoke.personalbar.lan.Conectividad
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +22,9 @@ import kotlinx.coroutines.flow.asStateFlow
 class PersonalBarApp : Application() {
 
     val lanServer: BarLanServer by lazy { BarLanServer(repository) }
+
+    /** Detector de conectividad (para degradar acciones online sin red). */
+    val conectividad: Conectividad by lazy { Conectividad(applicationContext) }
 
     /** Base de datos Room del nodo (expuesta para el DAO de sesión y el repositorio). */
     val db: AppDatabase by lazy {

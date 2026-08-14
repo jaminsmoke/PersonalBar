@@ -28,6 +28,9 @@ class CamarerosViewModel : ViewModel() {
     val identityConfig: StateFlow<IdentityConfig> = repository.identityConfig
     val invitaciones: StateFlow<List<Invitacion>> = repository.invitaciones
 
+    /** Conectividad de red (para deshabilitar acciones online sin conexión). */
+    val isOnline: StateFlow<Boolean> = PersonalBarApp.get().conectividad.isOnline
+
     private val _trabajando = MutableStateFlow(false)
     val trabajando: StateFlow<Boolean> = _trabajando.asStateFlow()
 
@@ -44,6 +47,10 @@ class CamarerosViewModel : ViewModel() {
         val phid = QrParser.parsear(payload)
             ?: return AltaResultado.QR_INVALIDO.also { _mensaje.value = R.string.camareros_qr_invalido }
         if (repository.identityConfig.value.conectado) {
+            if (!isOnline.value) {
+                _mensaje.value = R.string.sin_conexion_aviso
+                return AltaResultado.QR_INVALIDO
+            }
             _trabajando.value = true
             viewModelScope.launch {
                 val ok = IdentityNegocioClient.altaPorQr(payload, "staff")

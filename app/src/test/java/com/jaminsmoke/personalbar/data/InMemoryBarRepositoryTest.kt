@@ -266,4 +266,22 @@ class InMemoryBarRepositoryTest {
         assertEquals("Pizza", repo.comidaQueue.value[0].lineas.single().nombreProducto)
         assertTrue(repo.bebidaQueue.value.isEmpty())
     }
+
+    @Test
+    fun reemplazarLayoutSustituyeLayoutLocal() {
+        val repo = InMemoryBarRepository(
+            salasIniciales = listOf(Sala("sala-1", "Barra", 1)),
+            mesasIniciales = listOf(Mesa(id = "mesa-1", salaId = "sala-1", indiceZona = 1)),
+        )
+        repo.reemplazarLayout(
+            salas = listOf(Sala("sala-a", "Patio", 1), Sala("sala-b", "VIP", 2)),
+            mesas = listOf(Mesa(id = "mesa-9", salaId = "sala-a", indiceZona = 1)),
+        )
+        assertEquals(listOf("sala-a", "sala-b"), repo.salas.value.map { it.id })
+        assertEquals(1, repo.mesas.value.size)
+        assertEquals("sala-a", repo.mesas.value[0].salaId)
+        // crear una sala nueva tras restaurar no colisiona con los ids restaurados
+        assertTrue(repo.crearSala("Terraza"))
+        assertEquals(3, repo.salas.value.size)
+    }
 }
