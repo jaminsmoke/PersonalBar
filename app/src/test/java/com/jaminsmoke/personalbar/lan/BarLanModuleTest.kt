@@ -104,7 +104,7 @@ class BarLanModuleTest {
     }
 
     @Test
-    fun listoMarcaTicket() = testApplication {
+    fun preparadoMarcaTicketConPreparador() = testApplication {
         val repository = repo()
         application { barModule(repository) }
 
@@ -113,9 +113,49 @@ class BarLanModuleTest {
             setBody(LanJson.encodeToString(ronda()))
         }
         val ticketId = repository.bebidaQueue.value[0].id
-        val resp = client.post("/v1/tickets/$ticketId/listo")
+        val resp = client.post("/v1/tickets/$ticketId/preparado") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"preparado_por":"Ana"}""")
+        }
         assertEquals(HttpStatusCode.OK, resp.status)
         assertEquals(1, repository.bebidaQueue.value.size)
-        assertEquals(TicketEstado.LISTO, repository.bebidaQueue.value[0].estado)
+        assertEquals(TicketEstado.PREPARADO, repository.bebidaQueue.value[0].estado)
+        assertEquals("Ana", repository.bebidaQueue.value[0].preparadoPor)
+    }
+
+    @Test
+    fun preparadoSinPreparadorDevuelveBadRequest() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+
+        client.post("/v1/rondas") {
+            contentType(ContentType.Application.Json)
+            setBody(LanJson.encodeToString(ronda()))
+        }
+        val ticketId = repository.bebidaQueue.value[0].id
+        val resp = client.post("/v1/tickets/$ticketId/preparado")
+        assertEquals(HttpStatusCode.BadRequest, resp.status)
+        assertEquals(TicketEstado.PENDIENTE, repository.bebidaQueue.value[0].estado)
+    }
+
+    @Test
+    fun recogidoSacaDeLaCola() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+
+        client.post("/v1/rondas") {
+            contentType(ContentType.Application.Json)
+            setBody(LanJson.encodeToString(ronda()))
+        }
+        val ticketId = repository.bebidaQueue.value[0].id
+        client.post("/v1/tickets/$ticketId/preparado") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"preparado_por":"Ana"}""")
+        }
+        val resp = client.post("/v1/tickets/$ticketId/recogido")
+        assertEquals(HttpStatusCode.OK, resp.status)
+        assertTrue(repository.bebidaQueue.value.isEmpty())
+        assertEquals(1, repository.servidos.value.size)
+        assertEquals(TicketEstado.RECOGIDO, repository.servidos.value[0].estado)
     }
 }

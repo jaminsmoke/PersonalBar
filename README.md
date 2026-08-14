@@ -32,10 +32,16 @@ Bar es el **host de sala**. Servidor Ktor (CIO). Puerto fijo: **8787**.
 |---|---|---|
 | `/health` | GET | `{"ok":true,"role":"bar","establecimiento":"La Terraza","sala":"La Terraza","version":"0.1"}` (`sala` = alias deprecado) |
 | `/v1/rondas` | POST | Recibe una ronda (idempotente por `id`) → 201 con los tickets BARRA/COCINA |
-| `/v1/tickets/{id}/listo` | POST | Marca listo un ticket (por destino) |
-| `/v1/tickets/{id}/servido` | POST | Marca servido; el ticket sale de cola → servidos |
+| `/v1/tickets/{id}/preparado` | POST | Marca **preparado** un ticket (por destino); body `{"preparado_por":"Ana"}` |
+| `/v1/tickets/{id}/recogido` | POST | Marca **recogido**; el ticket sale de cola → servidos |
 | `/v1/estado` | GET | Estado completo (establecimiento, salas, colas, servidos, mesas, versión) |
-| `/v1/eventos` | SSE | Push de eventos `ticket.listo` / `ticket.servido` |
+| `/v1/eventos` | SSE | Push de eventos `ticket.preparado` (con `preparado_por`) / `ticket.recogido` |
+
+**Ciclo del ticket** (decisión de producto 14-08-2026): en Bar el ticket va **PENDIENTE → PREPARADO → RECOGIDO**.
+«Preparado» registra **quién lo preparó** (`preparado_por`, cuenta de camarero de la lista blanca), simétrico a
+«quien lo pidió» (`Ronda.camarero`); «Recogido» lo saca de la cola. El cierre del ciclo — **SERVIDO** y ronda
+**finalizada**, cuando la ronda llega a la mesa del cliente — vive en **Commander** (ítem diferido de sala LAN
+`PVTI_lAHOBM87Yc4BgJWOzg2ZsaU`).
 
 ### Glosario
 
@@ -83,7 +89,7 @@ El estado operativo (LIBRE/OCUPADA/EN_COCINA) se deriva de las rondas/tickets en
 }
 ```
 
-Bar parte la ronda en tickets **BARRA** (bebida) y **COCINA** (comida); el destino se deriva de la categoría del producto. Listo/servido es **por destino** (cañas ≠ pizza).
+Bar parte la ronda en tickets **BARRA** (bebida) y **COCINA** (comida); el destino se deriva de la categoría del producto. Preparado/recogido es **por destino** (cañas ≠ pizza), y `preparado_por` viaja en el ticket y en el evento SSE.
 
 ### Probar desde el host
 

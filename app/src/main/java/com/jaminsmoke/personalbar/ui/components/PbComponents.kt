@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jaminsmoke.personalbar.R
+import com.jaminsmoke.personalbar.data.TicketEstado
 
 /** Estado del local, clickeable: activo (mint) o inactivo (gris). Arranca/para el nodo. */
 @Composable
@@ -92,7 +94,11 @@ fun PbColumnHeader(
     }
 }
 
-/** Tarjeta de ticket stub. No interactiva aún (listo-por-destino es ítem de ronda). */
+/**
+ * Tarjeta de ticket del puesto: mesa, ronda, pedido por, preparado por, estado y
+ * acciones. `onPreparar`/`onRecoger` nulos ocultan el botón (sin sesión activa o
+ * en vista solo-lectura, p. ej. el mapa). Los defaults mantienen el uso en MapaScreen.
+ */
 @Composable
 fun PbTicketCard(
     mesa: String,
@@ -100,6 +106,10 @@ fun PbTicketCard(
     camarero: String?,
     lineas: List<String>,
     modifier: Modifier = Modifier,
+    preparadoPor: String? = null,
+    estado: TicketEstado = TicketEstado.PENDIENTE,
+    onPreparar: (() -> Unit)? = null,
+    onRecoger: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -131,6 +141,14 @@ fun PbTicketCard(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+            if (preparadoPor != null) {
+                Text(
+                    text = stringResource(R.string.ticket_preparado_por, preparadoPor),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
             lineas.forEach { linea ->
                 Text(
                     text = linea,
@@ -138,6 +156,30 @@ fun PbTicketCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.padding(top = 2.dp),
                 )
+            }
+            if (estado == TicketEstado.PREPARADO) {
+                Text(
+                    text = stringResource(R.string.ticket_estado_preparado),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            if (estado == TicketEstado.PENDIENTE && onPreparar != null) {
+                TextButton(
+                    onClick = onPreparar,
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Text(stringResource(R.string.accion_preparado))
+                }
+            }
+            if (estado == TicketEstado.PREPARADO && onRecoger != null) {
+                TextButton(
+                    onClick = onRecoger,
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Text(stringResource(R.string.accion_recogido))
+                }
             }
         }
     }

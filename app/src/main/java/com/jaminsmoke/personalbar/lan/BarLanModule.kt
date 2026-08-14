@@ -22,6 +22,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
 import io.ktor.server.sse.sse
 import io.ktor.sse.ServerSentEvent
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -31,6 +32,12 @@ val LanJson: Json = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
 }
+
+/** Cuerpo de `POST /v1/tickets/{id}/preparado`: quién lo preparó (cuenta de camarero). */
+@Serializable
+data class PreparadoRequest(
+    @SerialName("preparado_por") val preparadoPor: String,
+)
 
 /** Estado completo del nodo para `GET /v1/estado` (polling de Commander). */
 @Serializable
@@ -66,20 +73,26 @@ fun Application.barModule(repository: BarRepository) {
             call.respond(status, tickets)
         }
 
-        post("/v1/tickets/{id}/listo") {
+        post("/v1/tickets/{id}/preparado") {
             val id = call.parameters["id"]
-            when {
-                id.isNullOrBlank() -> call.respond(HttpStatusCode.BadRequest)
-                repository.marcarListo(id) -> call.respond(HttpStatusCode.OK)
-                else -> call.respond(HttpStatusCode.NotFound)
+            if (id.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest)
+            } else {
+                val preparadoPor = runCatching { call.receive<PreparadoRequest>().preparadoPor }
+                    .getOrNull()?.trim().orEmpty()
+                when {
+                    preparadoPor.isEmpty() -> call.respond(HttpStatusCode.BadRequest)
+                    repository.marcarPreparado(id, preparadoPor) -> call.respond(HttpStatusCode.OK)
+                    else -> call.respond(HttpStatusCode.NotFound)
+                }
             }
         }
 
-        post("/v1/tickets/{id}/servido") {
+        post("/v1/tickets/{id}/recogido") {
             val id = call.parameters["id"]
             when {
                 id.isNullOrBlank() -> call.respond(HttpStatusCode.BadRequest)
-                repository.marcarServido(id) -> call.respond(HttpStatusCode.OK)
+                repository.marcarRecogido(id) -> call.respond(HttpStatusCode.OK)
                 else -> call.respond(HttpStatusCode.NotFound)
             }
         }

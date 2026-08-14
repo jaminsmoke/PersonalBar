@@ -69,8 +69,9 @@ data class Linea(
 )
 
 /**
- * Ticket de expo: una ronda partida por destino. Listo/servido es por ticket
- * (no por mesa): las cañas pueden estar listas sin la pizza.
+ * Ticket de expo: una ronda partida por destino. Preparado/recogido es por ticket
+ * (no por mesa): las cañas pueden estar preparadas sin la pizza. [preparadoPor]
+ * es el camarero (lista blanca) que elaboró el ticket, simétrico a `Ronda.camarero`.
  */
 @Serializable
 data class Ticket(
@@ -78,6 +79,7 @@ data class Ticket(
     val rondaId: String,
     val destino: Destino,
     val estado: TicketEstado = TicketEstado.PENDIENTE,
+    val preparadoPor: String? = null,
     val lineas: List<Linea>,
 )
 
