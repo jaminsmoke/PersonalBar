@@ -32,12 +32,24 @@ class PersonalBarApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        _roomActive.value = lanServer.startServer()
+        // El nodo ya no arranca aquí: lo arranca/para BarLanService (FGS «Local activo»).
+    }
+
+    /** Arranca el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
+    fun startLocal(): Boolean {
+        val ok = lanServer.startServer()
+        _roomActive.value = lanServer.isRunning
+        return ok
+    }
+
+    /** Para el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
+    fun stopLocal() {
+        lanServer.stopServer()
+        _roomActive.value = false
     }
 
     override fun onTerminate() {
-        lanServer.stopServer()
-        _roomActive.value = false
+        stopLocal()
         super.onTerminate()
     }
 

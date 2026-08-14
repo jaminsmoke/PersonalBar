@@ -73,7 +73,10 @@ fun ExpoScreen(
                     )
                 },
                 actions = {
-                    PbRoomStatus(active = uiState.roomActive)
+                    PbRoomStatus(
+                        active = uiState.roomActive,
+                        onToggle = viewModel::toggleLocal,
+                    )
                     Spacer(Modifier.width(16.dp))
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
