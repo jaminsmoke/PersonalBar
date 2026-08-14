@@ -25,10 +25,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -130,55 +133,71 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
     var salaBorrando by remember { mutableStateOf<Sala?>(null) }
 
     Column(Modifier.fillMaxSize()) {
-        // Tabs de salas
-        if (salas.isNotEmpty()) {
-            PrimaryScrollableTabRow(
-                selectedTabIndex = if (salaSeleccionada != null) {
-                    salas.indexOfFirst { it.id == salaSeleccionada }.let { if (it >= 0) it + 1 else 0 }
-                } else 0,
-                modifier = Modifier.fillMaxWidth(),
-                edgePadding = 12.dp,
-            ) {
-                Tab(
-                    selected = salaSeleccionada == null,
-                    onClick = { viewModel.setSala(null) },
+        // Selector de salas + acciones contextuales (siempre visibles, fuera del canvas)
+        val salaActiva = salaSeleccionada?.let { salasById[it] }
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (salas.isNotEmpty()) {
+                PrimaryScrollableTabRow(
+                    selectedTabIndex = if (salaSeleccionada != null) {
+                        salas.indexOfFirst { it.id == salaSeleccionada }.let { if (it >= 0) it + 1 else 0 }
+                    } else 0,
+                    modifier = Modifier.weight(1f),
+                    edgePadding = 12.dp,
                 ) {
-                    Text(
-                        stringResource(R.string.mapa_todas_salas),
-                        Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                        fontWeight = if (salaSeleccionada == null) FontWeight.Bold else FontWeight.Normal,
-                    )
-                }
-                salas.forEach { sala ->
                     Tab(
-                        selected = salaSeleccionada == sala.id,
-                        onClick = { viewModel.setSala(if (salaSeleccionada == sala.id) null else sala.id) },
+                        selected = salaSeleccionada == null,
+                        onClick = { viewModel.setSala(null) },
                     ) {
                         Text(
-                            "${zonaEmoji(sala.nombre)} ${sala.nombre}",
+                            stringResource(R.string.mapa_todas_salas),
                             Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            fontWeight = if (salaSeleccionada == sala.id) FontWeight.Bold else FontWeight.Normal,
+                            fontWeight = if (salaSeleccionada == null) FontWeight.Bold else FontWeight.Normal,
                         )
                     }
+                    salas.forEach { sala ->
+                        Tab(
+                            selected = salaSeleccionada == sala.id,
+                            onClick = { viewModel.setSala(if (salaSeleccionada == sala.id) null else sala.id) },
+                        ) {
+                            Text(
+                                "${zonaEmoji(sala.nombre)} ${sala.nombre}",
+                                Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                fontWeight = if (salaSeleccionada == sala.id) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        }
+                    }
                 }
-                Tab(selected = false, onClick = { crearSalaVisible = true }) {
-                    Text(
-                        stringResource(R.string.mapa_nueva_sala),
-                        Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
+            } else {
+                Text(
+                    stringResource(R.string.mapa_sin_salas_titulo),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                )
+            }
+
+            // Botones contextuales de sala: «+» nueva sala (siempre), ✏️ renombrar y 🗑 eliminar (con sala seleccionada)
+            IconButton(onClick = { crearSalaVisible = true }) {
+                Icon(Icons.Default.Add, stringResource(R.string.mapa_nueva_sala))
+            }
+            if (salaActiva != null) {
+                IconButton(onClick = { salaEditando = salaActiva }) {
+                    Icon(Icons.Default.Edit, stringResource(R.string.mapa_renombrar_sala))
+                }
+                IconButton(onClick = { salaBorrando = salaActiva }) {
+                    Icon(Icons.Default.Delete, stringResource(R.string.mapa_eliminar_sala), tint = MaterialTheme.colorScheme.error)
                 }
             }
         }
 
-        // Acciones de sala (renombrar/eliminar) cuando hay una sala seleccionada
-        val salaActiva = salaSeleccionada?.let { salasById[it] }
+        // «Nueva mesa» cuando hay una sala seleccionada (gestión de mesas, se mantiene)
         if (salaActiva != null) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { salaEditando = salaActiva }) { Text(stringResource(R.string.mapa_renombrar_sala)) }
-                TextButton(onClick = { salaBorrando = salaActiva }) {
-                    Text(stringResource(R.string.mapa_eliminar_sala), color = MaterialTheme.colorScheme.error)
-                }
                 TextButton(onClick = { crearVisible = true }) {
                     Icon(Icons.Default.Add, stringResource(R.string.mapa_nueva_mesa))
                     Text(stringResource(R.string.mapa_nueva_mesa))
@@ -186,15 +205,15 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
             }
         }
 
-        if (salaSeleccionada == null) {
-            ListaMesas(
+        when {
+            salas.isEmpty() -> SinSalasEstado(onCrearPrimera = { crearSalaVisible = true })
+            salaSeleccionada == null -> ListaMesas(
                 mesas = mesasFiltradas,
                 salasById = salasById,
                 estados = estados,
                 onClick = { mesaVista = it },
             )
-        } else {
-            BoardView(
+            else -> BoardView(
                 mesas = mesasFiltradas,
                 salasById = salasById,
                 estados = estados,
@@ -271,7 +290,10 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
             title = { Text(stringResource(R.string.mapa_eliminar_sala)) },
             text = { Text(sala.nombre) },
             confirmButton = {
-                TextButton(onClick = { viewModel.eliminarSala(sala.id); salaBorrando = null }) {
+                TextButton(onClick = {
+                    if (viewModel.eliminarSala(sala.id)) viewModel.setSala(null)
+                    salaBorrando = null
+                }) {
                     Text(stringResource(R.string.mapa_menu_borrar), color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -289,6 +311,25 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
             rondas = rondas,
             onDismiss = { mesaVista = null },
         )
+    }
+}
+
+@Composable
+private fun SinSalasEstado(onCrearPrimera: () -> Unit) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(stringResource(R.string.mapa_sin_salas_titulo), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.mapa_sin_salas_subtitulo),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+            )
+            Button(onClick = onCrearPrimera) {
+                Icon(Icons.Default.Add, stringResource(R.string.mapa_crear_primera_sala))
+                Text(stringResource(R.string.mapa_crear_primera_sala))
+            }
+        }
     }
 }
 
