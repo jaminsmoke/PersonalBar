@@ -33,6 +33,7 @@ import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -110,7 +111,8 @@ fun ExpoScreen(
             when (section) {
                 PbSection.COLAS -> ExpoColas(
                     uiState = uiState,
-                    onSetPreparador = viewModel::setPreparador,
+                    onAlternarDeServicio = viewModel::alternarDeServicio,
+                    onSeleccionarEnMano = viewModel::seleccionarEnMano,
                     onClearPreparador = viewModel::clearPreparador,
                     onPreparar = viewModel::marcarPreparado,
                     onRecoger = viewModel::marcarRecogido,
@@ -158,7 +160,8 @@ private fun PbSidebar(
 @Composable
 private fun ExpoColas(
     uiState: ExpoUiState,
-    onSetPreparador: (String) -> Unit,
+    onAlternarDeServicio: (String) -> Unit,
+    onSeleccionarEnMano: (String) -> Unit,
     onClearPreparador: () -> Unit,
     onPreparar: (String) -> Unit,
     onRecoger: (String) -> Unit,
@@ -166,9 +169,11 @@ private fun ExpoColas(
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         PbPreparadorSelector(
-            active = uiState.activeCamarero,
             camareros = uiState.camareros,
-            onSet = onSetPreparador,
+            deServicio = uiState.deServicio,
+            enMano = uiState.enMano,
+            onAlternar = onAlternarDeServicio,
+            onSeleccionarEnMano = onSeleccionarEnMano,
             onClear = onClearPreparador,
         )
         Spacer(Modifier.height(12.dp))
@@ -179,7 +184,7 @@ private fun ExpoColas(
             PbQueueColumn(
                 title = stringResource(R.string.cola_bebida),
                 tickets = uiState.drinkQueue,
-                puedePreparar = uiState.activeCamarero != null,
+                puedePreparar = uiState.enMano != null,
                 onPreparar = onPreparar,
                 onRecoger = onRecoger,
                 emptyIcon = Icons.Default.LocalBar,
@@ -190,7 +195,7 @@ private fun ExpoColas(
             PbQueueColumn(
                 title = stringResource(R.string.cola_comida),
                 tickets = uiState.foodQueue,
-                puedePreparar = uiState.activeCamarero != null,
+                puedePreparar = uiState.enMano != null,
                 onPreparar = onPreparar,
                 onRecoger = onRecoger,
                 emptyIcon = Icons.Default.RestaurantMenu,
@@ -202,71 +207,97 @@ private fun ExpoColas(
     }
 }
 
-/** Barra «Quién soy»: sesión activa del preparador (lista blanca ACTIVA) o aviso. */
+/**
+ * Barra «Quién soy»: chips de los camareros ACTIVA. Tap = alterna «de servicio»;
+ * el chip «en mano» (último de servicio pulsado) queda resaltado y es quien
+ * prepara. Sin camareros de alta muestra aviso.
+ */
 @Composable
 private fun PbPreparadorSelector(
-    active: Camarero?,
     camareros: List<Camarero>,
-    onSet: (String) -> Unit,
+    deServicio: List<Camarero>,
+    enMano: Camarero?,
+    onAlternar: (String) -> Unit,
+    onSeleccionarEnMano: (String) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(R.string.cola_quien_soy),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(8.dp))
-            Box {
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
-                    modifier = Modifier.clickable { menuOpen = true },
-                ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.cola_quien_soy),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(8.dp))
+                if (camareros.isEmpty()) {
                     Text(
-                        text = active?.let { it.nombre ?: it.id.take(8) }
-                            ?: stringResource(R.string.cola_sin_sesion),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        text = stringResource(R.string.sin_camareros_aviso),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    camareros.forEach { c ->
-                        DropdownMenuItem(
-                            text = { Text(c.nombre ?: c.id.take(8)) },
-                            onClick = {
-                                onSet(c.id)
-                                menuOpen = false
-                            },
-                        )
-                    }
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.cola_quitar_sesion)) },
-                        onClick = {
-                            onClear()
-                            menuOpen = false
-                        },
+                Spacer(Modifier.weight(1f))
+                if (deServicio.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.cola_en_mano, enMano?.let { it.nombre ?: it.id.take(8) }
+                            ?: stringResource(R.string.cola_sin_sesion)),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.tertiary,
                     )
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = onClear) {
+                        Text(stringResource(R.string.cola_quitar_sesion))
+                    }
                 }
             }
-            if (camareros.isEmpty()) {
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = stringResource(R.string.sin_camareros_aviso),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+            Row(
+                modifier = Modifier.padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                camareros.forEach { c ->
+                    val nombre = c.nombre ?: c.id.take(8)
+                    val deServ = c.deServicio
+                    val esEnMano = enMano?.id == c.id
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = when {
+                            esEnMano -> MaterialTheme.colorScheme.tertiary
+                            deServ -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.25f)
+                            else -> MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
+                        modifier = Modifier.clickable { onAlternar(c.id) },
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = nombre,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (deServ) MaterialTheme.colorScheme.onTertiaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            if (deServ) {
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.cola_de_servicio_corto),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    // El texto «de servicio» fija este chip como «en mano» (quién prepara).
+                                    modifier = Modifier.clickable { onSeleccionarEnMano(c.id) },
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

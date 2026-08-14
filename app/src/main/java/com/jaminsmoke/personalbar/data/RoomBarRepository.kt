@@ -86,6 +86,7 @@ class RoomBarRepository(
     override val rondas: StateFlow<List<Ronda>> get() = inner.rondas
     override val catalogo: StateFlow<List<Producto>> get() = inner.catalogo
     override val camareros: StateFlow<List<Camarero>> get() = inner.camareros
+    override val deServicio: StateFlow<List<Camarero>> get() = inner.deServicio
     override val identityConfig: StateFlow<IdentityConfig> get() = inner.identityConfig
     override val invitaciones: StateFlow<List<Invitacion>> get() = inner.invitaciones
     override val eventos: SharedFlow<SalaEvent> get() = inner.eventos
@@ -188,14 +189,26 @@ class RoomBarRepository(
 
     // ── Camareros / Identity ─────────────────────────────────────────────────
 
-    override fun altaCamarero(camareroId: String, credencialId: String?): Boolean {
-        val ok = inner.altaCamarero(camareroId, credencialId)
+    override fun altaCamarero(camareroId: String, credencialId: String?, nombre: String?, email: String?): Boolean {
+        val ok = inner.altaCamarero(camareroId, credencialId, nombre, email)
         if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
         return ok
     }
 
     override fun revocarCamarero(camareroId: String): Boolean {
         val ok = inner.revocarCamarero(camareroId)
+        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        return ok
+    }
+
+    override fun ponerDeServicio(camareroId: String): Boolean {
+        val ok = inner.ponerDeServicio(camareroId)
+        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        return ok
+    }
+
+    override fun quitarDeServicio(camareroId: String): Boolean {
+        val ok = inner.quitarDeServicio(camareroId)
         if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
         return ok
     }

@@ -176,4 +176,9 @@ data class Camarero(
     val estado: CamareroEstado = CamareroEstado.ACTIVA,
     val credencialId: String? = null,
     val altaEn: Long = System.currentTimeMillis(),
+    /**
+     * De servicio en el puesto de barra (varios a la vez; la cuenta se crea en
+     * Commander, Bar solo la asigna al establecimiento). Migración Room v3.
+     */
+    val deServicio: Boolean = false,
 )
