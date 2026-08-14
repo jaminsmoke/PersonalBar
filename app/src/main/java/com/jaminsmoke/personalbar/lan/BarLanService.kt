@@ -2,6 +2,7 @@ package com.jaminsmoke.personalbar.lan
 
 import android.annotation.SuppressLint
 import android.app.Notification
+import android.util.Log
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -34,7 +35,10 @@ class BarLanService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createChannel()
-        startForegroundCompat(buildNotification())
+        val fgsOk = startForegroundCompat(buildNotification())
+        PersonalBarApp.get().setFgsOk(fgsOk)
+        // Aunque el FGS falle (permiso revocado/transitorio), el nodo arranca igual en
+        // proceso (degradación) y la UI avisa «sin servicio en primer plano».
         acquireLocks()
         PersonalBarApp.get().startLocal()
         return START_NOT_STICKY
@@ -42,18 +46,30 @@ class BarLanService : Service() {
 
     override fun onDestroy() {
         PersonalBarApp.get().stopLocal()
+        PersonalBarApp.get().setFgsOk(true)
         releaseLocks()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 
-    private fun startForegroundCompat(notification: Notification) {
+    /**
+     * Arranca el FGS con tipo `specialUse` (API 34+; en API < 34 no hay tipo).
+     * Devuelve false si el sistema rechaza el arranque (p. ej. permiso revocado):
+     * el nodo continuará en proceso y la UI mostrará el estado degradado.
+     */
+    private fun startForegroundCompat(notification: Notification): Boolean {
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
         } else {
             0
         }
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
+        return try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "FGS no disponible (permiso revocado?): $e")
+            false
+        }
     }
 
     private fun buildNotification(): Notification {
@@ -110,6 +126,7 @@ class BarLanService : Service() {
         const val CHANNEL_ID = "local_activo"
         const val NOTIFICATION_ID = 8787
         private const val LOCK_TAG = "com.jaminsmoke.personalbar:local_activo"
+        private const val TAG = "BarLanService"
 
         /** Arranca el nodo como foreground service (API 26+ exige startForeground en <5 s). */
         fun start(context: Context) {

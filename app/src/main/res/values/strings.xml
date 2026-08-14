@@ -17,6 +17,7 @@
     <!-- Local -->
     <string name="local_activo">Local activo</string>
     <string name="local_inactivo">Local inactivo</string>
+    <string name="local_activo_sin_fgs">Nodo activo sin servicio en primer plano</string>
 
     <!-- FGS «Local activo» -->
     <string name="canal_local">Estado del local</string>

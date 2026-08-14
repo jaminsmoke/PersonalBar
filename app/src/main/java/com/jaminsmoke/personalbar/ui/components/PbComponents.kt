@@ -48,13 +48,16 @@ import com.jaminsmoke.personalbar.ui.theme.PbTicketPreparado
 @Composable
 fun PbRoomStatus(
     active: Boolean,
+    fgsOk: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val accent = if (active) {
-        MaterialTheme.colorScheme.tertiary
-    } else {
-        MaterialTheme.colorScheme.outline
+    // Nodo activo pero sin FGS (permiso revocado/transitorio): degradado, con aviso.
+    val degradado = active && !fgsOk
+    val accent = when {
+        degradado -> MaterialTheme.colorScheme.error
+        active -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.outline
     }
     Row(
         modifier = modifier
@@ -74,7 +77,11 @@ fun PbRoomStatus(
         Spacer(Modifier.width(8.dp))
         Text(
             text = stringResource(
-                if (active) R.string.local_activo else R.string.local_inactivo
+                when {
+                    degradado -> R.string.local_activo_sin_fgs
+                    active -> R.string.local_activo
+                    else -> R.string.local_inactivo
+                }
             ),
             style = MaterialTheme.typography.labelMedium,
             color = accent,

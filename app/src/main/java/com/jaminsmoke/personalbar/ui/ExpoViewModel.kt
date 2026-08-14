@@ -39,6 +39,8 @@ data class ExpoUiState(
     val drinkQueue: List<ExpoTicket> = emptyList(),
     val foodQueue: List<ExpoTicket> = emptyList(),
     val roomActive: Boolean = false,
+    /** FGS arrancado: false = nodo activo pero sin servicio en primer plano (degradado). */
+    val fgsOk: Boolean = true,
     val camareros: List<Camarero> = emptyList(),
     /** Camareros ACTIVA marcados de servicio en el puesto (varios a la vez). */
     val deServicio: List<Camarero> = emptyList(),
@@ -90,12 +92,13 @@ class ExpoViewModel : ViewModel() {
             ColasBase(bebida, comida, rondas, active, camareros)
         }
         viewModelScope.launch {
-            combine(base, repository.deServicio, _enMano) { b, deServicio, enMano ->
+            combine(base, repository.deServicio, _enMano, PersonalBarApp.get().fgsOk) { b, deServicio, enMano, fgsOk ->
                 val rondasPorId = b.rondas.associateBy { it.id }
                 ExpoUiState(
                     drinkQueue = b.bebida.map { it.toExpoTicket(rondasPorId) },
                     foodQueue = b.comida.map { it.toExpoTicket(rondasPorId) },
                     roomActive = b.active,
+                    fgsOk = fgsOk,
                     camareros = b.camareros.filter { it.estado == CamareroEstado.ACTIVA },
                     deServicio = deServicio,
                     enMano = enMano,

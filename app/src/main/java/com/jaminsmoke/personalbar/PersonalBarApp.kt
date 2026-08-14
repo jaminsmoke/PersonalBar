@@ -55,6 +55,15 @@ class PersonalBarApp : Application() {
     private val _roomActive = MutableStateFlow(false)
     val roomActive: StateFlow<Boolean> = _roomActive.asStateFlow()
 
+    /** FGS «Local activo» arrancado correctamente (false = nodo degradado sin FGS). */
+    private val _fgsOk = MutableStateFlow(true)
+    val fgsOk: StateFlow<Boolean> = _fgsOk.asStateFlow()
+
+    /** Lo actualiza BarLanService tras intentar el arranque del FGS. */
+    fun setFgsOk(ok: Boolean) {
+        _fgsOk.value = ok
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
