@@ -17,3 +17,4 @@ keystore.properties
 .claude/
 skills-lock.json
 tools/kanban-cli/node_modules/
+devartifacts/
