@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
  * en ejecutar escribe el estado final correcto).
  *
  * Carga inicial en el constructor (síncrona, volumen pequeño): si la BD está vacía
- * (primera instalación) siembra el seed demo y lo persiste; si no, reconstruye el
+ * (primera instalación) siembra la semilla inicial (establecimiento y catálogo por
+ * defecto) y lo persiste; si no, reconstruye el
  * estado completo desde Room (colas y servidos se derivan de `estado`+`destino`).
  */
 class RoomBarRepository(
@@ -38,7 +39,7 @@ class RoomBarRepository(
     private val inner: InMemoryBarRepository = runBlocking {
         val salasBd = dao.getSalas()
         if (salasBd.isEmpty()) {
-            // Primera instalación: sembrar el seed y persistirlo.
+            // Primera instalación: sembrar la semilla inicial y persistirla.
             val seed = InMemoryBarRepository(
                 establecimientoInicial = establecimientoInicial,
                 salasIniciales = salasIniciales,

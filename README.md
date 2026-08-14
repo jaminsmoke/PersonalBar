@@ -207,7 +207,7 @@ La lista local (persistida en Room) sigue siendo la fuente para la LAN; Identity
 El nodo **persiste todo en Room** (`personalbar.db`, esquema v1 exportado a `app/schemas/`): establecimiento, salas/mesas (layout), catálogo, rondas, tickets (colas + servidos), reservas, camareros (lista blanca), invitaciones y la config de Identity.
 
 - **Arquitectura**: `RoomBarRepository` envuelve el `InMemoryBarRepository` (cerebro: lógica, colas, idempotencia, secuencias). Cada mutación actualiza el estado en memoria y **persiste por dominio** en un scope serializado; si una escritura falla, el estado en memoria sigue mandando y se re-persiste en la siguiente mutación.
-- **Arranque**: carga todo de Room; si la BD está vacía (primera instalación) siembra el seed demo (establecimiento «La Terraza», 3 salas, catálogo, 4 mesas, 2 rondas).
+- **Arranque**: carga todo de Room; si la BD está vacía (primera instalación) siembra las **3 salas por defecto** (Barra, Interior, Terraza) con **4 mesas cada una** y el **catálogo canónico por defecto** (4 productos); **sin rondas demo** (colas vacías). El dueño edita salas/mesas; la carta se gestionará cuando exista el editor de catálogo.
 - **No se persisten** los eventos SSE (`SalaEvent`): al reconectar, Commander re-sincroniza por `/v1/estado`.
 - **Migraciones**: schema exportado desde v1 para versionar cambios futuros igual que Commander. v2 añade `tickets.numeroCola` (id de cola visible/hablable) con `MIGRATION_1_2` + backfill por destino en `RoomBarRepository` al cargar.
 - Los eventos `ticket.preparado`/`ticket.recogido` y el `preparadoPor` sobreviven al reinicio (los tickets se persisten con su estado).
