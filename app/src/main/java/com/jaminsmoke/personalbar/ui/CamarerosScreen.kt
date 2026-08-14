@@ -48,8 +48,7 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+            .fillMaxSize(),
     ) {
         Text(
             text = stringResource(R.string.camareros_titulo),

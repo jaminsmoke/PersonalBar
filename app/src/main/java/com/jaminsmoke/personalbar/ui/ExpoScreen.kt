@@ -117,25 +117,34 @@ fun ExpoScreen(
             VerticalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
             )
-            when (section) {
-                PbSection.COLAS -> ExpoColas(
-                    uiState = uiState,
-                    escuchando = viewModel.escuchando.collectAsState().value,
-                    parcial = viewModel.parcial.collectAsState().value,
-                    mensajeVoz = viewModel.mensajeVoz.collectAsState().value,
-                    onAlternarDeServicio = viewModel::alternarDeServicio,
-                    onSeleccionarEnMano = viewModel::seleccionarEnMano,
-                    onClearPreparador = viewModel::clearPreparador,
-                    onPreparar = viewModel::marcarPreparado,
-                    onRecoger = viewModel::marcarRecogido,
-                    onEmpezarEscucha = viewModel::empezarEscucha,
-                    onDetenerEscucha = viewModel::detenerEscucha,
-                    onPermisoDenegado = viewModel::notificarPermisoDenegado,
-                    modifier = Modifier.weight(1f),
-                )
-                PbSection.MAPA -> MapaScreen()
-                PbSection.CAMAREROS -> CamarerosScreen()
-                PbSection.AJUSTES -> AjustesScreen()
+            // Zona de trabajo acotada: margen uniforme respecto al rail y al borde,
+            // en todas las pantallas del viewport (mapa incluido).
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+            ) {
+                when (section) {
+                    PbSection.COLAS -> ExpoColas(
+                        uiState = uiState,
+                        escuchando = viewModel.escuchando.collectAsState().value,
+                        parcial = viewModel.parcial.collectAsState().value,
+                        mensajeVoz = viewModel.mensajeVoz.collectAsState().value,
+                        onAlternarDeServicio = viewModel::alternarDeServicio,
+                        onSeleccionarEnMano = viewModel::seleccionarEnMano,
+                        onClearPreparador = viewModel::clearPreparador,
+                        onPreparar = viewModel::marcarPreparado,
+                        onRecoger = viewModel::marcarRecogido,
+                        onEmpezarEscucha = viewModel::empezarEscucha,
+                        onDetenerEscucha = viewModel::detenerEscucha,
+                        onPermisoDenegado = viewModel::notificarPermisoDenegado,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    PbSection.MAPA -> MapaScreen()
+                    PbSection.CAMAREROS -> CamarerosScreen()
+                    PbSection.AJUSTES -> AjustesScreen()
+                }
             }
         }
     }

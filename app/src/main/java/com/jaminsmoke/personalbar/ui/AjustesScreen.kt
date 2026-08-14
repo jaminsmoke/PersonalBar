@@ -54,8 +54,7 @@ fun AjustesScreen(viewModel: AjustesViewModel = viewModel()) {
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+            .fillMaxSize(),
     ) {
         Text(
             text = stringResource(R.string.ajustes_titulo_establecimiento),

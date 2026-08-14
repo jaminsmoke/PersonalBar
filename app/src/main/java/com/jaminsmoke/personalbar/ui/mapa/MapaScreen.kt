@@ -129,7 +129,7 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
     var salaEditando by remember { mutableStateOf<Sala?>(null) }
     var salaBorrando by remember { mutableStateOf<Sala?>(null) }
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
+    Column(Modifier.fillMaxSize()) {
         // Tabs de salas
         if (salas.isNotEmpty()) {
             PrimaryScrollableTabRow(
