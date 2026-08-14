@@ -6,6 +6,7 @@ import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Ticket
+import com.jaminsmoke.personalbar.lan.BarLanService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,6 +49,16 @@ class ExpoViewModel : ViewModel() {
                     roomActive = active,
                 )
             }.collect { _uiState.value = it }
+        }
+    }
+
+    /** Arranca/para el nodo (service + server) según el estado actual. */
+    fun toggleLocal() {
+        val app = PersonalBarApp.get()
+        if (app.roomActive.value) {
+            BarLanService.stop(app)
+        } else {
+            BarLanService.start(app)
         }
     }
 }

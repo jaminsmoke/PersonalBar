@@ -2,6 +2,7 @@ package com.jaminsmoke.personalbar.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,10 +23,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jaminsmoke.personalbar.R
 
-/** Indicador de estado del local: activo (mint) o inactivo (gris). */
+/** Estado del local, clickeable: activo (mint) o inactivo (gris). Arranca/para el nodo. */
 @Composable
 fun PbRoomStatus(
     active: Boolean,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val accent = if (active) {
@@ -35,6 +37,7 @@ fun PbRoomStatus(
     }
     Row(
         modifier = modifier
+            .clickable(onClick = onToggle)
             .background(
                 color = accent.copy(alpha = 0.12f),
                 shape = RoundedCornerShape(999.dp),

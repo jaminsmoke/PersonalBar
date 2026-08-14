@@ -107,7 +107,19 @@ curl -N http://127.0.0.1:18787/v1/eventos
 
 Cleartext solo en rangos LAN privados (`network_security_config`). Identidad = HTTPS a PersonalHostel-Identity, nunca este puerto.
 
-Los Commanders descubren Bar escaneando el /24 contra el puerto 8787 (patrón `EscaneadorRed` de Commander). El FGS «Local activo» y el registro de camareros son ítems aparte.
+Los Commanders descubren Bar escaneando el /24 contra el puerto 8787 (patrón `EscaneadorRed` de Commander). El registro de camareros (lista blanca) es un ítem aparte.
+
+### Servicio en primer plano «Local activo»
+
+El nodo vive en un foreground service (`BarLanService`) para sobrevivir con la **pantalla bloqueada**:
+
+- Notificación persistente «Local activo» (canal `local_activo`).
+- `foregroundServiceType="connectedDevice"` (los Commander son dispositivos externos en LAN).
+- partial `WakeLock` + `WifiLock` para que la CPU y el Wi‑Fi no se duerman en doze.
+- El indicador «Local activo» de la barra superior es un **toggle**: arranca/para el service y el server.
+- Sin arranque al boot en v0.1 (se activa a mano).
+
+Permisos: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `POST_NOTIFICATIONS` (runtime en API 33+), `WAKE_LOCK`.
 
 ## Hermanos
 
