@@ -6,7 +6,7 @@
 
 **El puesto de barra que gestiona la sala.** Colas de Bebida y Comida separadas, nodo LAN de la familia PersonalHostel: los Personal Commander de sala y terraza se conectan aquí, mandan rondas y la barra las prepara y entrega **por destino**.
 
-[📖 Wiki](https://github.com/jaminsmoke/PersonalBar/wiki) · [Personal Comander](https://github.com/jaminsmoke/PersonalComander) · [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity)
+[🌐 Site](https://jaminsmoke.github.io/PersonalBar/) · [📖 Wiki](https://github.com/jaminsmoke/PersonalBar/wiki) · [Personal Comander](https://github.com/jaminsmoke/PersonalComander) · [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity)
 
 [![Build](https://img.shields.io/github/actions/workflow/status/jaminsmoke/PersonalBar/ci.yml?label=build&color=%23E9C349)](https://github.com/jaminsmoke/PersonalBar/actions)
 [![License](https://img.shields.io/github/license/jaminsmoke/PersonalBar?color=%23E9C349)](LICENSE)

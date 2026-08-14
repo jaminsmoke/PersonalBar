@@ -18,3 +18,4 @@ keystore.properties
 skills-lock.json
 tools/kanban-cli/node_modules/
 devartifacts/
+site/
