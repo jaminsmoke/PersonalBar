@@ -158,4 +158,29 @@ class BarLanModuleTest {
         assertEquals(1, repository.servidos.value.size)
         assertEquals(TicketEstado.RECOGIDO, repository.servidos.value[0].estado)
     }
+
+    @Test
+    fun cartaDevuelveCatalogo() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+
+        val resp = client.get("/v1/carta")
+        assertEquals(HttpStatusCode.OK, resp.status)
+        val carta = LanJson.decodeFromString<CartaResponse>(resp.bodyAsText())
+        assertEquals(2, carta.productos.size)
+        assertEquals(setOf("cana", "croquetas"), carta.productos.map { it.id }.toSet())
+        // Incluye el flag `disponible` que Commander cachea para ocultar en comanda.
+        assertTrue(carta.productos.all { it.disponible })
+    }
+
+    @Test
+    fun cartaWrapperJsonTieneProductos() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+
+        val body = client.get("/v1/carta").bodyAsText()
+        assertTrue(body.contains("\"productos\":["))
+        assertTrue(body.contains("\"precio\":"))
+        assertTrue(body.contains("\"disponible\":"))
+    }
 }
