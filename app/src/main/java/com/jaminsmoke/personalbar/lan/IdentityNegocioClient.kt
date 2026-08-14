@@ -7,6 +7,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.net.URLEncoder
+import com.jaminsmoke.personalbar.data.Mesa
+import com.jaminsmoke.personalbar.data.Sala
 
 // ── Respuestas del servicio Identity negocio (v0.2) que consume Bar ───────────
 
@@ -64,6 +66,20 @@ data class IdentityMembresia(
     @SerialName("camarero_id") val camareroId: String,
     val rol: String = "staff",
     val estado: String = "activa",
+)
+
+@Serializable
+data class LayoutUpdateRequest(
+    val salas: List<Sala>,
+    val mesas: List<Mesa>,
+)
+
+@Serializable
+data class IdentityLayout(
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    val version: Int = 0,
+    val salas: List<Sala> = emptyList(),
+    val mesas: List<Mesa> = emptyList(),
 )
 
 /**
@@ -229,5 +245,21 @@ object IdentityNegocioClient {
     suspend fun revocarMiembro(camareroId: String): Boolean = withContext(Dispatchers.IO) {
         val id = establecimientoUuid ?: return@withContext false
         IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/miembros/$camareroId", token = negocioToken).first in 200..299
+    }
+
+    /** `PUT /v1/establecimientos/{id}/layout` — respaldo del layout (salas + mesas). */
+    suspend fun guardarLayout(salas: List<Sala>, mesas: List<Mesa>): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        val body = LanJson.encodeToString(LayoutUpdateRequest(salas = salas, mesas = mesas))
+        IdentityHttp.request(baseUrl, "PUT", "/v1/establecimientos/$id/layout", body = body, token = negocioToken).first in 200..299
+    }
+
+    /** `GET /v1/establecimientos/{id}/layout` — recupera el layout respaldado, o null. */
+    suspend fun obtenerLayout(): Pair<List<Sala>, List<Mesa>>? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/layout", token = negocioToken)
+        if (code !in 200..299) return@withContext null
+        runCatching { LanJson.decodeFromString<IdentityLayout>(text) }
+            .getOrNull()?.let { it.salas to it.mesas }
     }
 }

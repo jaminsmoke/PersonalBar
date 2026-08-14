@@ -132,6 +132,11 @@ class RoomBarRepository(
 
     // ── Salas / mesas ────────────────────────────────────────────────────────
 
+    override fun reemplazarLayout(salas: List<Sala>, mesas: List<Mesa>) {
+        inner.reemplazarLayout(salas, mesas)
+        persist { dao.replaceSalas(inner.salas.value); dao.replaceMesas(inner.mesas.value) }
+    }
+
     override fun crearSala(nombre: String): Boolean {
         val ok = inner.crearSala(nombre)
         if (ok) persist { dao.replaceSalas(inner.salas.value) }

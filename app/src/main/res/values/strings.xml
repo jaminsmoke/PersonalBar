@@ -23,6 +23,11 @@
     <string name="local_activo_notif_titulo">Local activo</string>
     <string name="local_activo_notif_texto">El nodo de sala escucha en la LAN</string>
 
+    <!-- Conectividad / Identity -->
+    <string name="conexion_online">Conectado</string>
+    <string name="conexion_offline">Sin conexión</string>
+    <string name="sin_conexion_aviso">Sin conexión: esta acción requiere internet</string>
+
     <!-- Ajustes -->
     <string name="ajustes_titulo_establecimiento">Establecimiento</string>
     <string name="ajustes_titulo_salas">Salas</string>

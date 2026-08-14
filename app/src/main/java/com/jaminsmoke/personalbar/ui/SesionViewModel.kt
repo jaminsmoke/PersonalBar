@@ -49,6 +49,7 @@ class SesionViewModel : ViewModel() {
                 hidratarIdentity(guardada)
                 _sesion.value = guardada
                 cargarLogo()
+                sincronizarDesdeIdentity()
             }
         }
     }
@@ -90,6 +91,7 @@ class SesionViewModel : ViewModel() {
             marcarConectado(uuid)
             persistirSesion(sesion, recordar)
             cargarLogo()
+            sincronizarDesdeIdentity()
             _trabajando.value = false
         }
     }
@@ -152,6 +154,7 @@ class SesionViewModel : ViewModel() {
             marcarConectado(uuid)
             persistirSesion(sesion, recordar)
             cargarLogo()
+            sincronizarDesdeIdentity()
             _trabajando.value = false
         }
     }
@@ -183,6 +186,25 @@ class SesionViewModel : ViewModel() {
     private fun cargarLogo() {
         viewModelScope.launch {
             _logoBytes.value = IdentityNegocioClient.obtenerLogo()
+        }
+    }
+
+    /**
+     * Re-pulla desde Identity (fuente de verdad) el layout y los camareros al iniciar
+     * o restaurar sesión: SQLite hace mirror. El layout reemplaza el local; los
+     * camareros ACTIVA se sincronizan a la lista blanca.
+     */
+    private fun sincronizarDesdeIdentity() {
+        viewModelScope.launch {
+            IdentityNegocioClient.obtenerLayout()?.let { (salas, mesas) ->
+                if (salas.isNotEmpty() || mesas.isNotEmpty()) {
+                    app.repository.reemplazarLayout(salas, mesas)
+                }
+            }
+            val miembros = IdentityNegocioClient.listarMiembros()
+                .filter { it.estado.equals("activa", ignoreCase = true) }
+                .map { it.camareroId }
+            app.repository.sincronizarMiembros(miembros)
         }
     }
 

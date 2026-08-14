@@ -42,6 +42,7 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
     val invitaciones by viewModel.invitaciones.collectAsState()
     val trabajando by viewModel.trabajando.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
 
     var qrInput by remember { mutableStateOf("") }
     var emailInput by remember { mutableStateOf("") }
@@ -94,6 +95,7 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
 
         InvitacionSection(
             conectado = identityConfig.conectado,
+            isOnline = isOnline,
             invitaciones = invitaciones,
             trabajando = trabajando,
             email = emailInput,
@@ -141,6 +143,7 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
 @Composable
 private fun InvitacionSection(
     conectado: Boolean,
+    isOnline: Boolean,
     invitaciones: List<Invitacion>,
     trabajando: Boolean,
     email: String,
@@ -158,6 +161,15 @@ private fun InvitacionSection(
             text = stringResource(R.string.camareros_sin_identity),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        return
+    }
+    if (!isOnline) {
+        Text(
+            text = stringResource(R.string.sin_conexion_aviso),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(top = 4.dp),
         )
         return

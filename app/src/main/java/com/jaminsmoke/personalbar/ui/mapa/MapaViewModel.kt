@@ -12,6 +12,8 @@ import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.Ticket
 import com.jaminsmoke.personalbar.data.derivarEstadoMesas
+import com.jaminsmoke.personalbar.lan.LayoutBackup
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -53,20 +55,35 @@ class MapaViewModel : ViewModel() {
     fun setSala(id: String?) { _salaSeleccionada.value = id }
 
     // ── Salas ──
-    fun crearSala(nombre: String): Boolean = repository.crearSala(nombre)
-    fun renombrarSala(id: String, nombre: String): Boolean = repository.renombrarSala(id, nombre)
-    fun eliminarSala(id: String): Boolean = repository.eliminarSala(id)
+    fun crearSala(nombre: String): Boolean =
+        repository.crearSala(nombre).also { if (it) respaldar() }
+
+    fun renombrarSala(id: String, nombre: String): Boolean =
+        repository.renombrarSala(id, nombre).also { if (it) respaldar() }
+
+    fun eliminarSala(id: String): Boolean =
+        repository.eliminarSala(id).also { if (it) respaldar() }
 
     // ── Mesas ──
     fun crearMesa(salaId: String, forma: MesaForma, capacidad: Int, alias: String?): Boolean =
-        repository.crearMesa(salaId, forma, capacidad, alias)
+        repository.crearMesa(salaId, forma, capacidad, alias).also { if (it) respaldar() }
 
     fun editarMesa(mesaId: String, alias: String?, capacidad: Int, forma: MesaForma): Boolean =
-        repository.editarMesa(mesaId, alias, capacidad, forma)
+        repository.editarMesa(mesaId, alias, capacidad, forma).also { if (it) respaldar() }
 
-    fun borrarMesa(mesaId: String): Boolean = repository.borrarMesa(mesaId)
-    fun moverMesa(mesaId: String, posX: Float, posY: Float): Boolean = repository.moverMesa(mesaId, posX, posY)
-    fun girarMesa(mesaId: String): Boolean = repository.girarMesa(mesaId)
+    fun borrarMesa(mesaId: String): Boolean =
+        repository.borrarMesa(mesaId).also { if (it) respaldar() }
+
+    fun moverMesa(mesaId: String, posX: Float, posY: Float): Boolean =
+        repository.moverMesa(mesaId, posX, posY).also { if (it) respaldar() }
+
+    fun girarMesa(mesaId: String): Boolean =
+        repository.girarMesa(mesaId).also { if (it) respaldar() }
+
+    /** Respalda el layout en Identity (best-effort, si conectado). */
+    private fun respaldar() {
+        viewModelScope.launch { LayoutBackup.respaldar(repository) }
+    }
 
     // ── Reservas / bloqueos ──
     fun reservar(mesaId: String, nombre: String, paraEpoch: Long?): Boolean = repository.reservar(mesaId, nombre, paraEpoch)
