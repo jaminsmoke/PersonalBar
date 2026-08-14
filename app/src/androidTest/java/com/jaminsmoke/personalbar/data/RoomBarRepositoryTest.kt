@@ -25,21 +25,21 @@ class RoomBarRepositoryTest {
 
     private lateinit var db: AppDatabase
 
-    private val demoEstablecimiento = Establecimiento(idEstable = "local-1", nombre = "La Terraza")
-    private val demoSala = Sala(id = "sala-barra", nombre = "Barra", orden = 1)
+    private val demoEstablecimiento = Establecimiento(idEstable = "local-1", nombre = "La Terraza Test")
+    private val demoSala = Sala(id = "sala-barra", nombre = "Barra Test", orden = 1)
     private val demoCatalogo = listOf(
-        Producto(id = "cana", nombre = "Caña", categoria = "Bebida"),
-        Producto(id = "croquetas", nombre = "Croquetas", categoria = "Comida"),
+        Producto(id = "cana", nombre = "Caña Test", categoria = "Bebida"),
+        Producto(id = "croquetas", nombre = "Croquetas Test", categoria = "Comida"),
     )
     private val demoMesa = Mesa(
         id = "mesa-1", salaId = "sala-barra", indiceZona = 1, numero = 1,
         forma = MesaForma.CUADRADA, capacidad = 4, posX = 40f, posY = 40f,
     )
     private val demoRonda = Ronda(
-        id = "r1", mesaId = "B1", numero = 1, camarero = "Lucía",
+        id = "r1", mesaId = "B1", numero = 1, camarero = "Lucía Test",
         lineas = listOf(
-            Linea(productoId = "cana", nombreProducto = "Caña", cantidad = 2),
-            Linea(productoId = "croquetas", nombreProducto = "Croquetas", cantidad = 1),
+            Linea(productoId = "cana", nombreProducto = "Caña Test", cantidad = 2),
+            Linea(productoId = "croquetas", nombreProducto = "Croquetas Test", cantidad = 1),
         ),
     )
 
@@ -85,6 +85,25 @@ class RoomBarRepositoryTest {
         assertEquals(1, repo.comidaQueue.first().first().numeroCola)
     }
 
+    @Test
+    fun sin_rondas_demo_arranca_con_colas_vacias() = runBlocking {
+        // Config de producción (PersonalBarApp): salas/mesas/catálogo por defecto, SIN rondas demo.
+        val repo = RoomBarRepository(
+            db = db,
+            salasIniciales = listOf(demoSala),
+            mesasIniciales = listOf(demoMesa),
+            catalogoInicial = demoCatalogo,
+        )
+
+        assertEquals("Mi local", repo.establecimiento.first().nombre)
+        assertEquals(listOf(demoSala), repo.salas.first())
+        assertEquals(listOf(demoMesa), repo.mesas.first())
+        assertEquals(demoCatalogo, repo.catalogo.first())
+        assertTrue(repo.bebidaQueue.first().isEmpty())
+        assertTrue(repo.comidaQueue.first().isEmpty())
+        assertTrue(repo.rondas.first().isEmpty())
+    }
+
     // ═══ Persistencia y recarga ═══
 
     @Test
@@ -92,8 +111,8 @@ class RoomBarRepositoryTest {
         val repo1 = nuevoRepo()
 
         // Mutar: crear sala/mesa, alta de camarero, config Identity, preparar ticket
-        assertTrue(repo1.crearSala("Terraza"))
-        val salaTerraza = repo1.salas.first().first { it.nombre == "Terraza" }.id
+        assertTrue(repo1.crearSala("Terraza Test"))
+        val salaTerraza = repo1.salas.first().first { it.nombre == "Terraza Test" }.id
         assertTrue(repo1.crearMesa(salaTerraza, MesaForma.REDONDA, 2, null))
         assertTrue(repo1.altaCamarero("cam-1", null))
         repo1.setIdentityConfig(
@@ -107,7 +126,7 @@ class RoomBarRepositoryTest {
         // Segunda instancia sobre la misma BD = "reinicio de la app"
         val repo2 = nuevoRepo()
 
-        assertEquals("Terraza", repo2.salas.first().first { it.nombre == "Terraza" }.nombre)
+        assertEquals("Terraza Test", repo2.salas.first().first { it.nombre == "Terraza Test" }.nombre)
         assertEquals(1, repo2.mesas.first().count { it.salaId == salaTerraza })
         assertEquals("cam-1", repo2.camareros.first().first().id)
         assertTrue(repo2.identityConfig.first().conectado)
@@ -137,8 +156,8 @@ class RoomBarRepositoryTest {
                 Ronda(
                     id = "r2", mesaId = "B1", numero = 2,
                     lineas = listOf(
-                        Linea(productoId = "cana", nombreProducto = "Caña", cantidad = 1),
-                        Linea(productoId = "croquetas", nombreProducto = "Croquetas", cantidad = 1),
+                        Linea(productoId = "cana", nombreProducto = "Caña Test", cantidad = 1),
+                        Linea(productoId = "croquetas", nombreProducto = "Croquetas Test", cantidad = 1),
                     ),
                 )
             )
@@ -161,7 +180,7 @@ class RoomBarRepositoryTest {
             repo2.crearRonda(
                 Ronda(
                     id = "r3", mesaId = "B1", numero = 3,
-                    lineas = listOf(Linea(productoId = "cana", nombreProducto = "Caña", cantidad = 1)),
+                    lineas = listOf(Linea(productoId = "cana", nombreProducto = "Caña Test", cantidad = 1)),
                 )
             )
         )
@@ -186,8 +205,8 @@ class RoomBarRepositoryTest {
     @Test
     fun secuencias_continuan_tras_recarga() = runBlocking {
         val repo1 = nuevoRepo()
-        assertTrue(repo1.crearSala("Terraza"))
-        val salaTerraza = repo1.salas.first().first { it.nombre == "Terraza" }.id
+        assertTrue(repo1.crearSala("Terraza Test"))
+        val salaTerraza = repo1.salas.first().first { it.nombre == "Terraza Test" }.id
         assertTrue(repo1.crearMesa(salaTerraza, MesaForma.REDONDA, 2, null))
         val mesaId1 = repo1.mesas.first().first { it.salaId == salaTerraza }.id
         repo1.awaitPersistencia()

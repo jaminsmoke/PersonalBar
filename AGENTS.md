@@ -426,6 +426,7 @@ Cuando exista `app/`, alinear con Commander:
 - **Strings**: all user-facing text in `res/values/strings.xml`
 - **Room**: operations touching 2+ tables MUST use `@Transaction` or `db.withTransaction {}`
 - **Migrations**: schema exported to `app/schemas/`; migration tests in `androidTest`
+- **Test data**: toda entidad de prueba creada en tests (camareros, salas, productos, negocios) lleva sufijo `Test` en el nombre (p. ej. `carmenTest`, `cocacolaTest`, `salaTest`) para que sea identificable y borrable de un vistazo; nunca usar nombres que parezcan datos reales.
 
 ## Keys & security
 

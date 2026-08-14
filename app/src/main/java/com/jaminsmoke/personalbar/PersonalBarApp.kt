@@ -4,12 +4,9 @@ import android.app.Application
 import androidx.room.Room
 import com.jaminsmoke.personalbar.data.AppDatabase
 import com.jaminsmoke.personalbar.data.BarRepository
-import com.jaminsmoke.personalbar.data.Establecimiento
-import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.Producto
-import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.RoomBarRepository
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.lan.BarLanServer
@@ -36,16 +33,18 @@ class PersonalBarApp : Application() {
             .build()
     }
 
-    /** Fuente de verdad del nodo: Room con el seed demo solo si la BD está vacía. */
+    /**
+     * Fuente de verdad del nodo. En primera instalación siembra las salas generales
+     * por defecto (Barra, Interior, Terraza) con 4 mesas cada una y el catálogo
+     * canónico; las colas parten vacías (sin rondas demo). El dueño puede editar
+     * salas/mesas y la carta se gestionará cuando exista el editor de catálogo.
+     */
     val repository: BarRepository by lazy {
-        val demo = demoData()
         RoomBarRepository(
             db = db,
-            establecimientoInicial = demo.establecimiento,
-            salasIniciales = demo.salas,
-            catalogoInicial = demo.catalogo,
-            mesasIniciales = demo.mesas,
-            rondasDemo = demo.rondas,
+            salasIniciales = salasPorDefecto(),
+            mesasIniciales = mesasPorDefecto(),
+            catalogoInicial = catalogoPorDefecto(),
         )
     }
 
@@ -85,56 +84,51 @@ class PersonalBarApp : Application() {
     }
 }
 
-/** Datos de la semilla demo v0.1: se siembran solo si la BD está vacía (primera instalación). */
-private fun demoData(): DemoData {
-    val establecimiento = Establecimiento(idEstable = "local-1", nombre = "La Terraza")
-    val salas = listOf(
-        Sala(id = "sala-terraza", nombre = "Terraza", orden = 1),
-        Sala(id = "sala-interior", nombre = "Interior", orden = 2),
-        Sala(id = "sala-barra", nombre = "Barra", orden = 3),
-    )
-    val catalogo = listOf(
-        Producto(id = "cana", nombre = "Caña", categoria = "Bebida"),
-        Producto(id = "tinto-verano", nombre = "Tinto de verano", categoria = "Bebida"),
-        Producto(id = "croquetas", nombre = "Croquetas", categoria = "Comida"),
-        Producto(id = "tostada", nombre = "Tostada con tomate", categoria = "Comida"),
-    )
-    val mesas = listOf(
-        Mesa(id = "mesa-1", salaId = "sala-terraza", indiceZona = 1, numero = 1, forma = MesaForma.REDONDA, capacidad = 2, posX = 40f, posY = 40f),
-        Mesa(id = "mesa-2", salaId = "sala-terraza", indiceZona = 2, numero = 2, forma = MesaForma.REDONDA, capacidad = 2, posX = 200f, posY = 40f),
-        Mesa(id = "mesa-3", salaId = "sala-terraza", indiceZona = 3, numero = 3, forma = MesaForma.CUADRADA, capacidad = 4, posX = 40f, posY = 200f),
-        Mesa(id = "mesa-7", salaId = "sala-terraza", indiceZona = 7, numero = 4, forma = MesaForma.RECTANGULAR, capacidad = 8, posX = 360f, posY = 40f),
-    )
-    val rondas = listOf(
-        Ronda(
-            id = "r1",
-            mesaId = "T3",
-            numero = 1,
-            camarero = "Lucía",
-            lineas = listOf(
-                Linea(productoId = "cana", nombreProducto = "Caña", cantidad = 2),
-                Linea(productoId = "tinto-verano", nombreProducto = "Tinto de verano", cantidad = 1),
-                Linea(productoId = "croquetas", nombreProducto = "Croquetas", cantidad = 1),
-                Linea(productoId = "tostada", nombreProducto = "Tostada con tomate", cantidad = 2),
-            ),
-        ),
-        Ronda(
-            id = "r2",
-            mesaId = "T7",
-            numero = 2,
-            camarero = "Marcos",
-            lineas = listOf(
-                Linea(productoId = "cana", nombreProducto = "Caña", cantidad = 3),
-            ),
-        ),
-    )
-    return DemoData(establecimiento, salas, catalogo, mesas, rondas)
+/** Salas generales por defecto (editables por el dueño). */
+private fun salasPorDefecto(): List<Sala> = listOf(
+    Sala(id = "sala-barra", nombre = "Barra", orden = 1),
+    Sala(id = "sala-interior", nombre = "Interior", orden = 2),
+    Sala(id = "sala-terraza", nombre = "Terraza", orden = 3),
+)
+
+/** 4 mesas por defecto en cada sala (editables). IDs `mesa-N` secuenciales para no colisionar con la secuencia del repo. */
+private fun mesasPorDefecto(): List<Mesa> {
+    val salas = listOf("sala-barra", "sala-interior", "sala-terraza")
+    val mesas = mutableListOf<Mesa>()
+    var numero = 0
+    var seq = 0
+    for (salaId in salas) {
+        for (indice in 1..4) {
+            numero++
+            seq++
+            mesas += Mesa(
+                id = "mesa-$seq",
+                salaId = salaId,
+                indiceZona = indice,
+                numero = numero,
+                forma = if (indice <= 2) MesaForma.REDONDA else MesaForma.CUADRADA,
+                capacidad = if (indice <= 2) 2 else 4,
+                posX = posicionX(indice),
+                posY = posicionY(indice),
+            )
+        }
+    }
+    return mesas
 }
 
-private data class DemoData(
-    val establecimiento: Establecimiento,
-    val salas: List<Sala>,
-    val catalogo: List<Producto>,
-    val mesas: List<Mesa>,
-    val rondas: List<Ronda>,
+private fun posicionX(indice: Int): Float = if (indice % 2 == 1) 40f else 220f
+
+private fun posicionY(indice: Int): Float = if (indice <= 2) 40f else 220f
+
+/**
+ * Catálogo canónico por defecto del nodo (v0.1). No es «datos demo»: mientras no
+ * exista el editor de carta, el nodo necesita al menos un producto de Bebida y otro
+ * de Comida para partir las rondas por destino. Se sustituirá por el catálogo
+ * gestionado cuando aterrice el editor (ítem de seguimiento).
+ */
+private fun catalogoPorDefecto(): List<Producto> = listOf(
+    Producto(id = "cana", nombre = "Caña", categoria = "Bebida"),
+    Producto(id = "tinto-verano", nombre = "Tinto de verano", categoria = "Bebida"),
+    Producto(id = "croquetas", nombre = "Croquetas", categoria = "Comida"),
+    Producto(id = "tostada", nombre = "Tostada con tomate", categoria = "Comida"),
 )
