@@ -16,6 +16,7 @@ import com.jaminsmoke.personalbar.data.TicketEstado
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -30,11 +31,40 @@ class SerializationTest {
 
     @Test
     fun salaEventRoundTrip() {
-        val evento = SalaEvent.preparado("r1-barra", "Ana")
+        val ticket = Ticket(
+            id = "r1-barra",
+            rondaId = "r1",
+            destino = Destino.BARRA,
+            estado = TicketEstado.PREPARADO,
+            preparadoPor = "Ana",
+            numeroCola = 1,
+            lineas = listOf(Linea("cana", "Caña", 2)),
+        )
+        val evento = SalaEvent.preparado(ticket, "T3", "Lucía")
         val json = LanJson.encodeToString(evento)
         assertEquals(evento, LanJson.decodeFromString<SalaEvent>(json))
         assertEquals(SalaEvent.TIPO_PREPARADO, evento.tipo)
         assertEquals("Ana", evento.preparadoPor)
+        assertEquals("T3", evento.mesaId)
+        assertEquals("Lucía", evento.camarero)
+        assertEquals("2× Caña", evento.resumen)
+        assertEquals(ticket, evento.ticket)
+    }
+
+    @Test
+    fun salaEventLegacySinCamposNuevosDecodifica() {
+        // Un evento emitido por una versión anterior (solo tipo/ticketId/preparadoPor)
+        // debe decodificar con los campos nuevos en sus defaults (backward-compatible).
+        val json = """{"tipo":"ticket.preparado","ticketId":"r1-barra","preparadoPor":"Ana"}"""
+        val evento = LanJson.decodeFromString<SalaEvent>(json)
+        assertEquals(SalaEvent.TIPO_PREPARADO, evento.tipo)
+        assertEquals("r1-barra", evento.ticketId)
+        assertEquals("Ana", evento.preparadoPor)
+        assertNull(evento.mesaId)
+        assertNull(evento.camarero)
+        assertNull(evento.ticket)
+        assertEquals("", evento.resumen)
+        assertEquals(SalaEvent.VERSION, evento.version)
     }
 
     @Test

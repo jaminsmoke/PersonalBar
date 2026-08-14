@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 class InMemoryBarRepositoryTest {
@@ -92,6 +93,12 @@ class InMemoryBarRepositoryTest {
         assertEquals(SalaEvent.TIPO_PREPARADO, evento.tipo)
         assertEquals(ticketId, evento.ticketId)
         assertEquals("Ana", evento.preparadoPor)
+        assertEquals("T3", evento.mesaId)
+        assertNull(evento.camarero) // ronda sin camarero
+        assertEquals("1× Caña", evento.resumen)
+        assertEquals(Destino.BARRA, evento.ticket?.destino)
+        assertEquals(1, evento.ticket?.numeroCola)
+        assertEquals("Ana", evento.ticket?.preparadoPor)
         job.cancel()
     }
 
@@ -109,6 +116,26 @@ class InMemoryBarRepositoryTest {
         val evento = withTimeoutOrNull(2000) { deferred.await() } ?: error("evento no emitido")
         assertEquals(SalaEvent.TIPO_RECOGIDO, evento.tipo)
         assertEquals(ticketId, evento.ticketId)
+        assertEquals("T3", evento.mesaId)
+        assertEquals("1× Caña", evento.resumen)
+        assertEquals(TicketEstado.RECOGIDO, evento.ticket?.estado)
+        job.cancel()
+    }
+
+    @Test
+    fun marcarPreparadoEmiteEventoConCamarero() = runBlocking {
+        val repo = repo()
+        repo.crearRonda(Ronda("r1", "T3", 1, "Lucía", lineas = listOf(Linea("cana", "Caña", 2))))
+        val ticketId = repo.bebidaQueue.value[0].id
+        val deferred = CompletableDeferred<SalaEvent>()
+        val job = launch(start = CoroutineStart.UNDISPATCHED) {
+            repo.eventos.collect { deferred.complete(it) }
+        }
+        repo.marcarPreparado(ticketId, "Ana")
+        val evento = withTimeoutOrNull(2000) { deferred.await() } ?: error("evento no emitido")
+        assertEquals("Lucía", evento.camarero)
+        assertEquals("2× Caña", evento.resumen)
+        assertEquals(2, evento.ticket?.lineas?.firstOrNull()?.cantidad)
         job.cancel()
     }
 
