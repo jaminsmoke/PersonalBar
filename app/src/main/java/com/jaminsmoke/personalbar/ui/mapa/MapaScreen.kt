@@ -802,6 +802,8 @@ private fun ComandaVistaSheet(
                         ronda = ronda?.numero ?: 0,
                         camarero = ronda?.camarero,
                         lineas = ticket.lineas.map { "${it.cantidad}× ${it.nombreProducto}" },
+                        numeroCola = ticket.numeroCola,
+                        destino = ticket.destino,
                     )
                     Spacer(Modifier.padding(bottom = 12.dp))
                 }

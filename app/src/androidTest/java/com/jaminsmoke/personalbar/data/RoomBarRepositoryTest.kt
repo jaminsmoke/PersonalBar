@@ -80,6 +80,9 @@ class RoomBarRepositoryTest {
         assertEquals(1, repo.bebidaQueue.first().size)
         assertEquals(1, repo.comidaQueue.first().size)
         assertEquals(1, repo.rondas.first().size) // solo la ronda demo sembrada
+        // El id de cola se asigna por destino (Cola 1 Bebida y Cola 1 Comida independientes)
+        assertEquals(1, repo.bebidaQueue.first().first().numeroCola)
+        assertEquals(1, repo.comidaQueue.first().first().numeroCola)
     }
 
     // ═══ Persistencia y recarga ═══
@@ -118,6 +121,51 @@ class RoomBarRepositoryTest {
 
         // La cola de comida sigue intacta
         assertEquals(1, repo2.comidaQueue.first().size)
+        // El id de cola se persiste y sobrevive a la recarga
+        assertEquals(1, repo2.servidos.first().first().numeroCola)
+    }
+
+    // ═══ Secuencia de id de cola por destino ═══
+
+    @Test
+    fun id_de_cola_es_monotono_por_destino_y_no_compacta() = runBlocking {
+        val repo1 = nuevoRepo()
+
+        // Nueva ronda con bebida y comida → Cola 2 Bebida, Cola 2 Comida
+        assertTrue(
+            repo1.crearRonda(
+                Ronda(
+                    id = "r2", mesaId = "B1", numero = 2,
+                    lineas = listOf(
+                        Linea(productoId = "cana", nombreProducto = "Caña", cantidad = 1),
+                        Linea(productoId = "croquetas", nombreProducto = "Croquetas", cantidad = 1),
+                    ),
+                )
+            )
+        )
+        assertEquals(1, repo1.bebidaQueue.first().first { it.rondaId == "r1" }.numeroCola)
+        assertEquals(2, repo1.bebidaQueue.first().first { it.rondaId == "r2" }.numeroCola)
+        assertEquals(1, repo1.comidaQueue.first().first { it.rondaId == "r1" }.numeroCola)
+        assertEquals(2, repo1.comidaQueue.first().first { it.rondaId == "r2" }.numeroCola)
+
+        // Recoger Cola 1 Bebida → Cola 2 Bebida NO pasa a 1 (ancla estable)
+        val ticket1 = repo1.bebidaQueue.first().first { it.numeroCola == 1 }
+        assertTrue(repo1.marcarPreparado(ticket1.id, "cam-1"))
+        assertTrue(repo1.marcarRecogido(ticket1.id))
+        assertEquals(2, repo1.bebidaQueue.first().first { it.rondaId == "r2" }.numeroCola)
+        repo1.awaitPersistencia()
+
+        // Tras recarga, la secuencia continúa (Cola 3) sin colisionar
+        val repo2 = nuevoRepo()
+        assertTrue(
+            repo2.crearRonda(
+                Ronda(
+                    id = "r3", mesaId = "B1", numero = 3,
+                    lineas = listOf(Linea(productoId = "cana", nombreProducto = "Caña", cantidad = 1)),
+                )
+            )
+        )
+        assertEquals(3, repo2.bebidaQueue.first().first { it.rondaId == "r3" }.numeroCola)
     }
 
     // ═══ Idempotencia tras recarga ═══

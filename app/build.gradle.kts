@@ -61,6 +61,10 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets {
+        // Schemas exportados disponibles para MigrationTestHelper (androidTest).
+        getByName("androidTest").assets.srcDirs(files("$projectDir/schemas"))
+    }
 }
 
 ksp {
@@ -99,6 +103,7 @@ dependencies {
     testImplementation(libs.ktor.server.test.host)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)

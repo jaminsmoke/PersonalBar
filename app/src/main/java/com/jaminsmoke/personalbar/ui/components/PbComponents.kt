@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +24,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.jaminsmoke.personalbar.R
+import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.TicketEstado
+import com.jaminsmoke.personalbar.ui.theme.PbOnTicketPendiente
+import com.jaminsmoke.personalbar.ui.theme.PbOnTicketPreparado
+import com.jaminsmoke.personalbar.ui.theme.PbTicketPendiente
+import com.jaminsmoke.personalbar.ui.theme.PbTicketPreparado
 
 /** Estado del local, clickeable: activo (mint) o inactivo (gris). Arranca/para el nodo. */
 @Composable
@@ -108,36 +114,61 @@ fun PbTicketCard(
     modifier: Modifier = Modifier,
     preparadoPor: String? = null,
     estado: TicketEstado = TicketEstado.PENDIENTE,
+    /** Id de cola visible/hablable («Cola 1 Bebida»); 0 = no mostrarlo. */
+    numeroCola: Int = 0,
+    destino: Destino? = null,
     onPreparar: (() -> Unit)? = null,
     onRecoger: (() -> Unit)? = null,
 ) {
+    // Fondo por estado: PENDIENTE post-it / PREPARADO listo (recogidas no se pintan en expo).
+    val fill = when (estado) {
+        TicketEstado.PENDIENTE -> PbTicketPendiente
+        else -> PbTicketPreparado
+    }
+    val onFill = when (estado) {
+        TicketEstado.PENDIENTE -> PbOnTicketPendiente
+        else -> PbOnTicketPreparado
+    }
+    val idCola = when (destino) {
+        Destino.BARRA -> stringResource(R.string.cola_id_bebida, numeroCola)
+        Destino.COCINA -> stringResource(R.string.cola_id_comida, numeroCola)
+        null -> null
+    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
+        color = fill,
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
     ) {
-        androidx.compose.foundation.layout.Column(
+        Column(
             modifier = Modifier.padding(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = mesa,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Spacer(Modifier.weight(1f))
+                Column(modifier = Modifier.weight(1f)) {
+                    if (idCola != null) {
+                        Text(
+                            text = idCola,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = onFill,
+                        )
+                    }
+                    Text(
+                        text = mesa,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = onFill,
+                    )
+                }
                 Text(
                     text = stringResource(R.string.ticket_ronda, ronda),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = onFill.copy(alpha = 0.7f),
                 )
             }
             if (camarero != null) {
                 Text(
                     text = stringResource(R.string.ticket_camarero, camarero),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = onFill.copy(alpha = 0.85f),
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
@@ -145,7 +176,7 @@ fun PbTicketCard(
                 Text(
                     text = stringResource(R.string.ticket_preparado_por, preparadoPor),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = PbOnTicketPreparado,
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
@@ -153,7 +184,7 @@ fun PbTicketCard(
                 Text(
                     text = linea,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = onFill,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -161,7 +192,7 @@ fun PbTicketCard(
                 Text(
                     text = stringResource(R.string.ticket_estado_preparado),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.tertiary,
+                    color = PbOnTicketPreparado,
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }

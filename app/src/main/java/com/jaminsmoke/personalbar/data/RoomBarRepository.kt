@@ -50,19 +50,26 @@ class RoomBarRepository(
             seed
         } else {
             val tickets = dao.getTickets()
+            // Backfill de `numeroCola` (BD v1): los tickets sin número reciben la
+            // secuencia por destino en orden estable (rondaId); los recogidos se ignoran.
+            val (renumerados, siguienteCola) = backfillNumeroCola(tickets)
+            if (renumerados != tickets) {
+                dao.replaceTickets(renumerados)
+            }
             InMemoryBarRepository(
                 establecimientoInicial = dao.getEstablecimiento() ?: establecimientoInicial,
                 salasIniciales = salasBd,
                 catalogoInicial = dao.getProductos(),
                 mesasIniciales = dao.getMesas(),
                 rondasIniciales = dao.getRondas(),
-                bebidaInicial = tickets.filter { it.destino == Destino.BARRA && it.estado != TicketEstado.RECOGIDO },
-                comidaInicial = tickets.filter { it.destino == Destino.COCINA && it.estado != TicketEstado.RECOGIDO },
-                servidosIniciales = tickets.filter { it.estado == TicketEstado.RECOGIDO },
+                bebidaInicial = renumerados.filter { it.destino == Destino.BARRA && it.estado != TicketEstado.RECOGIDO },
+                comidaInicial = renumerados.filter { it.destino == Destino.COCINA && it.estado != TicketEstado.RECOGIDO },
+                servidosIniciales = renumerados.filter { it.estado == TicketEstado.RECOGIDO },
                 reservasIniciales = dao.getReservas(),
                 camarerosIniciales = dao.getCamareros(),
                 invitacionesIniciales = dao.getInvitaciones(),
                 identityConfigInicial = dao.getIdentityConfig() ?: IdentityConfig(),
+                siguienteColaInicial = siguienteCola,
             )
         }
     }
@@ -218,6 +225,28 @@ class RoomBarRepository(
 
     private fun ticketsActuales(): List<Ticket> =
         inner.bebidaQueue.value + inner.comidaQueue.value + inner.servidos.value
+
+    /**
+     * Asigna `numeroCola` por destino a los tickets sin número (migración v1→v2),
+     * en el orden de [BarDao.getTickets] (estable por rondaId). Devuelve la lista
+     * renumerada y la secuencia siguiente por destino (para continuar el turno).
+     */
+    private fun backfillNumeroCola(tickets: List<Ticket>): Pair<List<Ticket>, Map<Destino, Int>> {
+        val secuencia = mutableMapOf<Destino, Int>()
+        val renumerados = tickets.map { t ->
+            if (t.numeroCola > 0) {
+                secuencia[t.destino] = maxOf(secuencia[t.destino] ?: 0, t.numeroCola)
+                t
+            } else if (t.estado == TicketEstado.RECOGIDO) {
+                t
+            } else {
+                val n = (secuencia[t.destino] ?: 0) + 1
+                secuencia[t.destino] = n
+                t.copy(numeroCola = n)
+            }
+        }
+        return renumerados to secuencia
+    }
 
     /** Lanza la escritura en el scope serializado; errores se loguean (estado en memoria sigue mandando). */
     private fun persist(block: suspend () -> Unit) {

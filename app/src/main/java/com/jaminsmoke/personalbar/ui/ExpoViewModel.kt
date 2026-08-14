@@ -6,6 +6,7 @@ import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.CamareroEstado
+import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Ticket
 import com.jaminsmoke.personalbar.data.TicketEstado
@@ -24,6 +25,8 @@ data class ExpoTicket(
     val camarero: String?,
     val preparadoPor: String?,
     val estado: TicketEstado,
+    val numeroCola: Int,
+    val destino: Destino,
     val lineas: List<String>,
 )
 
@@ -118,6 +121,8 @@ private fun Ticket.toExpoTicket(rondas: Map<String, Ronda>): ExpoTicket {
         camarero = ronda?.camarero,
         preparadoPor = preparadoPor,
         estado = estado,
+        numeroCola = numeroCola,
+        destino = destino,
         lineas = lineas.map { "${it.cantidad}x ${it.nombreProducto}" },
     )
 }

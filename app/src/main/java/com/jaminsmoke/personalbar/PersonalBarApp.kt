@@ -31,7 +31,9 @@ class PersonalBarApp : Application() {
             applicationContext,
             AppDatabase::class.java,
             "personalbar.db",
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
         val demo = demoData()
         RoomBarRepository(
             db = db,

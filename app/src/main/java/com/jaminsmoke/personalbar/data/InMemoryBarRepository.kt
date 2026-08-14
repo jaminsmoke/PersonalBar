@@ -32,6 +32,7 @@ class InMemoryBarRepository(
     camarerosIniciales: List<Camarero> = emptyList(),
     invitacionesIniciales: List<Invitacion> = emptyList(),
     identityConfigInicial: IdentityConfig = IdentityConfig(),
+    siguienteColaInicial: Map<Destino, Int> = emptyMap(),
 ) : BarRepository {
 
     private val catalogoPorId = catalogoInicial.associateBy { it.id }
@@ -70,14 +71,22 @@ class InMemoryBarRepository(
 
     // ── Rondas / tickets ──────────────────────────────────────────────────────
 
+    /** Siguiente id de cola por destino (monótono en el turno; no compacta al recoger). */
+    private val siguienteColaPorDestino = siguienteColaInicial.toMutableMap()
+
     override fun crearRonda(ronda: Ronda): Boolean {
         if (!rondasRecibidas.add(ronda.id)) return false
         _rondas.update { it + ronda }
         val tickets = RondaSplitter.split(ronda, catalogoPorId)
+            .map { t -> t.copy(numeroCola = siguienteCola(t.destino)) }
         _bebidaQueue.update { it + tickets.filter { t -> t.destino == Destino.BARRA } }
         _comidaQueue.update { it + tickets.filter { t -> t.destino == Destino.COCINA } }
         return true
     }
+
+    private fun siguienteCola(destino: Destino): Int =
+        (siguienteColaPorDestino[destino] ?: 0) + 1
+            .also { siguienteColaPorDestino[destino] = it }
 
     override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
         val pendiente = _bebidaQueue.value.any { it.id == ticketId && it.estado == TicketEstado.PENDIENTE } ||
