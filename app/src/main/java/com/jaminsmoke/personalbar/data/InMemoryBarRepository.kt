@@ -39,6 +39,7 @@ class InMemoryBarRepository(
     private val _servidos = MutableStateFlow<List<Ticket>>(emptyList())
     private val _rondas = MutableStateFlow<List<Ronda>>(emptyList())
     private val _catalogo = MutableStateFlow(catalogoInicial)
+    private val _camareros = MutableStateFlow<List<Camarero>>(emptyList())
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
     override val establecimiento: StateFlow<Establecimiento> = _establecimiento.asStateFlow()
@@ -50,6 +51,7 @@ class InMemoryBarRepository(
     override val servidos: StateFlow<List<Ticket>> = _servidos.asStateFlow()
     override val rondas: StateFlow<List<Ronda>> = _rondas.asStateFlow()
     override val catalogo: StateFlow<List<Producto>> = _catalogo.asStateFlow()
+    override val camareros: StateFlow<List<Camarero>> = _camareros.asStateFlow()
     override val eventos: SharedFlow<SalaEvent> = _eventos.asSharedFlow()
 
     // ── Rondas / tickets ──────────────────────────────────────────────────────
@@ -239,5 +241,26 @@ class InMemoryBarRepository(
         val rondaPorId = _rondas.value.associateBy { it.id }
         val abiertos = _bebidaQueue.value + _comidaQueue.value
         return abiertos.any { rondaPorId[it.rondaId]?.mesaId == idZona }
+    }
+
+    // ── Camareros (lista blanca) ──────────────────────────────────────────────
+
+    override fun altaCamarero(camareroId: String, credencialId: String?): Boolean {
+        val existente = _camareros.value.firstOrNull { it.id == camareroId }
+        if (existente != null && existente.estado == CamareroEstado.ACTIVA) return false
+        val camarero = Camarero(id = camareroId, credencialId = credencialId)
+        _camareros.update { list ->
+            val idx = list.indexOfFirst { it.id == camareroId }
+            if (idx >= 0) list.toMutableList().also { it[idx] = camarero } else list + camarero
+        }
+        return true
+    }
+
+    override fun revocarCamarero(camareroId: String): Boolean {
+        if (_camareros.value.none { it.id == camareroId }) return false
+        _camareros.update { list ->
+            list.map { if (it.id == camareroId) it.copy(estado = CamareroEstado.REVOCADA) else it }
+        }
+        return true
     }
 }
