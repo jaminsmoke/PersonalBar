@@ -9,6 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 
 // ── Respuestas del API de Identity (v0.2) que consume Bar ────────────────────
 
@@ -73,6 +74,10 @@ data class IdentityMembresia(
  * establecimiento) en memoria (v0.1): se pierde al reiniciar la app. Si no está
  * configurado, los métodos devuelven null/false y Bar sigue con su lista local.
  */
+/** Lee el body de una respuesta HTTP como texto UTF-8 explícito (independiente del charset de la plataforma). */
+internal fun InputStream.readBodyUtf8(): String =
+    reader(Charsets.UTF_8).use { it.readText() }
+
 object IdentityClient {
 
     /** URL por defecto del server Identity en desarrollo (emulador → host). En producción
@@ -297,7 +302,7 @@ object IdentityClient {
             connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = method
                 doOutput = body != null
-                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 if (auth && negocioToken != null) {
                     setRequestProperty("Authorization", "Bearer $negocioToken")
                 }
@@ -309,7 +314,7 @@ object IdentityClient {
             }
             val code = connection.responseCode
             val text = (if (code in 200..299) connection.inputStream else connection.errorStream)
-                ?.bufferedReader()?.use { it.readText() }.orEmpty()
+                ?.readBodyUtf8().orEmpty()
             code to text
         } catch (_: Exception) {
             -1 to ""
