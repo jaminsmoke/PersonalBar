@@ -25,15 +25,19 @@ class PersonalBarApp : Application() {
 
     val lanServer: BarLanServer by lazy { BarLanServer(repository) }
 
-    /** Fuente de verdad del nodo: Room (esquema v1) con el seed demo solo si la BD está vacía. */
-    val repository: BarRepository by lazy {
-        val db = Room.databaseBuilder(
+    /** Base de datos Room del nodo (expuesta para el DAO de sesión y el repositorio). */
+    val db: AppDatabase by lazy {
+        Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java,
             "personalbar.db",
         )
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
             .build()
+    }
+
+    /** Fuente de verdad del nodo: Room con el seed demo solo si la BD está vacía. */
+    val repository: BarRepository by lazy {
         val demo = demoData()
         RoomBarRepository(
             db = db,

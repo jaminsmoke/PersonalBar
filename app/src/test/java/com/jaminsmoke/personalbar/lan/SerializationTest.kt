@@ -80,6 +80,30 @@ class SerializationTest {
     }
 
     @Test
+    fun identityLoginResponseCapturaPerfilCuenta() {
+        val json = """
+            {"token":"tok-1","cuenta":{"id":"c-1","email":"negocio@example.com","nombre_mostrar":"La Terraza"}}
+        """.trimIndent()
+        val resp = LanJson.decodeFromString<IdentityLoginResponse>(json)
+        assertEquals("tok-1", resp.token)
+        assertEquals("La Terraza", resp.cuenta.nombreMostrar)
+        assertEquals("negocio@example.com", resp.cuenta.email)
+    }
+
+    @Test
+    fun registroNegocioRequestSerializaSnakeCase() {
+        val req = RegistroNegocioRequest(
+            nombreMostrar = "La Terraza",
+            email = "negocio@example.com",
+            password = "secret123",
+        )
+        val json = LanJson.encodeToString(req)
+        assertTrue(json.contains("\"nombre_mostrar\":\"La Terraza\""))
+        val dec = LanJson.decodeFromString<RegistroNegocioRequest>(json)
+        assertEquals("La Terraza", dec.nombreMostrar)
+    }
+
+    @Test
     fun identityMembresiaRoundTrip() {
         val membresia = IdentityMembresia(
             id = "m-1",

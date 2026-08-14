@@ -48,6 +48,24 @@ class MigrationTest {
     }
 
     @Test
+    fun migracion_v3_a_v4_crea_sesion_negocio() {
+        helper.createDatabase(TEST_DB, 3).close()
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 4, true, AppDatabase.MIGRATION_3_4)
+        db.use {
+            it.execSQL(
+                "INSERT INTO sesion_negocio (id, token, email, nombreMostrar, establecimientoUuid, tipo, logoClave) " +
+                    "VALUES ('local', 'tok-1', 'negocio@x.es', 'La Terraza', 'e-1', 'BAR', NULL)"
+            )
+            val cursor = it.query("SELECT nombreMostrar FROM sesion_negocio WHERE id = 'local'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("La Terraza", c.getString(0))
+            }
+        }
+    }
+
+    @Test
     fun migracion_v1_a_v2_anade_numeroCola() {
         // 1. BD en v1 con datos
         helper.createDatabase(TEST_DB, 1).use { db ->

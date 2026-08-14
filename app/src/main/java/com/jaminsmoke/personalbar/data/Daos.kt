@@ -31,6 +31,17 @@ interface BarDao {
     @Upsert
     suspend fun upsertIdentityConfig(config: IdentityConfig)
 
+    // ── SesionNegocio (tabla singleton) ──────────────────────────────────────
+
+    @Query("SELECT * FROM sesion_negocio LIMIT 1")
+    suspend fun getSesionNegocio(): SesionNegocio?
+
+    @Upsert
+    suspend fun upsertSesionNegocio(sesion: SesionNegocio)
+
+    @Query("DELETE FROM sesion_negocio")
+    suspend fun clearSesionNegocio()
+
     // ── Salas ────────────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM salas ORDER BY orden")

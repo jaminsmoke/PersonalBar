@@ -9,8 +9,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /**
  * Base de datos del nodo (fuente de verdad durable). v2 añade `tickets.numeroCola`
  * (id de cola visible/hablable por destino); v3 añade `camareros.deServicio`
- * (varios preparadores activos en el puesto). Schema exportado a `app/schemas/`
- * para versionar migraciones futuras igual que Commander.
+ * (varios preparadores activos en el puesto); v4 añade `sesion_negocio`
+ * (sesión de la cuenta de negocio con «Recuérdame»). Schema exportado a
+ * `app/schemas/` para versionar migraciones futuras igual que Commander.
  */
 @Database(
     entities = [
@@ -24,8 +25,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Invitacion::class,
         Camarero::class,
         IdentityConfig::class,
+        SesionNegocio::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -51,6 +53,25 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE camareros ADD COLUMN deServicio INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v3→v4: `sesion_negocio` (cuenta de negocio logueada en el puesto).
+         * Tabla nueva; sin datos previos que migrar.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS sesion_negocio (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "token TEXT, " +
+                        "email TEXT, " +
+                        "nombreMostrar TEXT, " +
+                        "establecimientoUuid TEXT, " +
+                        "tipo TEXT, " +
+                        "logoClave TEXT)"
+                )
             }
         }
     }

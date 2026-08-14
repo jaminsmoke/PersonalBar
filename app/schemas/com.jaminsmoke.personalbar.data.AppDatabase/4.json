@@ -1,0 +1,528 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "0c0039ed1ef2d7ad7f2cd0addbeba3ec",
+    "entities": [
+      {
+        "tableName": "establecimientos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`idEstable` TEXT NOT NULL, `nombre` TEXT NOT NULL, PRIMARY KEY(`idEstable`))",
+        "fields": [
+          {
+            "fieldPath": "idEstable",
+            "columnName": "idEstable",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "idEstable"
+          ]
+        }
+      },
+      {
+        "tableName": "salas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `nombre` TEXT NOT NULL, `orden` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "orden",
+            "columnName": "orden",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "mesas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `salaId` TEXT NOT NULL, `indiceZona` INTEGER NOT NULL, `numero` INTEGER NOT NULL, `alias` TEXT, `forma` TEXT NOT NULL, `capacidad` INTEGER NOT NULL, `posX` REAL NOT NULL, `posY` REAL NOT NULL, `girada` INTEGER NOT NULL, `bloqueada` INTEGER NOT NULL, `reservaActivaId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "salaId",
+            "columnName": "salaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "indiceZona",
+            "columnName": "indiceZona",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numero",
+            "columnName": "numero",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "alias",
+            "columnName": "alias",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "forma",
+            "columnName": "forma",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "capacidad",
+            "columnName": "capacidad",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "posX",
+            "columnName": "posX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "posY",
+            "columnName": "posY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "girada",
+            "columnName": "girada",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bloqueada",
+            "columnName": "bloqueada",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reservaActivaId",
+            "columnName": "reservaActivaId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "productos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `nombre` TEXT NOT NULL, `categoria` TEXT NOT NULL, `precio` REAL NOT NULL, `disponible` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoria",
+            "columnName": "categoria",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "precio",
+            "columnName": "precio",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "disponible",
+            "columnName": "disponible",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "tickets",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `rondaId` TEXT NOT NULL, `destino` TEXT NOT NULL, `estado` TEXT NOT NULL, `preparadoPor` TEXT, `numeroCola` INTEGER NOT NULL, `lineas` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rondaId",
+            "columnName": "rondaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "destino",
+            "columnName": "destino",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "preparadoPor",
+            "columnName": "preparadoPor",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "numeroCola",
+            "columnName": "numeroCola",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lineas",
+            "columnName": "lineas",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "rondas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `mesaId` TEXT NOT NULL, `numero` INTEGER NOT NULL, `camarero` TEXT, `creadoEn` INTEGER NOT NULL, `lineas` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mesaId",
+            "columnName": "mesaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "numero",
+            "columnName": "numero",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "camarero",
+            "columnName": "camarero",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "creadoEn",
+            "columnName": "creadoEn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lineas",
+            "columnName": "lineas",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "reservas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `mesaId` TEXT NOT NULL, `nombre` TEXT NOT NULL, `paraEpoch` INTEGER, `creadaEn` INTEGER NOT NULL, `canceladaEn` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mesaId",
+            "columnName": "mesaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paraEpoch",
+            "columnName": "paraEpoch",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "creadaEn",
+            "columnName": "creadaEn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "canceladaEn",
+            "columnName": "canceladaEn",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "invitaciones",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `email` TEXT NOT NULL, `rol` TEXT NOT NULL, `estado` TEXT NOT NULL, `expiraEn` TEXT, `creadaEn` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rol",
+            "columnName": "rol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiraEn",
+            "columnName": "expiraEn",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "creadaEn",
+            "columnName": "creadaEn",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "camareros",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `nombre` TEXT, `email` TEXT, `rol` TEXT NOT NULL, `estado` TEXT NOT NULL, `credencialId` TEXT, `altaEn` INTEGER NOT NULL, `deServicio` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rol",
+            "columnName": "rol",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "credencialId",
+            "columnName": "credencialId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "altaEn",
+            "columnName": "altaEn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deServicio",
+            "columnName": "deServicio",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "identity_config",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `conectado` INTEGER NOT NULL, `baseUrl` TEXT, `establecimientoUuid` TEXT, `error` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conectado",
+            "columnName": "conectado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseUrl",
+            "columnName": "baseUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "establecimientoUuid",
+            "columnName": "establecimientoUuid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "error",
+            "columnName": "error",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "sesion_negocio",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `token` TEXT, `email` TEXT, `nombreMostrar` TEXT, `establecimientoUuid` TEXT, `tipo` TEXT, `logoClave` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "token",
+            "columnName": "token",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "email",
+            "columnName": "email",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nombreMostrar",
+            "columnName": "nombreMostrar",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "establecimientoUuid",
+            "columnName": "establecimientoUuid",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "logoClave",
+            "columnName": "logoClave",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0c0039ed1ef2d7ad7f2cd0addbeba3ec')"
+    ]
+  }
+}

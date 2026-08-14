@@ -66,6 +66,7 @@ import com.jaminsmoke.personalbar.ui.components.PbRoomStatus
 import com.jaminsmoke.personalbar.ui.components.PbTicketCard
 import com.jaminsmoke.personalbar.ui.gestion.GestionScreen
 import com.jaminsmoke.personalbar.ui.mapa.MapaScreen
+import com.jaminsmoke.personalbar.ui.sesion.SesionHeader
 
 /** Entradas del sidebar (navigation rail) del puesto de barra. */
 enum class PbSection(val route: String, val labelRes: Int, val icon: ImageVector) {
@@ -93,6 +94,7 @@ fun ExpoScreen(
                     )
                 },
                 actions = {
+                    SesionHeader()
                     PbRoomStatus(
                         active = uiState.roomActive,
                         onToggle = viewModel::toggleLocal,
