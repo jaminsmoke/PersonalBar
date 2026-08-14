@@ -35,7 +35,7 @@ Bar es el **host de sala**. Servidor Ktor (CIO). Puerto fijo: **8787**.
 | `/v1/tickets/{id}/preparado` | POST | Marca **preparado** un ticket (por destino); body `{"preparado_por":"Ana"}` |
 | `/v1/tickets/{id}/recogido` | POST | Marca **recogido**; el ticket sale de cola → servidos |
 | `/v1/estado` | GET | Estado completo (establecimiento, salas, colas, servidos, mesas, versión) |
-| `/v1/eventos` | SSE | Push de eventos `ticket.preparado` (con `preparado_por`) / `ticket.recogido` |
+| `/v1/eventos` | SSE | Push de eventos `ticket.preparado` / `ticket.recogido` (evento autodescriptivo v1: mesa, camarero, resumen, ticket completo) |
 
 **Ciclo del ticket** (decisión de producto 14-08-2026): en Bar el ticket va **PENDIENTE → PREPARADO → RECOGIDO**.
 «Preparado» registra **quién lo preparó** (`preparado_por`, cuenta de camarero de la lista blanca), simétrico a
@@ -90,6 +90,46 @@ El estado operativo (LIBRE/OCUPADA/EN_COCINA) se deriva de las rondas/tickets en
 ```
 
 Bar parte la ronda en tickets **BARRA** (bebida) y **COCINA** (comida); el destino se deriva de la categoría del producto. Preparado/recogido es **por destino** (cañas ≠ pizza), y `preparado_por` viaja en el ticket y en el evento SSE.
+
+### Payload del evento SSE (`/v1/eventos`)
+
+Cada evento es un JSON autodescriptivo (v1): `event:` = `tipo`, `data:` = payload.
+
+```json
+{
+  "version": 1,
+  "tipo": "ticket.preparado",
+  "ticketId": "r-123-barra",
+  "preparadoPor": "Ana",
+  "mesaId": "T3",
+  "camarero": "Lucía",
+  "resumen": "2× Caña, 1× Croquetas",
+  "ticket": {
+    "id": "r-123-barra",
+    "rondaId": "r-123",
+    "destino": "BARRA",
+    "estado": "PREPARADO",
+    "preparadoPor": "Ana",
+    "numeroCola": 1,
+    "lineas": [
+      { "productoId": "cana", "nombreProducto": "Caña", "cantidad": 2 }
+    ]
+  }
+}
+```
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `version` | int | `1` (contrato del evento) |
+| `tipo` | string | `ticket.preparado` / `ticket.recogido` (también el `event:` SSE) |
+| `ticketId` | string | id del ticket (por destino: `{rondaId}-barra` / `{rondaId}-cocina`) |
+| `preparadoPor` | string? | quién lo elaboró (cuenta de camarero) |
+| `mesaId` | string? | idZona de red de la mesa (`T3`), desde `Ronda.mesaId` |
+| `camarero` | string? | quién pidió la ronda (`Ronda.camarero`) |
+| `resumen` | string | líneas legibles («2× Caña, 1× Croquetas») |
+| `ticket` | Ticket? | el ticket completo (ronda, destino, estado, `numeroCola`, líneas) |
+
+`destino` serializa como enum `BARRA`/`COCINA` (Commander mapea a Bebida/Comida). Los campos nuevos son opcionales (default) para backward-compatibilidad: un Commander antiguo ignora los desconocidos y uno nuevo decodifica eventos antiguos con `mesaId`/`ticket` en `null`.
 
 ### Probar desde el host
 

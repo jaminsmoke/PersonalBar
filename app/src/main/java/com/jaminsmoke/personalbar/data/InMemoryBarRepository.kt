@@ -99,7 +99,10 @@ class InMemoryBarRepository(
             _comidaQueue.value.any { it.id == ticketId && it.estado == TicketEstado.PENDIENTE }
         if (!pendiente) return false
         transformTicket(ticketId) { it.copy(estado = TicketEstado.PREPARADO, preparadoPor = preparadoPor) }
-        _eventos.tryEmit(SalaEvent.preparado(ticketId, preparadoPor))
+        val ticket = _bebidaQueue.value.firstOrNull { it.id == ticketId }
+            ?: _comidaQueue.value.firstOrNull { it.id == ticketId }
+            ?: return true
+        _eventos.tryEmit(SalaEvent.preparado(ticket, mesaIdDe(ticket), camareroDe(ticket)))
         return true
     }
 
@@ -112,9 +115,18 @@ class InMemoryBarRepository(
         _bebidaQueue.update { it.filterNot { t -> t.id == ticketId } }
         _comidaQueue.update { it.filterNot { t -> t.id == ticketId } }
         _servidos.update { it + recogido }
-        _eventos.tryEmit(SalaEvent.recogido(ticketId))
+        _eventos.tryEmit(SalaEvent.recogido(recogido, mesaIdDe(recogido), camareroDe(recogido)))
         return true
     }
+
+    /** Ronda origen de un ticket (para resolver la mesa y el camarero que pidió). */
+    private fun rondaDe(ticket: Ticket): Ronda? = _rondas.value.firstOrNull { it.id == ticket.rondaId }
+
+    /** Id de zona de red de la mesa ("T3"); ya vive en `Ronda.mesaId`, sin cruzar salas. */
+    private fun mesaIdDe(ticket: Ticket): String? = rondaDe(ticket)?.mesaId
+
+    /** Camarero que pidió la ronda ("quién lo pidió"), simétrico a `preparadoPor`. */
+    private fun camareroDe(ticket: Ticket): String? = rondaDe(ticket)?.camarero
 
     private fun transformTicket(ticketId: String, transform: (Ticket) -> Ticket): Boolean {
         val enBebida = _bebidaQueue.value.any { it.id == ticketId }
