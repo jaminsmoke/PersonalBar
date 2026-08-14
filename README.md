@@ -1,262 +1,131 @@
-# Personal Bar
+<div align="center">
 
-Puesto de **barra** y **nodo de sala** de la familia **PersonalHostel**.  
-Repo: https://github.com/jaminsmoke/PersonalBar
+<img src="docs/assets/logo.png" alt="Personal Bar" width="140">
 
-Los Personal Commander se conectan aquí. La identidad de los camareros es [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity).
+# 🍸 Personal Bar
 
-Mapa de producto y **flujo kanban completo** (Detectado → Changelog, Debate, CLI): [`AGENTS.md`](AGENTS.md). Setup corto de la CLI: [`tools/README.md`](tools/README.md).
+**El puesto de barra que gestiona la sala.** Colas de Bebida y Comida separadas, nodo LAN de la familia PersonalHostel: los Personal Commander de sala y terraza se conectan aquí, mandan rondas y la barra las prepara y entrega **por destino**.
 
-## Estado
+[📖 Wiki](https://github.com/jaminsmoke/PersonalBar/wiki) · [Personal Comander](https://github.com/jaminsmoke/PersonalComander) · [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity)
 
-Proyecto Android **v0.1 en construcción** (`:app`, Compose + Material 3, Room/KSP, Gradle KTS + Version Catalog). Stack alineado con Personal Commander (AGP 9.3.1, Kotlin 2.4.10, Compose BOM 2026.06.01, minSdk 24 / target 36).
+[![Build](https://img.shields.io/github/actions/workflow/status/jaminsmoke/PersonalBar/ci.yml?label=build&color=%23E9C349)](https://github.com/jaminsmoke/PersonalBar/actions)
+[![License](https://img.shields.io/github/license/jaminsmoke/PersonalBar?color=%23E9C349)](LICENSE)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 
-### Abrir en Android Studio
+**v0.1** · Android 7.0+ (API 24) · Tablet apaisado · [Nodo LAN en el puerto 8787](#nodo-lan)
 
-1. `File → Open` y seleccionar esta carpeta (`AndroidStudioProjects/PersonalBar`).
-2. Esperar a que Gradle sincronice.
-3. Añadir `local.properties` si no existe con `sdk.dir=` apuntando a tu SDK (está gitignored).
-4. Run sobre un dispositivo/emulador (requiere API 24+; se desarrolla contra API 37).
+</div>
 
-Build por CLI:
+---
+
+## El ciclo de una ronda
+
+Una ronda llega del Commander → Bar la parte en **BARRA** (bebida) y **COCINA** (comida) → cada cola avisa a su preparador → **listo por destino** → el camarero la **recoge** y sale de la cola. Las cañas no esperan a la pizza.
+
+## ✨ Features
+
+- 🥤 **Expo de colas por destino** — dos columnas fijas (Bebida y Comida) en la tablet apaisado. Ticket: mesa, ronda, camarero y líneas.
+- 📡 **Nodo de sala LAN** — servidor Ktor integrado (puerto **8787**). Los Commander se conectan, envían rondas y reciben el estado en tiempo real (SSE).
+- 🔒 **Lista blanca del local** — los camareros se dan de alta por su **QR de identidad** (PersonalHostel-Identity). Sin alta no hay acceso, aunque estén en el Wi‑Fi.
+- 🗺️ **Mapa de la sala** — salas y mesas canónicas del establecimiento (barra, interior, terraza…), replicadas a los Commander.
+- 🎛️ **Gestión** — camareros (lista blanca) y carta del bar, desde el hub de gestión.
+- 🛎️ **Preparado con nombre** — cada ticket registra quién lo preparó, simétrico a quién lo pidió.
+- 🌙 **Marca dark premium** — design system navy & gold de la familia PersonalHostel.
+
+## 📱 Capturas
+
+| Expo de colas | Mapa de la sala | Gestión | Carta | Ajustes |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/expo.png" width="400"> | <img src="docs/screenshots/mapa.png" width="400"> | <img src="docs/screenshots/gestion.png" width="400"> | <img src="docs/screenshots/carta.png" width="400"> | <img src="docs/screenshots/ajustes.png" width="400"> |
+
+## 🚀 Puesta en marcha
+
+### Requisitos
+
+- JDK 17+
+- Android SDK con `platforms;android-37`
+- Emulador o dispositivo Android 7.0+ (API 24+); **tablet apaisado** recomendada (puesto estático de barra)
+
+### Build y ejecución
 
 ```bash
-./gradlew assembleDebug
+./gradlew installDebug   # instala en el dispositivo/emulador
+./gradlew test           # tests unitarios
+./gradlew lint           # lint
+```
+
+El primer arranque siembra las salas generales (Barra, Interior, Terraza con 4 mesas cada una) y una carta mínima; las colas parten vacías — la primera ronda real llega de un Commander.
+
+## 🧑‍🍳 Uso diario
+
+1. **Colas** — el día a día: Bebida y Comida en paralelo; `preparado` marca quién lo preparó y `recogido` saca el ticket de la cola.
+2. **Nodo activo** — el chip «Local» del header enciende/apaga el servidor; el servicio en primer plano mantiene la sala viva con la pantalla apagada.
+3. **Mapa** — la sala del establecimiento: salas y mesas canónicas (la fuente de verdad del layout para los Commander).
+4. **Gestión** — camareros (pega el QR de identidad para dar de alta) y carta del bar.
+5. **Ajustes** — el establecimiento (cuenta y local).
+
+## 🏗️ Arquitectura
+
+| Capa | Tecnología |
+|---|---|
+| UI | Jetpack Compose + Material 3 |
+| Navegación | Secciones del rail + estado local (sin `navigation-compose`) |
+| Estado | ViewModel + StateFlow |
+| Datos | Room (SQLite) con KSP |
+| Nodo LAN | Ktor (CIO), puerto 8787, eventos SSE |
+| Min SDK / Target | 24 / 36 |
+
+```
+app/src/main/java/com/jaminsmoke/personalbar/
+├── data/     # Modelo, DAOs, repos (fuente de verdad del nodo), exportación de layout
+├── lan/      # Servidor Ktor, servicios del nodo
+└── ui/       # Expo de colas, mapa, gestión, carta, ajustes, componentes Pb*
 ```
 
 ## Nodo LAN
 
-Bar es el **host de sala**. Servidor Ktor (CIO). Puerto fijo: **8787**.
+Bar es el **host de sala** de la familia. Puerto fijo: **8787** (solo LAN privada; identidad = HTTPS a PersonalHostel-Identity).
 
 | Endpoint | Método | Descripción |
 |---|---|---|
-| `/health` | GET | `{"ok":true,"role":"bar","establecimiento":"La Terraza","sala":"La Terraza","version":"0.1"}` (`sala` = alias deprecado) |
-| `/v1/sesion` | POST | Consulta lista blanca: `{ "qr": "phid1:…" }` → 200 `{ admitido, camareroId, nombre }` o 400 si el QR no parsea. No es un alta. No exige handshake para el resto de rutas. |
-| `/v1/rondas` | POST | Recibe una ronda (idempotente por `id`) → 201 con los tickets BARRA/COCINA |
-| `/v1/tickets/{id}/preparado` | POST | Marca **preparado** un ticket (por destino); body `{"preparado_por":"Ana"}` |
-| `/v1/tickets/{id}/recogido` | POST | Marca **recogido**; el ticket sale de cola → servidos |
-| `/v1/estado` | GET | Estado completo (establecimiento, salas, colas, servidos, mesas, versión) |
-| `/v1/eventos` | SSE | Push de eventos `ticket.preparado` / `ticket.recogido` (evento autodescriptivo v1: mesa, camarero, resumen, ticket completo) |
+| `/health` | GET | Estado del nodo |
+| `/v1/sesion` | POST | Consulta de lista blanca para el candado UX de Commander |
+| `/v1/rondas` | POST | Recibe una ronda (idempotente por `id`) → tickets BARRA/COCINA |
+| `/v1/tickets/{id}/preparado` | POST | Marca preparado (con `preparado_por`) |
+| `/v1/tickets/{id}/recogido` | POST | Marca recogido; sale de la cola |
+| `/v1/estado` | GET | Estado completo (establecimiento, salas, colas, servidos, mesas) |
+| `/v1/eventos` | SSE | Push de eventos `ticket.preparado` / `ticket.recogido` |
 
-**Ciclo del ticket** (decisión de producto 14-08-2026): en Bar el ticket va **PENDIENTE → PREPARADO → RECOGIDO**.
-«Preparado» registra **quién lo preparó** (`preparado_por`, cuenta de camarero de la lista blanca), simétrico a
-«quien lo pidió» (`Ronda.camarero`); «Recogido» lo saca de la cola. El cierre del ciclo — **SERVIDO** y ronda
-**finalizada**, cuando la ronda llega a la mesa del cliente — vive en **Commander** (ítem diferido de sala LAN
-`PVTI_lAHOBM87Yc4BgJWOzg2ZsaU`).
+El **ciclo del ticket** en Bar: `PENDIENTE → PREPARADO → RECOGIDO`. «Preparado» registra quién lo preparó; «Recogido» lo saca de la cola. El cierre del ciclo (SERVIDO, ronda finalizada en mesa) vive en Commander.
 
-### Glosario
+Los **payloads completos** (ronda, sesión, evento SSE, contrato del mapa con `posX/posY` y la conversión al canvas de Commander) están en la [wiki — Contrato LAN](https://github.com/jaminsmoke/PersonalBar/wiki/Contrato-LAN).
 
-| Término | Significado | Dueño |
-|---|---|---|
-| **Establecimiento** (negocio/local) | cuenta del bar, fuente de verdad | Bar (este repo) |
-| **Sala** | zona del mapa (barra, interior, terraza…) | mapa del establecimiento, en Bar |
-| **Camarero** | identidad + QR | Identity |
+## 🖼️ Regenerar capturas y assets de marca
 
-Un nodo Bar = un establecimiento en v0.1. Las mesas cuelgan de una sala (`salaId`); el ID de red es `idZona` (p. ej. `T3` = Terraza 3).
-
-### Contrato del mapa (`/v1/estado`)
-
-Bar es la **fuente de verdad del layout**; Commander lo replica en solo-lectura cuando está admitido. La identidad de red de una mesa es `idZona` (prefijo de sala + `indiceZona`), nunca el `id` local.
-
-| Campo de mesa (layout) | Tipo | Notas |
-|---|---|---|
-| `id` | string | id local (no viaja como identidad) |
-| `salaId` | string | referencia a `Sala.id` (se reconcilia por nombre/orden) |
-| `indiceZona` | int | índice dentro de la sala (B1, T2…) |
-| `numero` | int | número global |
-| `alias` | string? | nombre visible opcional |
-| `forma` | enum | `REDONDA` / `CUADRADA` / `RECTANGULAR` / `RECTANGULAR_XL` |
-| `capacidad` | int | plazas |
-| `posX`/`posY` | float | posición en el grid (40dp) |
-| `girada` | bool | girar rectangulares |
-| `bloqueada` | bool | hold comercial |
-| `reservaActivaId` | string? | reserva activa (tabla `reservas`) |
-
-El estado operativo (LIBRE/OCUPADA/EN_COCINA) se deriva de las rondas/tickets en Bar y del ciclo de comanda en Commander; no viaja como campo de layout. Los enums serializan por nombre (compatibles con Gson y kotlinx.serialization).
-
-### Payload de ronda (`POST /v1/rondas`)
-
-```json
-{
-  "id": "r-123",
-  "mesaId": "T3",
-  "numero": 1,
-  "camarero": "Lucía",
-  "creadoEn": 1730000000000,
-  "lineas": [
-    { "productoId": "cana", "nombreProducto": "Caña", "cantidad": 2 },
-    { "productoId": "croquetas", "nombreProducto": "Croquetas", "cantidad": 1 }
-  ]
-}
-```
-
-Bar parte la ronda en tickets **BARRA** (bebida) y **COCINA** (comida); el destino se deriva de la categoría del producto. Preparado/recogido es **por destino** (cañas ≠ pizza), y `preparado_por` viaja en el ticket y en el evento SSE.
-
-### Payload de sesión (`POST /v1/sesion`)
-
-Consulta a la lista blanca para el candado UX de Commander. **No** da de alta ni pone de servicio. El resto de rutas no exigen handshake (LAN 0.1).
-
-```json
-{ "qr": "phid1:<camarero_id>:<credencial_id>:<firma>" }
-```
-
-| Caso | HTTP | Body |
-|---|---|---|
-| Lista ACTIVA | 200 | `{ "admitido": true, "camareroId", "nombre" }` |
-| Ausente o REVOCADA | 200 | `{ "admitido": false, "camareroId", "nombre"? }` |
-| QR mal formado | 400 | vacío |
-| Clave cacheada y firma inválida | 200 | `{ "admitido": false, "camareroId" }` |
-
-### Payload del evento SSE (`/v1/eventos`)
-
-Cada evento es un JSON autodescriptivo (v1): `event:` = `tipo`, `data:` = payload.
-
-```json
-{
-  "version": 1,
-  "tipo": "ticket.preparado",
-  "ticketId": "r-123-barra",
-  "preparadoPor": "Ana",
-  "mesaId": "T3",
-  "camarero": "Lucía",
-  "resumen": "2× Caña, 1× Croquetas",
-  "ticket": {
-    "id": "r-123-barra",
-    "rondaId": "r-123",
-    "destino": "BARRA",
-    "estado": "PREPARADO",
-    "preparadoPor": "Ana",
-    "numeroCola": 1,
-    "lineas": [
-      { "productoId": "cana", "nombreProducto": "Caña", "cantidad": 2 }
-    ]
-  }
-}
-```
-
-| Campo | Tipo | Notas |
-|---|---|---|
-| `version` | int | `1` (contrato del evento) |
-| `tipo` | string | `ticket.preparado` / `ticket.recogido` (también el `event:` SSE) |
-| `ticketId` | string | id del ticket (por destino: `{rondaId}-barra` / `{rondaId}-cocina`) |
-| `preparadoPor` | string? | quién lo elaboró (cuenta de camarero) |
-| `mesaId` | string? | idZona de red de la mesa (`T3`), desde `Ronda.mesaId` |
-| `camarero` | string? | quién pidió la ronda (`Ronda.camarero`) |
-| `resumen` | string | líneas legibles («2× Caña, 1× Croquetas») |
-| `ticket` | Ticket? | el ticket completo (ronda, destino, estado, `numeroCola`, líneas) |
-
-`destino` serializa como enum `BARRA`/`COCINA` (Commander mapea a Bebida/Comida). Los campos nuevos son opcionales (default) para backward-compatibilidad: un Commander antiguo ignora los desconocidos y uno nuevo decodifica eventos antiguos con `mesaId`/`ticket` en `null`.
-
-### Codificación (UTF-8)
-
-Todo el I/O de texto del nodo es UTF-8 explícito: las respuestas de Identity y el `POST /v1/rondas` se leen en UTF-8 y las peticiones salen con `Content-Type: application/json; charset=utf-8`. Nombres con acentos (camareros, productos) viajan intactos por JSON/SSE.
-
-### Probar desde el host
+Los activos públicos (logo, favicon, social card y capturas de pantalla) se generan con scripts versionados:
 
 ```bash
-adb forward tcp:18787 tcp:8787
+# Logo, favicon y og-image (desde la copa de barra de la marca)
+python scripts/generate_assets_bar.py
 
-# Health
-curl http://127.0.0.1:18787/health
+# Capturas de pantalla (requiere un emulador Pixel Tablet activo; appaisado)
+ADB_DEVICE=emulator-5554 bash scripts/capture_screens_bar.sh
 
-# Enviar una ronda
-curl -X POST http://127.0.0.1:18787/v1/rondas \
-  -H 'Content-Type: application/json' \
-  -d '{"id":"r-1","mesaId":"T3","numero":1,"camarero":"Lucía","lineas":[{"productoId":"cana","nombreProducto":"Caña","cantidad":2}]}'
-
-# Estado
-curl http://127.0.0.1:18787/v1/estado
-
-# Eventos (SSE)
-curl -N http://127.0.0.1:18787/v1/eventos
+# Con rondas demo para que la Expo muestre tickets reales (limpia al final)
+ADB_DEVICE=emulator-5554 INYECTAR_DEMO=1 bash scripts/capture_screens_bar.sh
 ```
 
-Cleartext solo en rangos LAN privados (`network_security_config`). Identidad = HTTPS a PersonalHostel-Identity, nunca este puerto.
+Ejecútalos después de cualquier cambio de marca o rediseño de UI para mantener coherentes el README y la wiki.
 
-Los Commanders descubren Bar escaneando el /24 contra el puerto 8787 (patrón `EscaneadorRed` de Commander).
+## 🗺️ Roadmap
 
-### Servicio en primer plano «Local activo»
+- **v0.1** — el ciclo completo de la ronda: recibir → colas → preparado → recogido, con el nodo LAN y la lista blanca.
+- Después — el sitio web (`jaminsmoke.github.io/PersonalBar`), premium (ver modelo de licencia).
 
-El nodo vive en un foreground service (`BarLanService`) para sobrevivir con la **pantalla bloqueada**:
+## 🤝 Contribuir
 
-- Notificación persistente «Local activo» (canal `local_activo`).
-- `foregroundServiceType="connectedDevice"` (los Commander son dispositivos externos en LAN).
-- partial `WakeLock` + `WifiLock` para que la CPU y el Wi‑Fi no se duerman en doze.
-- El indicador «Local activo» de la barra superior es un **toggle**: arranca/para el service y el server.
-- Sin arranque al boot en v0.1 (se activa a mano).
+¡Las contribuciones son bienvenidas! Consulta la [guía de contribución](CONTRIBUTING.md) y abre issues para bugs o ideas. Para vulnerabilidades, la [política de seguridad](SECURITY.md). El trabajo se planifica en el [kanban del proyecto](https://github.com/users/jaminsmoke/projects/11).
 
-Permisos: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `POST_NOTIFICATIONS` (runtime en API 33+), `WAKE_LOCK`.
+## 📄 Licencia
 
-### Servicios de Identity (split)
-
-Identity está **partida en dos servicios con BD propia** (decisión Raíz, Identity #15):
-
-| Servicio | Puerto dev | Dominio |
-|---|---|---|
-| `identity-negocio` | `:8082` | cuentas de negocio, establecimientos, membresías, invitaciones |
-| `identity-camareros` | `:8080` | identidad profesional (camareros), credenciales/QR |
-
-**Bar consume solo el servicio negocio** (`IdentityNegocioClient` → `http://10.0.2.2:8082`); las operaciones de camarero (buscar por email, alta por QR) las resuelve negocio internamente vía `/internal/*`. El cliente `IdentityCamareroClient` (`http://10.0.2.2:8080`) es la cimentación para futuras llamadas directas a camareros (hoy solo expone `GET /v1/keys/qr`).
-
-### Lista blanca de camareros (Identity)
-
-Bar guarda la **lista blanca del establecimiento** (a quién acepta en la LAN). La identidad canónica vive en Identity, que emite el QR permanente `phid1:<camarero_id>:<credencial_id>:<firma-ed25519>`.
-
-**Conexión** (Ajustes → Identity): URL de Identity + email/contraseña de la **cuenta de negocio** → `POST /v1/auth/negocio/login`; Bar crea/encuentra su establecimiento y guarda el UUID. La config se **persiste en Room** (sobrevive a reinicios). Desde el emulador, el servicio **negocio** de Identity corre en el host en `http://10.0.2.2:8082`.
-
-Dos canales de alta:
-- **QR** (verificado): al pegar el `phid1`, Bar llama `POST /v1/establecimientos/{id}/miembros/qr`; el server verifica la firma Ed25519 y la credencial activa. Si la rechaza, no da de alta. Sin Identity conectado → alta local sin verificar (fallback v0.1).
-- **Email**: sección «Invitar por email» → `GET /camareros/buscar?email=` valida que el email existe → `POST /invitaciones` → Identity **envía el correo con el magic-link** (TTL 72 h). La aceptación ocurre en **Identity Web** (fuera de Bar); Bar muestra el estado (pendiente/revocada) y puede revocar. «Sincronizar desde Identity» trae los miembros ACTIVA al espejo local.
-
-La lista local (persistida en Room) sigue siendo la fuente para la LAN; Identity es el espejo (alta/revocación reflejada). La validación del login de red del Commander contra esta lista se completa cuando Commander envíe su QR.
-
-**División de oficios**: la **cuenta de camarero** (y su nick visible) se crea y gestiona en **Commander** — la app específica de camareros (ítem `PVTI_lAHOBM87Yc4BgJWOzg2gWTY`). **Bar** es el puesto de **gestión del negocio**: asigna camareros al establecimiento (lista blanca) y **recoge** la info de la cuenta desde Identity, pero **no crea ni edita** datos de camareros. En el puesto, varios camareros pueden estar **de servicio a la vez** (chips «Quién soy»); el que prepara («en mano») es el último chip pulsado.
-
-### Varios preparadores en el puesto
-
-- `Camarero.deServicio` (migración Room v3): lista de camareros **de servicio** en el turno, persistida (sobrevive a reinicios).
-- La barra «Quién soy» muestra **chips múltiples**: tap = añadir/quitar de servicio; el texto «de servicio» fija el chip como **«en mano»** (el que prepara al tocar «Marcar preparado»).
-- `nombre`/`email` se rellenan desde Identity cuando el dato existe (invitación por email / sync); **sin editor local** — Bar no edita la cuenta.
-
-## Persistencia (Room)
-
-El nodo **persiste todo en Room** (`personalbar.db`, esquema v1 exportado a `app/schemas/`): establecimiento, salas/mesas (layout), catálogo, rondas, tickets (colas + servidos), reservas, camareros (lista blanca), invitaciones y la config de Identity.
-
-- **Arquitectura**: `RoomBarRepository` envuelve el `InMemoryBarRepository` (cerebro: lógica, colas, idempotencia, secuencias). Cada mutación actualiza el estado en memoria y **persiste por dominio** en un scope serializado; si una escritura falla, el estado en memoria sigue mandando y se re-persiste en la siguiente mutación.
-- **Arranque**: carga todo de Room; si la BD está vacía (primera instalación) siembra las **3 salas por defecto** (Barra, Interior, Terraza) con **4 mesas cada una** y el **catálogo canónico por defecto** (4 productos); **sin rondas demo** (colas vacías). El dueño edita salas/mesas; la carta se gestionará cuando exista el editor de catálogo.
-- **No se persisten** los eventos SSE (`SalaEvent`): al reconectar, Commander re-sincroniza por `/v1/estado`.
-- **Migraciones**: schema exportado desde v1 para versionar cambios futuros igual que Commander. v2 añade `tickets.numeroCola` (id de cola visible/hablable) con `MIGRATION_1_2` + backfill por destino en `RoomBarRepository` al cargar.
-- Los eventos `ticket.preparado`/`ticket.recogido` y el `preparadoPor` sobreviven al reinicio (los tickets se persisten con su estado).
-
-### Id visible de cola («Cola N Bebida/Comida»)
-
-Cada ticket en cola tiene un **id de orden estable y hablable** por destino (`numeroCola`, migración Room v2): «Cola 1 Bebida», «Cola 2 Comida»…
-
-- **Monótono en el turno, no compacta**: si se recoge Cola 1 Bebida, Cola 2 Bebida sigue siendo 2 (ancla estable para voz y tacto; una ronda = 2 tickets, mesa+ronda sería ambiguo).
-- **Color por estado**: tarjeta **amarilla** PENDIENTE (post-it) y **verde** PREPARADO (listo), fuera del scheme como los tokens del mapa. Las recogidas salen de expo.
-- Se muestra en la tarjeta de la expo y en el sheet de comanda del mapa (misma `PbTicketCard`).
-
-## Sesión de la cuenta de establecimiento
-
-Bar se identifica con la **cuenta de negocio/establecimiento** (no con camareros). En el **header** hay un icono de cuenta que abre un modal con **dos flujos separados**:
-
-- **Crear cuenta** (registro): nombre, email, contraseña, **tipo** (bar/restaurante/cafetería/pub/bar de copas) y **logo opcional** (picker de imagen). Llama a `POST /v1/auth/negocio/registro` (envía el tipo), luego vincula el establecimiento (`/v1/establecimientos`) y sube el logo (`POST /v1/auth/negocio/me/logo`, multipart).
-- **Iniciar sesión** (login): email + contraseña, con **«Recuérdame»**: si se marca, la sesión (token + perfil) se **persiste en Room** (`sesion_negocio`, migración v5) y se restaura al arrancar; si no, solo en memoria.
-
-Una vez logueado, el header muestra el **nombre del establecimiento** y su **logo real** (descargado de Identity; si no hay logo o falla, solo el nombre); **nada de camareros** (los camareros se gestionan en Camareros, dentro de Gestión). El usuario **no ve la URL del server Identity** (config de entorno; en dev `http://10.0.2.2:8082`, en producción un VPS).
-
-**Tipo y logo se sincronizan contra Identity** (fuente canónica): el registro envía `tipo_establecimiento`, el login recupera `tipo_establecimiento` + `logo_url` del perfil y Bar persiste el `logoUrl` en la sesión (Room v5 sustituye el antiguo placeholder `logoClave`).
-
-## Voz en colas
-
-La sección Colas tiene una **barra de escucha por voz** (botón grande con micrófono bajo «Quién soy») para cambiar el estado de una orden **ya identificada** por su id de cola. Reutiliza el `SpeechRecognizer` de Commander (timeouts RMS, `es-ES`, silencio permisivo en barra ruidosa) con otra gramática:
-
-- **Preparado**: `<nombre del preparador> Cola N <Bebida|Comida> preparado` — p. ej. «Lucía, Cola 1 Bebida preparado». El nombre debe estar en la lista blanca ACTIVA; si no se reconoce, se rechaza (no se escribe texto crudo). Sin nombre, se atribuye al camarero «en mano».
-- **Recogido**: `[nombre] Cola N <Bebida|Comida> recogido` — el nombre es opcional y se ignora al casar.
-
-El parser acepta números en letra («cola uno», «treinta y cinco»), relleno («de», «la») y sinónimos de acción. El destino hablado es **Bebida/Comida** (nunca «Cocina», que es el nombre interno del enum). Permiso `RECORD_AUDIO` (runtime). Sin motor de voz en el dispositivo, el botón informa del error y no entra en escucha.
-
-## Hermanos
-
-- [PersonalComander](https://github.com/jaminsmoke/PersonalComander) — sala (cliente). Red LAN diferida hasta que Bar reciba rondas.
-- [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity) — identidad (dos servicios en Docker: negocio `localhost:8082`, camareros `localhost:8080`).
+Publicado bajo la [Licencia MIT](LICENSE).
