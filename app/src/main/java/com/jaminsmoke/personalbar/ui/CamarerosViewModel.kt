@@ -11,7 +11,7 @@ import com.jaminsmoke.personalbar.data.Invitacion
 import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.Phid1
 import com.jaminsmoke.personalbar.data.QrParser
-import com.jaminsmoke.personalbar.lan.IdentityClient
+import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,7 +46,7 @@ class CamarerosViewModel : ViewModel() {
         if (repository.identityConfig.value.conectado) {
             _trabajando.value = true
             viewModelScope.launch {
-                val ok = IdentityClient.altaPorQr(payload, "staff")
+                val ok = IdentityNegocioClient.altaPorQr(payload, "staff")
                 _trabajando.value = false
                 if (!ok) {
                     _mensaje.value = R.string.camareros_qr_rechazado
@@ -72,7 +72,7 @@ class CamarerosViewModel : ViewModel() {
     fun revocar(id: String) {
         repository.revocarCamarero(id)
         if (repository.identityConfig.value.conectado) {
-            viewModelScope.launch { IdentityClient.revocarMiembro(id) }
+            viewModelScope.launch { IdentityNegocioClient.revocarMiembro(id) }
         }
     }
 
@@ -89,7 +89,7 @@ class CamarerosViewModel : ViewModel() {
         }
         _trabajando.value = true
         viewModelScope.launch {
-            val camarero = IdentityClient.buscarCamareroPorEmail(e)
+            val camarero = IdentityNegocioClient.buscarCamareroPorEmail(e)
             if (camarero == null) {
                 _trabajando.value = false
                 _mensaje.value = R.string.camareros_email_no_encontrado
@@ -102,7 +102,7 @@ class CamarerosViewModel : ViewModel() {
             if (repository.camareros.value.none { it.id == camarero.id }) {
                 repository.altaCamarero(camarero.id, null, nombreCompleto, camarero.email.ifBlank { null })
             }
-            val invitacion = IdentityClient.crearInvitacion(e, "staff")
+            val invitacion = IdentityNegocioClient.crearInvitacion(e, "staff")
             _trabajando.value = false
             if (invitacion == null) {
                 _mensaje.value = R.string.camareros_invitacion_error
@@ -124,7 +124,7 @@ class CamarerosViewModel : ViewModel() {
     /** Revoca una invitación local y en Identity (si conectado). */
     fun revocarInvitacion(id: String) {
         if (repository.revocarInvitacionLocal(id)) {
-            viewModelScope.launch { IdentityClient.revocarInvitacion(id) }
+            viewModelScope.launch { IdentityNegocioClient.revocarInvitacion(id) }
         }
     }
 
@@ -133,7 +133,7 @@ class CamarerosViewModel : ViewModel() {
         if (!repository.identityConfig.value.conectado) return
         _trabajando.value = true
         viewModelScope.launch {
-            val miembros = IdentityClient.listarMiembros()
+            val miembros = IdentityNegocioClient.listarMiembros()
                 .filter { it.estado.equals("activa", ignoreCase = true) }
                 .map { it.camareroId }
             repository.sincronizarMiembros(miembros)

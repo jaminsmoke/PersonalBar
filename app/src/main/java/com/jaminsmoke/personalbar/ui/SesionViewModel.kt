@@ -10,7 +10,7 @@ import com.jaminsmoke.personalbar.data.SesionNegocio
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
 import com.jaminsmoke.personalbar.data.apiValor
 import com.jaminsmoke.personalbar.data.tipoDesdeApi
-import com.jaminsmoke.personalbar.lan.IdentityClient
+import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,13 +63,13 @@ class SesionViewModel : ViewModel() {
         _mensaje.value = null
         _trabajando.value = true
         viewModelScope.launch {
-            val ok = IdentityClient.loginNegocio(mail, password)
+            val ok = IdentityNegocioClient.loginNegocio(mail, password)
             if (!ok) {
                 _trabajando.value = false
                 _mensaje.value = R.string.sesion_login_fallido
                 return@launch
             }
-            val uuid = IdentityClient.vincularEstablecimiento(
+            val uuid = IdentityNegocioClient.vincularEstablecimiento(
                 app.repository.establecimiento.value.nombre
             )
             if (uuid == null) {
@@ -77,9 +77,9 @@ class SesionViewModel : ViewModel() {
                 _mensaje.value = R.string.sesion_vincular_fallido
                 return@launch
             }
-            val perfil = IdentityClient.cuentaNegocio
+            val perfil = IdentityNegocioClient.cuentaNegocio
             val sesion = SesionNegocio(
-                token = IdentityClient.negocioToken,
+                token = IdentityNegocioClient.negocioToken,
                 email = mail,
                 nombreMostrar = perfil?.nombreMostrar,
                 establecimientoUuid = uuid,
@@ -112,19 +112,19 @@ class SesionViewModel : ViewModel() {
         _mensaje.value = null
         _trabajando.value = true
         viewModelScope.launch {
-            val id = IdentityClient.registroNegocio(nombreTrim, mail, password, tipo?.apiValor())
+            val id = IdentityNegocioClient.registroNegocio(nombreTrim, mail, password, tipo?.apiValor())
             if (id == null) {
                 _trabajando.value = false
                 _mensaje.value = R.string.sesion_registro_fallido
                 return@launch
             }
-            val ok = IdentityClient.loginNegocio(mail, password)
+            val ok = IdentityNegocioClient.loginNegocio(mail, password)
             if (!ok) {
                 _trabajando.value = false
                 _mensaje.value = R.string.sesion_login_fallido
                 return@launch
             }
-            val uuid = IdentityClient.vincularEstablecimiento(nombreTrim)
+            val uuid = IdentityNegocioClient.vincularEstablecimiento(nombreTrim)
             if (uuid == null) {
                 _trabajando.value = false
                 _mensaje.value = R.string.sesion_vincular_fallido
@@ -135,15 +135,15 @@ class SesionViewModel : ViewModel() {
             var logoUrl: String? = null
             if (logoUri != null) {
                 val (bytes, mimetype) = leerImagen(logoUri)
-                if (bytes != null && IdentityClient.subirLogo(bytes, mimetype)) {
-                    logoUrl = IdentityClient.LOGO_PATH
+                if (bytes != null && IdentityNegocioClient.subirLogo(bytes, mimetype)) {
+                    logoUrl = IdentityNegocioClient.LOGO_PATH
                 }
             }
 
             val sesion = SesionNegocio(
-                token = IdentityClient.negocioToken,
+                token = IdentityNegocioClient.negocioToken,
                 email = mail,
-                nombreMostrar = IdentityClient.cuentaNegocio?.nombreMostrar ?: nombreTrim,
+                nombreMostrar = IdentityNegocioClient.cuentaNegocio?.nombreMostrar ?: nombreTrim,
                 establecimientoUuid = uuid,
                 tipo = tipo,
                 logoUrl = logoUrl,
@@ -157,7 +157,7 @@ class SesionViewModel : ViewModel() {
     }
 
     fun logout() {
-        IdentityClient.desconectar()
+        IdentityNegocioClient.desconectar()
         _sesion.value = null
         _logoBytes.value = null
         app.repository.setIdentityConfig(IdentityConfig())
@@ -182,7 +182,7 @@ class SesionViewModel : ViewModel() {
     /** Descarga el logo de Identity y lo expone para el header. */
     private fun cargarLogo() {
         viewModelScope.launch {
-            _logoBytes.value = IdentityClient.obtenerLogo()
+            _logoBytes.value = IdentityNegocioClient.obtenerLogo()
         }
     }
 
@@ -196,13 +196,13 @@ class SesionViewModel : ViewModel() {
         bytes to mimetype
     }
 
-    /** Rehidrata el [IdentityClient] con la sesión guardada en Room. */
+    /** Rehidrata el [IdentityNegocioClient] con la sesión guardada en Room. */
     private fun hidratarIdentity(sesion: SesionNegocio) {
-        // La URL del server no se guarda por sesión: IdentityClient usa la config de
+        // La URL del server no se guarda por sesión: IdentityNegocioClient usa la config de
         // entorno por defecto (dev). Se completa cuando haya server fijo.
-        IdentityClient.negocioToken = sesion.token
-        IdentityClient.establecimientoUuid = sesion.establecimientoUuid
-        IdentityClient.cuentaNegocio = sesion.nombreMostrar?.let { nombre ->
+        IdentityNegocioClient.negocioToken = sesion.token
+        IdentityNegocioClient.establecimientoUuid = sesion.establecimientoUuid
+        IdentityNegocioClient.cuentaNegocio = sesion.nombreMostrar?.let { nombre ->
             IdentityCuentaNegocio(
                 email = sesion.email.orEmpty(),
                 nombreMostrar = nombre,

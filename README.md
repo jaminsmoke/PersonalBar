@@ -171,11 +171,22 @@ El nodo vive en un foreground service (`BarLanService`) para sobrevivir con la *
 
 Permisos: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `POST_NOTIFICATIONS` (runtime en API 33+), `WAKE_LOCK`.
 
+### Servicios de Identity (split)
+
+Identity está **partida en dos servicios con BD propia** (decisión Raíz, Identity #15):
+
+| Servicio | Puerto dev | Dominio |
+|---|---|---|
+| `identity-negocio` | `:8082` | cuentas de negocio, establecimientos, membresías, invitaciones |
+| `identity-camareros` | `:8080` | identidad profesional (camareros), credenciales/QR |
+
+**Bar consume solo el servicio negocio** (`IdentityNegocioClient` → `http://10.0.2.2:8082`); las operaciones de camarero (buscar por email, alta por QR) las resuelve negocio internamente vía `/internal/*`. El cliente `IdentityCamareroClient` (`http://10.0.2.2:8080`) es la cimentación para futuras llamadas directas a camareros (hoy solo expone `GET /v1/keys/qr`).
+
 ### Lista blanca de camareros (Identity)
 
 Bar guarda la **lista blanca del establecimiento** (a quién acepta en la LAN). La identidad canónica vive en Identity, que emite el QR permanente `phid1:<camarero_id>:<credencial_id>:<firma-ed25519>`.
 
-**Conexión** (Ajustes → Identity): URL de Identity + email/contraseña de la **cuenta de negocio** → `POST /v1/auth/negocio/login`; Bar crea/encuentra su establecimiento y guarda el UUID. La config se **persiste en Room** (sobrevive a reinicios). Desde el emulador, Identity corre en el host en `http://10.0.2.2:8080`.
+**Conexión** (Ajustes → Identity): URL de Identity + email/contraseña de la **cuenta de negocio** → `POST /v1/auth/negocio/login`; Bar crea/encuentra su establecimiento y guarda el UUID. La config se **persiste en Room** (sobrevive a reinicios). Desde el emulador, el servicio **negocio** de Identity corre en el host en `http://10.0.2.2:8082`.
 
 Dos canales de alta:
 - **QR** (verificado): al pegar el `phid1`, Bar llama `POST /v1/establecimientos/{id}/miembros/qr`; el server verifica la firma Ed25519 y la credencial activa. Si la rechaza, no da de alta. Sin Identity conectado → alta local sin verificar (fallback v0.1).
@@ -216,7 +227,7 @@ Bar se identifica con la **cuenta de negocio/establecimiento** (no con camareros
 - **Crear cuenta** (registro): nombre, email, contraseña, **tipo** (bar/restaurante/cafetería/pub/bar de copas) y **logo opcional** (picker de imagen). Llama a `POST /v1/auth/negocio/registro` (envía el tipo), luego vincula el establecimiento (`/v1/establecimientos`) y sube el logo (`POST /v1/auth/negocio/me/logo`, multipart).
 - **Iniciar sesión** (login): email + contraseña, con **«Recuérdame»**: si se marca, la sesión (token + perfil) se **persiste en Room** (`sesion_negocio`, migración v5) y se restaura al arrancar; si no, solo en memoria.
 
-Una vez logueado, el header muestra el **nombre del establecimiento** y su **logo real** (descargado de Identity; si no hay logo o falla, solo el nombre); **nada de camareros** (los camareros se gestionan en Camareros, dentro de Gestión). El usuario **no ve la URL del server Identity** (config de entorno; en dev `http://10.0.2.2:8080`, en producción un VPS).
+Una vez logueado, el header muestra el **nombre del establecimiento** y su **logo real** (descargado de Identity; si no hay logo o falla, solo el nombre); **nada de camareros** (los camareros se gestionan en Camareros, dentro de Gestión). El usuario **no ve la URL del server Identity** (config de entorno; en dev `http://10.0.2.2:8082`, en producción un VPS).
 
 **Tipo y logo se sincronizan contra Identity** (fuente canónica): el registro envía `tipo_establecimiento`, el login recupera `tipo_establecimiento` + `logo_url` del perfil y Bar persiste el `logoUrl` en la sesión (Room v5 sustituye el antiguo placeholder `logoClave`).
 
@@ -232,4 +243,4 @@ El parser acepta números en letra («cola uno», «treinta y cinco»), relleno 
 ## Hermanos
 
 - [PersonalComander](https://github.com/jaminsmoke/PersonalComander) — sala (cliente). Red LAN diferida hasta que Bar reciba rondas.
-- [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity) — identidad (Docker `localhost:8080`).
+- [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity) — identidad (dos servicios en Docker: negocio `localhost:8082`, camareros `localhost:8080`).
