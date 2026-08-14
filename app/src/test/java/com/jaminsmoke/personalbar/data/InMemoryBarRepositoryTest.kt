@@ -284,4 +284,27 @@ class InMemoryBarRepositoryTest {
         assertTrue(repo.crearSala("Terraza"))
         assertEquals(3, repo.salas.value.size)
     }
+
+    @Test
+    fun claveQrSeGuardaYRecupera() {
+        val repo = repo()
+        assertNull(repo.qrKey.value)
+        repo.guardarClaveQr(QrKey(keyId = "ed25519-v1", publicKey = "abc", algorithm = "Ed25519"))
+        assertEquals("abc", repo.qrKey.value?.publicKey)
+        assertEquals("ed25519-v1", repo.qrKey.value?.keyId)
+    }
+
+    @Test
+    fun altasPendientesSeRegistranYSeEliminan() {
+        val repo = repo()
+        repo.registrarAltaPendiente(AltaPendiente(camareroId = "c-1", payload = "phid1:..."))
+        repo.registrarAltaPendiente(AltaPendiente(camareroId = "c-2", payload = "phid1:..."))
+        assertEquals(2, repo.altasPendientes.value.size)
+        repo.eliminarAltaPendiente("c-1")
+        assertEquals(listOf("c-2"), repo.altasPendientes.value.map { it.camareroId })
+        // registrar de nuevo un id existente no duplica
+        repo.registrarAltaPendiente(AltaPendiente(camareroId = "c-2", payload = "nuevo"))
+        assertEquals(1, repo.altasPendientes.value.size)
+        assertEquals("nuevo", repo.altasPendientes.value.single().payload)
+    }
 }

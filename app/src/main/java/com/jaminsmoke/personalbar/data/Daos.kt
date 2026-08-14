@@ -177,4 +177,23 @@ interface BarDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInvitaciones(invitaciones: List<Invitacion>)
+
+    // ── QrKey (clave pública Ed25519 de Identity, singleton) ──────────────
+
+    @Query("SELECT * FROM qr_keys LIMIT 1")
+    suspend fun getQrKey(): QrKey?
+
+    @Upsert
+    suspend fun upsertQrKey(key: QrKey)
+
+    // ── Altas pendientes (offline → sync diferido a Identity) ─────────────
+
+    @Query("SELECT * FROM altas_pendientes ORDER BY creadaEn")
+    suspend fun getAltasPendientes(): List<AltaPendiente>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAltaPendiente(alta: AltaPendiente)
+
+    @Query("DELETE FROM altas_pendientes WHERE camareroId = :camareroId")
+    suspend fun deleteAltaPendiente(camareroId: String)
 }

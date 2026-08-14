@@ -137,4 +137,19 @@ interface BarRepository {
 
     /** Espejo: asegura que cada id (miembros ACTIVA de Identity) esté en la lista blanca local. */
     fun sincronizarMiembros(camareroIds: List<String>)
+
+    /** Clave pública Ed25519 de Identity cacheada (para verificar QRs offline). */
+    val qrKey: StateFlow<QrKey?>
+
+    /** Guarda/actualiza la clave pública de Identity (cache). */
+    fun guardarClaveQr(key: QrKey)
+
+    /** Altas offline pendientes de subir a Identity. */
+    val altasPendientes: StateFlow<List<AltaPendiente>>
+
+    /** Registra un alta offline pendiente de sync. */
+    fun registrarAltaPendiente(alta: AltaPendiente)
+
+    /** Elimina un alta pendiente (tras subirla a Identity). */
+    fun eliminarAltaPendiente(camareroId: String)
 }

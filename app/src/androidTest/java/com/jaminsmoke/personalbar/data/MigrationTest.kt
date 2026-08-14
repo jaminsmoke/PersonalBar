@@ -94,6 +94,31 @@ class MigrationTest {
     }
 
     @Test
+    fun migracion_v5_a_v6_crea_qr_keys_y_altas_pendientes() {
+        helper.createDatabase(TEST_DB, 5).close()
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 6, true, AppDatabase.MIGRATION_5_6)
+        db.use {
+            it.execSQL(
+                "INSERT INTO qr_keys (id, keyId, publicKey, algorithm) VALUES ('local', 'ed25519-v1', 'abc', 'Ed25519')"
+            )
+            it.execSQL(
+                "INSERT INTO altas_pendientes (camareroId, payload, creadaEn) VALUES ('c-1', 'phid1:...', 0)"
+            )
+            val cursor = it.query("SELECT publicKey FROM qr_keys WHERE id = 'local'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("abc", c.getString(0))
+            }
+            val cursor2 = it.query("SELECT payload FROM altas_pendientes WHERE camareroId = 'c-1'")
+            cursor2.use { c ->
+                c.moveToFirst()
+                assertEquals("phid1:...", c.getString(0))
+            }
+        }
+    }
+
+    @Test
     fun migracion_v1_a_v2_anade_numeroCola() {
         // 1. BD en v1 con datos
         helper.createDatabase(TEST_DB, 1).use { db ->

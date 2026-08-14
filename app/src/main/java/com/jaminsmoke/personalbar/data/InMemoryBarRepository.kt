@@ -33,6 +33,8 @@ class InMemoryBarRepository(
     invitacionesIniciales: List<Invitacion> = emptyList(),
     identityConfigInicial: IdentityConfig = IdentityConfig(),
     siguienteColaInicial: Map<Destino, Int> = emptyMap(),
+    qrKeyInicial: QrKey? = null,
+    altasPendientesIniciales: List<AltaPendiente> = emptyList(),
 ) : BarRepository {
 
     private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>().also { it.addAll(rondasIniciales.map { r -> r.id }) }
@@ -52,6 +54,8 @@ class InMemoryBarRepository(
     private val _camareros = MutableStateFlow(camarerosIniciales)
     private val _identityConfig = MutableStateFlow(identityConfigInicial)
     private val _invitaciones = MutableStateFlow(invitacionesIniciales)
+    private val _qrKey = MutableStateFlow(qrKeyInicial)
+    private val _altasPendientes = MutableStateFlow(altasPendientesIniciales)
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
     /** Derivado síncrono de [Camarero.deServicio]: se recalcula en cada mutación de camareros. */
@@ -72,6 +76,8 @@ class InMemoryBarRepository(
     override val deServicio: StateFlow<List<Camarero>> = _deServicio.asStateFlow()
     override val identityConfig: StateFlow<IdentityConfig> = _identityConfig.asStateFlow()
     override val invitaciones: StateFlow<List<Invitacion>> = _invitaciones.asStateFlow()
+    override val qrKey: StateFlow<QrKey?> = _qrKey.asStateFlow()
+    override val altasPendientes: StateFlow<List<AltaPendiente>> = _altasPendientes.asStateFlow()
     override val eventos: SharedFlow<SalaEvent> = _eventos.asSharedFlow()
 
     // ── Rondas / tickets ──────────────────────────────────────────────────────
@@ -406,5 +412,20 @@ class InMemoryBarRepository(
     override fun sincronizarMiembros(camareroIds: List<String>) {
         camareroIds.forEach { id -> altaCamarero(id, null) }
         refrescarDeServicio()
+    }
+
+    override fun guardarClaveQr(key: QrKey) {
+        _qrKey.value = key
+    }
+
+    override fun registrarAltaPendiente(alta: AltaPendiente) {
+        _altasPendientes.update { list ->
+            val idx = list.indexOfFirst { it.camareroId == alta.camareroId }
+            if (idx >= 0) list.toMutableList().also { it[idx] = alta } else list + alta
+        }
+    }
+
+    override fun eliminarAltaPendiente(camareroId: String) {
+        _altasPendientes.update { it.filterNot { a -> a.camareroId == camareroId } }
     }
 }

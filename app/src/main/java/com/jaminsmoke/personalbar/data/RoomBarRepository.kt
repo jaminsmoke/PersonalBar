@@ -71,6 +71,8 @@ class RoomBarRepository(
                 invitacionesIniciales = dao.getInvitaciones(),
                 identityConfigInicial = dao.getIdentityConfig() ?: IdentityConfig(),
                 siguienteColaInicial = siguienteCola,
+                qrKeyInicial = dao.getQrKey(),
+                altasPendientesIniciales = dao.getAltasPendientes(),
             )
         }
     }
@@ -90,6 +92,8 @@ class RoomBarRepository(
     override val deServicio: StateFlow<List<Camarero>> get() = inner.deServicio
     override val identityConfig: StateFlow<IdentityConfig> get() = inner.identityConfig
     override val invitaciones: StateFlow<List<Invitacion>> get() = inner.invitaciones
+    override val qrKey: StateFlow<QrKey?> get() = inner.qrKey
+    override val altasPendientes: StateFlow<List<AltaPendiente>> get() = inner.altasPendientes
     override val eventos: SharedFlow<SalaEvent> get() = inner.eventos
 
     // ── Rondas / tickets ─────────────────────────────────────────────────────
@@ -256,6 +260,21 @@ class RoomBarRepository(
     override fun sincronizarMiembros(camareroIds: List<String>) {
         inner.sincronizarMiembros(camareroIds)
         persist { dao.replaceCamareros(inner.camareros.value) }
+    }
+
+    override fun guardarClaveQr(key: QrKey) {
+        inner.guardarClaveQr(key)
+        persist { dao.upsertQrKey(key) }
+    }
+
+    override fun registrarAltaPendiente(alta: AltaPendiente) {
+        inner.registrarAltaPendiente(alta)
+        persist { dao.insertAltaPendiente(alta) }
+    }
+
+    override fun eliminarAltaPendiente(camareroId: String) {
+        inner.eliminarAltaPendiente(camareroId)
+        persist { dao.deleteAltaPendiente(camareroId) }
     }
 
     // ── Persistencia ─────────────────────────────────────────────────────────
