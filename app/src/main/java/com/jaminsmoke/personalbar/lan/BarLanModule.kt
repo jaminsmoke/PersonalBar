@@ -8,6 +8,7 @@ import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
 import com.jaminsmoke.personalbar.data.Ticket
+import com.jaminsmoke.personalbar.data.convertirLayout
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
@@ -120,6 +121,11 @@ fun Application.barModule(repository: BarRepository) {
         }
 
         get("/v1/estado") {
+            // El layout canónico vive en el canvas horizontal de Bar; al exportar se
+            // convierten las posiciones al canvas 2000×2600 de Commander (escala
+            // uniforme + centrado). El repositorio conserva las posiciones canónicas.
+            val mesas = repository.mesas.value
+            val convertidas = convertirLayout(mesas)
             call.respond(
                 EstadoResponse(
                     version = BarLanConfig.VERSION,
@@ -128,7 +134,9 @@ fun Application.barModule(repository: BarRepository) {
                     bebida = repository.bebidaQueue.value,
                     comida = repository.comidaQueue.value,
                     servidos = repository.servidos.value,
-                    mesas = repository.mesas.value,
+                    mesas = mesas.map { m ->
+                        convertidas[m.id]?.let { (x, y) -> m.copy(posX = x, posY = y) } ?: m
+                    },
                 )
             )
         }

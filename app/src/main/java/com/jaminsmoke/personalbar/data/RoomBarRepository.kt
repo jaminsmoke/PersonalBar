@@ -57,11 +57,29 @@ class RoomBarRepository(
             if (renumerados != tickets) {
                 dao.replaceTickets(renumerados)
             }
+            // Migración de layout: con el canvas horizontal (2600×2000), las mesas
+            // persistidas fuera de los nuevos límites se reubican al grid más cercano.
+            val mesasBd = dao.getMesas()
+            val fuera = mesasBd.any { m ->
+                val (w, h) = mesaDims(m.forma, m.girada)
+                m.posX < CELL_F || m.posY < CELL_F ||
+                    m.posX + w > ZONA_ANCHO - CELL_F || m.posY + h > ZONA_ALTO - CELL_F
+            }
+            val mesasIniciales = if (fuera) {
+                val reparadas = normalizarMesasEnGrid(mesasBd)
+                val list = mesasBd.map { m ->
+                    reparadas[m.id]?.let { (x, y) -> m.copy(posX = x, posY = y) } ?: m
+                }
+                dao.replaceMesas(list)
+                list
+            } else {
+                mesasBd
+            }
             InMemoryBarRepository(
                 establecimientoInicial = dao.getEstablecimiento() ?: establecimientoInicial,
                 salasIniciales = salasBd,
                 catalogoInicial = dao.getProductos(),
-                mesasIniciales = dao.getMesas(),
+                mesasIniciales = mesasIniciales,
                 rondasIniciales = dao.getRondas(),
                 bebidaInicial = renumerados.filter { it.destino == Destino.BARRA && it.estado != TicketEstado.RECOGIDO },
                 comidaInicial = renumerados.filter { it.destino == Destino.COCINA && it.estado != TicketEstado.RECOGIDO },

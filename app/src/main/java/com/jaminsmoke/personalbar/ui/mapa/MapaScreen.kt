@@ -425,17 +425,43 @@ private fun BoardView(
 
     fun autoFit() {
         if (viewportSize.width > 0 && viewportSize.height > 0) {
-            val contentW = with(density) { ZONA_ANCHO.dp.toPx() }
-            val contentH = with(density) { ZONA_ALTO.dp.toPx() }
             val fitPadding = with(density) { 12.dp.toPx() }
+            val marginDp = 2f * CELL_F
+            // Encaja el CONTENIDO (bounding box de las mesas + margen), no el grid vacío.
+            var leftDp = 0f
+            var topDp = 0f
+            var contentWDp = ZONA_ANCHO
+            var contentHDp = ZONA_ALTO
+            if (mesas.isNotEmpty()) {
+                var minX = Float.MAX_VALUE
+                var minY = Float.MAX_VALUE
+                var maxX = -Float.MAX_VALUE
+                var maxY = -Float.MAX_VALUE
+                mesas.forEach { m ->
+                    val (w, h) = mesaDims(m.forma, m.girada)
+                    minX = minOf(minX, m.posX)
+                    minY = minOf(minY, m.posY)
+                    maxX = maxOf(maxX, m.posX + w)
+                    maxY = maxOf(maxY, m.posY + h)
+                }
+                leftDp = minX - marginDp
+                topDp = minY - marginDp
+                contentWDp = maxX - minX + 2 * marginDp
+                contentHDp = maxY - minY + 2 * marginDp
+            }
             val newScale = calcularEscalaAjuste(
                 viewportSize.width.toFloat(), viewportSize.height.toFloat(),
-                contentW, contentH, fitPadding,
+                with(density) { contentWDp.dp.toPx() }, with(density) { contentHDp.dp.toPx() }, fitPadding,
             )
             scale = newScale
-            panX = (viewportSize.width - contentW * newScale) / 2f
-            panY = (viewportSize.height - contentH * newScale) / 2f
-            clampPan()
+            // Centra el contenido en el viewport. Si el contenido es más ancho/alto que
+            // el viewport, sobresale simétricamente (el usuario puede hacer pan).
+            val leftPx = with(density) { leftDp.dp.toPx() } * newScale
+            val topPx = with(density) { topDp.dp.toPx() } * newScale
+            val contentWPx = with(density) { contentWDp.dp.toPx() } * newScale
+            val contentHPx = with(density) { contentHDp.dp.toPx() } * newScale
+            panX = (viewportSize.width - contentWPx) / 2f - leftPx
+            panY = (viewportSize.height - contentHPx) / 2f - topPx
         }
     }
 
@@ -450,6 +476,11 @@ private fun BoardView(
         clampPan()
     }
 
+    // Cada sala tiene su propio contenido (banda del canvas): al cambiar de sala se
+    // re-encaja a su bounding box. Dentro de la misma sala no se re-encaja (el usuario
+    // mantiene su pan/zoom al mover mesas).
+    val salaActual = mesas.firstOrNull()?.salaId
+    LaunchedEffect(salaActual) { boardAutoFitado = false }
     LaunchedEffect(viewportSize, mesas) {
         if (viewportSize.width > 0 && mesas.isNotEmpty() && !boardAutoFitado) {
             autoFit()
