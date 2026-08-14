@@ -169,12 +169,12 @@ Cada ticket en cola tiene un **id de orden estable y hablable** por destino (`nu
 
 Bar se identifica con la **cuenta de negocio/establecimiento** (no con camareros). En el **header** hay un icono de cuenta que abre un modal con **dos flujos separados**:
 
-- **Crear cuenta** (registro): nombre, email, contraseña, **tipo** (bar/restaurante/cafetería/pub) y **logo opcional**. Llama a `POST /v1/auth/negocio/registro` y luego vincula el establecimiento (`/v1/establecimientos`).
-- **Iniciar sesión** (login): email + contraseña, con **«Recuérdame»**: si se marca, la sesión (token + perfil) se **persiste en Room** (`sesion_negocio`, migración v4) y se restaura al arrancar; si no, solo en memoria.
+- **Crear cuenta** (registro): nombre, email, contraseña, **tipo** (bar/restaurante/cafetería/pub/bar de copas) y **logo opcional** (picker de imagen). Llama a `POST /v1/auth/negocio/registro` (envía el tipo), luego vincula el establecimiento (`/v1/establecimientos`) y sube el logo (`POST /v1/auth/negocio/me/logo`, multipart).
+- **Iniciar sesión** (login): email + contraseña, con **«Recuérdame»**: si se marca, la sesión (token + perfil) se **persiste en Room** (`sesion_negocio`, migración v5) y se restaura al arrancar; si no, solo en memoria.
 
-Una vez logueado, el header muestra el **nombre del establecimiento** (y el logo cuando exista); **nada de camareros** (los camareros se gestionan en Camareros, dentro de Gestión). El usuario **no ve la URL del server Identity** (config de entorno; en dev `http://10.0.2.2:8080`, en producción un VPS).
+Una vez logueado, el header muestra el **nombre del establecimiento** y su **logo real** (descargado de Identity; si no hay logo o falla, solo el nombre); **nada de camareros** (los camareros se gestionan en Camareros, dentro de Gestión). El usuario **no ve la URL del server Identity** (config de entorno; en dev `http://10.0.2.2:8080`, en producción un VPS).
 
-**Pendiente de Identity** (ítem en su kanban): los campos `tipo_establecimiento` y `logo` aún no existen en `CuentaNegocio`; Bar los guarda **localmente** (en la sesión) hasta que Identity los exponga.
+**Tipo y logo se sincronizan contra Identity** (fuente canónica): el registro envía `tipo_establecimiento`, el login recupera `tipo_establecimiento` + `logo_url` del perfil y Bar persiste el `logoUrl` en la sesión (Room v5 sustituye el antiguo placeholder `logoClave`).
 
 ## Voz en colas
 

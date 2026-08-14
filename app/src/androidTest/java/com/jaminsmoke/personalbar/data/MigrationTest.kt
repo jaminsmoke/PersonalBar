@@ -66,6 +66,34 @@ class MigrationTest {
     }
 
     @Test
+    fun migracion_v4_a_v5_renombra_logoClave_a_logoUrl() {
+        // 1. BD en v4 con una sesión (logoClave era placeholder local)
+        helper.createDatabase(TEST_DB, 4).use { db ->
+            db.execSQL(
+                "INSERT INTO sesion_negocio (id, token, email, nombreMostrar, establecimientoUuid, tipo, logoClave) " +
+                    "VALUES ('local', 'tok-1', 'negocio@x.es', 'La Terraza', 'e-1', 'BAR', 'placeholder')"
+            )
+        }
+
+        // 2. Migrar a v5: se conservan los datos y logoUrl arranca NULL
+        val db = helper.runMigrationsAndValidate(TEST_DB, 5, true, AppDatabase.MIGRATION_4_5)
+        db.use {
+            val cursor = it.query(
+                "SELECT token, email, nombreMostrar, establecimientoUuid, tipo, logoUrl FROM sesion_negocio WHERE id = 'local'"
+            )
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("tok-1", c.getString(0))
+                assertEquals("negocio@x.es", c.getString(1))
+                assertEquals("La Terraza", c.getString(2))
+                assertEquals("e-1", c.getString(3))
+                assertEquals("BAR", c.getString(4))
+                assertEquals(null, c.getString(5))
+            }
+        }
+    }
+
+    @Test
     fun migracion_v1_a_v2_anade_numeroCola() {
         // 1. BD en v1 con datos
         helper.createDatabase(TEST_DB, 1).use { db ->
