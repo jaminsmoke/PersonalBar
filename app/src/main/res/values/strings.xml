@@ -5,8 +5,13 @@
     <!-- Sidebar -->
     <string name="nav_colas">Colas</string>
     <string name="nav_mapa">Mapa</string>
-    <string name="nav_camareros">Camareros</string>
+    <string name="nav_gestion">Gestión</string>
     <string name="nav_ajustes">Ajustes</string>
+
+    <!-- Gestión (hub) -->
+    <string name="gestion_titulo">Gestión</string>
+    <string name="gestion_volver">Volver</string>
+    <string name="gestion_camareros">Camareros</string>
 
     <!-- Local -->
     <string name="local_activo">Local activo</string>

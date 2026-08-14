@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.LocalBar
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Mic
@@ -63,13 +64,14 @@ import com.jaminsmoke.personalbar.ui.components.PbColumnHeader
 import com.jaminsmoke.personalbar.ui.components.PbEmptyQueue
 import com.jaminsmoke.personalbar.ui.components.PbRoomStatus
 import com.jaminsmoke.personalbar.ui.components.PbTicketCard
+import com.jaminsmoke.personalbar.ui.gestion.GestionScreen
 import com.jaminsmoke.personalbar.ui.mapa.MapaScreen
 
 /** Entradas del sidebar (navigation rail) del puesto de barra. */
 enum class PbSection(val route: String, val labelRes: Int, val icon: ImageVector) {
     COLAS("colas", R.string.nav_colas, Icons.Outlined.Checklist),
     MAPA("mapa", R.string.nav_mapa, Icons.Default.Map),
-    CAMAREROS("camareros", R.string.nav_camareros, Icons.Default.QrCode),
+    GESTION("gestion", R.string.nav_gestion, Icons.Default.Business),
     AJUSTES("ajustes", R.string.nav_ajustes, Icons.Default.Settings),
 }
 
@@ -142,7 +144,7 @@ fun ExpoScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                     PbSection.MAPA -> MapaScreen()
-                    PbSection.CAMAREROS -> CamarerosScreen()
+                    PbSection.GESTION -> GestionScreen()
                     PbSection.AJUSTES -> AjustesScreen()
                 }
             }
