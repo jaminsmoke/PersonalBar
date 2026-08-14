@@ -31,6 +31,7 @@ Bar es el **host de sala**. Servidor Ktor (CIO). Puerto fijo: **8787**.
 | Endpoint | Método | Descripción |
 |---|---|---|
 | `/health` | GET | `{"ok":true,"role":"bar","establecimiento":"La Terraza","sala":"La Terraza","version":"0.1"}` (`sala` = alias deprecado) |
+| `/v1/sesion` | POST | Consulta lista blanca: `{ "qr": "phid1:…" }` → 200 `{ admitido, camareroId, nombre }` o 400 si el QR no parsea. No es un alta. No exige handshake para el resto de rutas. |
 | `/v1/rondas` | POST | Recibe una ronda (idempotente por `id`) → 201 con los tickets BARRA/COCINA |
 | `/v1/tickets/{id}/preparado` | POST | Marca **preparado** un ticket (por destino); body `{"preparado_por":"Ana"}` |
 | `/v1/tickets/{id}/recogido` | POST | Marca **recogido**; el ticket sale de cola → servidos |
@@ -90,6 +91,21 @@ El estado operativo (LIBRE/OCUPADA/EN_COCINA) se deriva de las rondas/tickets en
 ```
 
 Bar parte la ronda en tickets **BARRA** (bebida) y **COCINA** (comida); el destino se deriva de la categoría del producto. Preparado/recogido es **por destino** (cañas ≠ pizza), y `preparado_por` viaja en el ticket y en el evento SSE.
+
+### Payload de sesión (`POST /v1/sesion`)
+
+Consulta a la lista blanca para el candado UX de Commander. **No** da de alta ni pone de servicio. El resto de rutas no exigen handshake (LAN 0.1).
+
+```json
+{ "qr": "phid1:<camarero_id>:<credencial_id>:<firma>" }
+```
+
+| Caso | HTTP | Body |
+|---|---|---|
+| Lista ACTIVA | 200 | `{ "admitido": true, "camareroId", "nombre" }` |
+| Ausente o REVOCADA | 200 | `{ "admitido": false, "camareroId", "nombre"? }` |
+| QR mal formado | 400 | vacío |
+| Clave cacheada y firma inválida | 200 | `{ "admitido": false, "camareroId" }` |
 
 ### Payload del evento SSE (`/v1/eventos`)
 

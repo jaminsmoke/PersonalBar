@@ -1,5 +1,7 @@
 package com.jaminsmoke.personalbar.lan
 
+import com.jaminsmoke.personalbar.data.Camarero
+import com.jaminsmoke.personalbar.data.CamareroEstado
 import com.jaminsmoke.personalbar.data.InMemoryBarRepository
 import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Producto
@@ -157,6 +159,70 @@ class BarLanModuleTest {
         assertTrue(repository.bebidaQueue.value.isEmpty())
         assertEquals(1, repository.servidos.value.size)
         assertEquals(TicketEstado.RECOGIDO, repository.servidos.value[0].estado)
+    }
+
+    @Test
+    fun sesionActivaAdmitidaSinAlta() = testApplication {
+        val id = "11111111-1111-4111-8111-111111111111"
+        val repository = InMemoryBarRepository(
+            camarerosIniciales = listOf(Camarero(id = id, nombre = "luciaTest")),
+        )
+        application { barModule(repository) }
+
+        val resp = client.post("/v1/sesion") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr":"phid1:$id:22222222-2222-4222-8222-222222222222:firmaTest"}""")
+        }
+        assertEquals(HttpStatusCode.OK, resp.status)
+        val sesion = LanJson.decodeFromString<SesionResponse>(resp.bodyAsText())
+        assertEquals(true, sesion.admitido)
+        assertEquals(id, sesion.camareroId)
+        assertEquals("luciaTest", sesion.nombre)
+        assertEquals(1, repository.camareros.value.size)
+        assertEquals(false, repository.camareros.value[0].deServicio)
+    }
+
+    @Test
+    fun sesionRevocadaNoAdmitida() = testApplication {
+        val id = "11111111-1111-4111-8111-111111111111"
+        val repository = InMemoryBarRepository(
+            camarerosIniciales = listOf(
+                Camarero(id = id, nombre = "luciaTest", estado = CamareroEstado.REVOCADA),
+            ),
+        )
+        application { barModule(repository) }
+
+        val resp = client.post("/v1/sesion") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr":"phid1:$id:22222222-2222-4222-8222-222222222222:firmaTest"}""")
+        }
+        val sesion = LanJson.decodeFromString<SesionResponse>(resp.bodyAsText())
+        assertEquals(HttpStatusCode.OK, resp.status)
+        assertEquals(false, sesion.admitido)
+        assertEquals(id, sesion.camareroId)
+    }
+
+    @Test
+    fun sesionQrInvalidoBadRequest() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+        val resp = client.post("/v1/sesion") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr":"no-es-phid1"}""")
+        }
+        assertEquals(HttpStatusCode.BadRequest, resp.status)
+        assertTrue(repository.camareros.value.isEmpty())
+    }
+
+    @Test
+    fun rondaSinSesionPreviaSigueCreando() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+        val resp = client.post("/v1/rondas") {
+            contentType(ContentType.Application.Json)
+            setBody(LanJson.encodeToString(ronda()))
+        }
+        assertEquals(HttpStatusCode.Created, resp.status)
     }
 
     @Test
