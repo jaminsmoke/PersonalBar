@@ -131,6 +131,10 @@ Cada evento es un JSON autodescriptivo (v1): `event:` = `tipo`, `data:` = payloa
 
 `destino` serializa como enum `BARRA`/`COCINA` (Commander mapea a Bebida/Comida). Los campos nuevos son opcionales (default) para backward-compatibilidad: un Commander antiguo ignora los desconocidos y uno nuevo decodifica eventos antiguos con `mesaId`/`ticket` en `null`.
 
+### Codificación (UTF-8)
+
+Todo el I/O de texto del nodo es UTF-8 explícito: las respuestas de Identity y el `POST /v1/rondas` se leen en UTF-8 y las peticiones salen con `Content-Type: application/json; charset=utf-8`. Nombres con acentos (camareros, productos) viajan intactos por JSON/SSE.
+
 ### Probar desde el host
 
 ```bash
