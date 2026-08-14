@@ -96,11 +96,23 @@ class SerializationTest {
             nombreMostrar = "La Terraza",
             email = "negocio@example.com",
             password = "secret123",
+            tipoEstablecimiento = "bar",
         )
         val json = LanJson.encodeToString(req)
         assertTrue(json.contains("\"nombre_mostrar\":\"La Terraza\""))
+        assertTrue(json.contains("\"tipo_establecimiento\":\"bar\""))
         val dec = LanJson.decodeFromString<RegistroNegocioRequest>(json)
         assertEquals("La Terraza", dec.nombreMostrar)
+    }
+
+    @Test
+    fun identityCuentaNegocioCapturaTipoLogo() {
+        val json = """
+            {"token":"tok-1","cuenta":{"id":"c-1","email":"negocio@example.com","nombre_mostrar":"La Terraza","tipo_establecimiento":"bar","logo_url":"/v1/auth/negocio/me/logo"}}
+        """.trimIndent()
+        val resp = LanJson.decodeFromString<IdentityLoginResponse>(json)
+        assertEquals("bar", resp.cuenta.tipoEstablecimiento)
+        assertEquals("/v1/auth/negocio/me/logo", resp.cuenta.logoUrl)
     }
 
     @Test

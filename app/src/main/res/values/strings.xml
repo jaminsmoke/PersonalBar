@@ -141,8 +141,10 @@
     <string name="sesion_nombre">Nombre del establecimiento</string>
     <string name="sesion_email">Email</string>
     <string name="sesion_password">Contraseña</string>
-    <string name="sesion_tipo">Tipo de establecimiento</string>
-    <string name="sesion_logo">Logo (opcional)</string>
+    <string name="sesion_logo">Logo del establecimiento</string>
+    <string name="sesion_elegir_logo">Elegir logo</string>
+    <string name="sesion_logo_opcional">Sin logo (opcional)</string>
+    <string name="sesion_logo_seleccionado">Logo seleccionado</string>
     <string name="sesion_recordar">Recuérdame</string>
     <string name="sesion_entrar">Entrar</string>
     <string name="sesion_registrarse">Registrarse</string>
@@ -154,7 +156,8 @@
     <string name="sesion_tipo_bar">Bar</string>
     <string name="sesion_tipo_restaurante">Restaurante</string>
     <string name="sesion_tipo_cafeteria">Cafetería</string>
-    <string name="sesion_tipo_pub">Pub de copas</string>
+    <string name="sesion_tipo_pub">Pub</string>
+    <string name="sesion_tipo_copas">Bar de copas</string>
 
     <!-- Voz en colas -->
     <string name="voz_escuchar">Escuchar</string>

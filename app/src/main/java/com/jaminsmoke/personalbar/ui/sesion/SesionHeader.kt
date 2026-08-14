@@ -1,5 +1,10 @@
 package com.jaminsmoke.personalbar.ui.sesion
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,7 +12,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.AlertDialog
@@ -30,6 +37,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,17 +49,34 @@ import com.jaminsmoke.personalbar.ui.SesionViewModel
 
 /**
  * Indicador de sesión del header: icono de cuenta. Sin sesión abre el modal de
- * login/registro; con sesión muestra el nombre del establecimiento y permite cerrar.
+ * login/registro; con sesión muestra el nombre del establecimiento (y su logo, si
+ * tiene) y permite cerrar.
  */
 @Composable
 fun SesionHeader(
     viewModel: SesionViewModel = viewModel(),
 ) {
     val sesion by viewModel.sesion.collectAsState()
+    val logoBytes by viewModel.logoBytes.collectAsState()
     var modalVisible by remember { mutableStateOf(false) }
+
+    val logoBitmap = remember(logoBytes) {
+        logoBytes?.let { bytes ->
+            runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }
+                .getOrNull()
+        }
+    }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (sesion != null) {
+            if (logoBitmap != null) {
+                Image(
+                    bitmap = logoBitmap,
+                    contentDescription = stringResource(R.string.sesion_logo),
+                    modifier = Modifier.size(28.dp).clip(CircleShape),
+                )
+                Spacer(Modifier.width(8.dp))
+            }
             Text(
                 text = sesion?.nombreMostrar ?: stringResource(R.string.sesion_cuenta_negocio),
                 style = MaterialTheme.typography.labelLarge,
@@ -112,8 +138,12 @@ private fun SesionDialog(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var tipo by remember { mutableStateOf(TipoEstablecimiento.BAR) }
-    var logoClave by remember { mutableStateOf("") }
+    var logoUri by remember { mutableStateOf<Uri?>(null) }
     var recordar by remember { mutableStateOf(false) }
+
+    val pickLogo = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) logoUri = uri
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -154,13 +184,19 @@ private fun SesionDialog(
                         onSeleccionar = { tipo = it },
                     )
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = logoClave,
-                        onValueChange = { logoClave = it },
-                        label = { Text(stringResource(R.string.sesion_logo)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(onClick = { pickLogo.launch("image/*") }) {
+                            Text(stringResource(R.string.sesion_elegir_logo))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(
+                                if (logoUri == null) R.string.sesion_logo_opcional else R.string.sesion_logo_seleccionado
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -181,7 +217,7 @@ private fun SesionDialog(
                 enabled = !trabajando,
                 onClick = {
                     if (modoRegistro) {
-                        viewModel.registro(nombre, email, password, tipo, logoClave.takeIf { it.isNotBlank() }, recordar)
+                        viewModel.registro(nombre, email, password, tipo, logoUri, recordar)
                     } else {
                         viewModel.login(email, password, recordar)
                     }
@@ -231,4 +267,5 @@ private fun tipoLabel(tipo: TipoEstablecimiento): Int = when (tipo) {
     TipoEstablecimiento.RESTAURANTE -> R.string.sesion_tipo_restaurante
     TipoEstablecimiento.CAFETERIA -> R.string.sesion_tipo_cafeteria
     TipoEstablecimiento.PUB -> R.string.sesion_tipo_pub
+    TipoEstablecimiento.COPAS -> R.string.sesion_tipo_copas
 }

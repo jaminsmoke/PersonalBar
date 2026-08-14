@@ -153,15 +153,34 @@ data class IdentityConfig(
     val error: String? = null,
 )
 
-/** Tipo de establecimiento (categoría del negocio), pedido en el registro. */
+/** Tipo de establecimiento (categoría del negocio), pedido en el registro. Catálogo 1:1 con Identity. */
 @Serializable
-enum class TipoEstablecimiento { BAR, RESTAURANTE, CAFETERIA, PUB }
+enum class TipoEstablecimiento { BAR, RESTAURANTE, CAFETERIA, PUB, COPAS }
+
+/** Valor canónico del catálogo de Identity para un tipo (snake_case, sin tildes). */
+fun TipoEstablecimiento.apiValor(): String = when (this) {
+    TipoEstablecimiento.BAR -> "bar"
+    TipoEstablecimiento.RESTAURANTE -> "restaurante"
+    TipoEstablecimiento.CAFETERIA -> "cafeteria"
+    TipoEstablecimiento.PUB -> "pub"
+    TipoEstablecimiento.COPAS -> "copas"
+}
+
+/** Tipo desde el valor del catálogo de Identity; null si no coincide. */
+fun tipoDesdeApi(valor: String?): TipoEstablecimiento? = when (valor) {
+    "bar" -> TipoEstablecimiento.BAR
+    "restaurante" -> TipoEstablecimiento.RESTAURANTE
+    "cafeteria" -> TipoEstablecimiento.CAFETERIA
+    "pub" -> TipoEstablecimiento.PUB
+    "copas" -> TipoEstablecimiento.COPAS
+    else -> null
+}
 
 /**
  * Sesión de la cuenta de negocio en el puesto de Bar (tabla singleton).
  * Se persiste solo si el usuario marcó «Recuérdame» en el login; si no,
- * vive en memoria y se pierde al reiniciar. [tipo]/[logoClave] se guardan
- * aquí mientras Identity no expone esos campos (ítem en su kanban).
+ * vive en memoria y se pierde al reiniciar. [tipo] y [logoUrl] se
+ * sincronizan contra Identity (fuente canónica del perfil de negocio).
  */
 @Entity(tableName = "sesion_negocio")
 data class SesionNegocio(
@@ -171,7 +190,7 @@ data class SesionNegocio(
     val nombreMostrar: String? = null,
     val establecimientoUuid: String? = null,
     val tipo: TipoEstablecimiento? = null,
-    val logoClave: String? = null,
+    val logoUrl: String? = null,
 )
 
 /** Rol de un camarero en el establecimiento. */

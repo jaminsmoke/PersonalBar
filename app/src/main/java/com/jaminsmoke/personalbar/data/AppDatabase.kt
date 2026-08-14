@@ -10,7 +10,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Base de datos del nodo (fuente de verdad durable). v2 añade `tickets.numeroCola`
  * (id de cola visible/hablable por destino); v3 añade `camareros.deServicio`
  * (varios preparadores activos en el puesto); v4 añade `sesion_negocio`
- * (sesión de la cuenta de negocio con «Recuérdame»). Schema exportado a
+ * (sesión de la cuenta de negocio con «Recuérdame»); v5 sustituye `logoClave`
+ * por `logoUrl` (logo sincronizado contra Identity). Schema exportado a
  * `app/schemas/` para versionar migraciones futuras igual que Commander.
  */
 @Database(
@@ -27,7 +28,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         IdentityConfig::class,
         SesionNegocio::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -72,6 +73,32 @@ abstract class AppDatabase : RoomDatabase() {
                         "tipo TEXT, " +
                         "logoClave TEXT)"
                 )
+            }
+        }
+
+        /**
+         * v4→v5: `sesion_negocio.logoClave` (placeholder local) se sustituye por
+         * `logoUrl` (URL del logo en Identity). Se recrea la tabla singleton
+         * conservando token/email/nombre/uuid/tipo; `logoUrl` arranca NULL.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS sesion_negocio_new (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "token TEXT, " +
+                        "email TEXT, " +
+                        "nombreMostrar TEXT, " +
+                        "establecimientoUuid TEXT, " +
+                        "tipo TEXT, " +
+                        "logoUrl TEXT)"
+                )
+                db.execSQL(
+                    "INSERT INTO sesion_negocio_new (id, token, email, nombreMostrar, establecimientoUuid, tipo, logoUrl) " +
+                        "SELECT id, token, email, nombreMostrar, establecimientoUuid, tipo, NULL FROM sesion_negocio"
+                )
+                db.execSQL("DROP TABLE sesion_negocio")
+                db.execSQL("ALTER TABLE sesion_negocio_new RENAME TO sesion_negocio")
             }
         }
     }

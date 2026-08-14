@@ -1,5 +1,6 @@
 package com.jaminsmoke.personalbar.ui
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jaminsmoke.personalbar.PersonalBarApp
@@ -7,21 +8,31 @@ import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.SesionNegocio
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
+import com.jaminsmoke.personalbar.data.apiValor
+import com.jaminsmoke.personalbar.data.tipoDesdeApi
 import com.jaminsmoke.personalbar.lan.IdentityClient
+import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Sesión de la cuenta de negocio en el puesto de Bar. El usuario no ve la URL del
- * server Identity (config de entorno/dev); solo hace login/registro.
+ * server Identity (config de entorno/dev); solo hace login/registro. El tipo y el
+ * logo del establecimiento se sincronizan contra Identity.
  */
 class SesionViewModel : ViewModel() {
     private val app = PersonalBarApp.get()
 
     private val _sesion = MutableStateFlow<SesionNegocio?>(null)
     val sesion: StateFlow<SesionNegocio?> = _sesion.asStateFlow()
+
+    /** Bytes del logo descargado de Identity (null = sin logo o aún no cargado). */
+    private val _logoBytes = MutableStateFlow<ByteArray?>(null)
+    val logoBytes: StateFlow<ByteArray?> = _logoBytes.asStateFlow()
 
     private val _trabajando = MutableStateFlow(false)
     val trabajando: StateFlow<Boolean> = _trabajando.asStateFlow()
@@ -37,6 +48,7 @@ class SesionViewModel : ViewModel() {
             if (guardada?.token != null) {
                 hidratarIdentity(guardada)
                 _sesion.value = guardada
+                cargarLogo()
             }
         }
     }
@@ -65,28 +77,30 @@ class SesionViewModel : ViewModel() {
                 _mensaje.value = R.string.sesion_vincular_fallido
                 return@launch
             }
+            val perfil = IdentityClient.cuentaNegocio
             val sesion = SesionNegocio(
                 token = IdentityClient.negocioToken,
                 email = mail,
-                nombreMostrar = IdentityClient.cuentaNegocio?.nombreMostrar,
+                nombreMostrar = perfil?.nombreMostrar,
                 establecimientoUuid = uuid,
-                tipo = _sesion.value?.tipo,
-                logoClave = _sesion.value?.logoClave,
+                tipo = tipoDesdeApi(perfil?.tipoEstablecimiento),
+                logoUrl = perfil?.logoUrl,
             )
             _sesion.value = sesion
             marcarConectado(uuid)
             persistirSesion(sesion, recordar)
+            cargarLogo()
             _trabajando.value = false
         }
     }
 
-    /** Registro de cuenta de negocio nueva + login + vínculo del establecimiento. */
+    /** Registro de cuenta de negocio nueva + login + vínculo + subida del logo (si hay). */
     fun registro(
         nombre: String,
         email: String,
         password: String,
         tipo: TipoEstablecimiento?,
-        logoClave: String?,
+        logoUri: Uri?,
         recordar: Boolean,
     ) {
         val mail = email.trim()
@@ -98,7 +112,7 @@ class SesionViewModel : ViewModel() {
         _mensaje.value = null
         _trabajando.value = true
         viewModelScope.launch {
-            val id = IdentityClient.registroNegocio(nombreTrim, mail, password)
+            val id = IdentityClient.registroNegocio(nombreTrim, mail, password, tipo?.apiValor())
             if (id == null) {
                 _trabajando.value = false
                 _mensaje.value = R.string.sesion_registro_fallido
@@ -116,17 +130,28 @@ class SesionViewModel : ViewModel() {
                 _mensaje.value = R.string.sesion_vincular_fallido
                 return@launch
             }
+
+            // Subir el logo si el usuario eligió imagen (el server lo normaliza a WebP).
+            var logoUrl: String? = null
+            if (logoUri != null) {
+                val (bytes, mimetype) = leerImagen(logoUri)
+                if (bytes != null && IdentityClient.subirLogo(bytes, mimetype)) {
+                    logoUrl = IdentityClient.LOGO_PATH
+                }
+            }
+
             val sesion = SesionNegocio(
                 token = IdentityClient.negocioToken,
                 email = mail,
                 nombreMostrar = IdentityClient.cuentaNegocio?.nombreMostrar ?: nombreTrim,
                 establecimientoUuid = uuid,
                 tipo = tipo,
-                logoClave = logoClave,
+                logoUrl = logoUrl,
             )
             _sesion.value = sesion
             marcarConectado(uuid)
             persistirSesion(sesion, recordar)
+            cargarLogo()
             _trabajando.value = false
         }
     }
@@ -134,6 +159,7 @@ class SesionViewModel : ViewModel() {
     fun logout() {
         IdentityClient.desconectar()
         _sesion.value = null
+        _logoBytes.value = null
         app.repository.setIdentityConfig(IdentityConfig())
         viewModelScope.launch { app.db.barDao().clearSesionNegocio() }
     }
@@ -153,6 +179,23 @@ class SesionViewModel : ViewModel() {
         }
     }
 
+    /** Descarga el logo de Identity y lo expone para el header. */
+    private fun cargarLogo() {
+        viewModelScope.launch {
+            _logoBytes.value = IdentityClient.obtenerLogo()
+        }
+    }
+
+    /** Lee los bytes y el mimetype de una imagen elegida (galería). */
+    private suspend fun leerImagen(uri: Uri): Pair<ByteArray?, String> = withContext(Dispatchers.IO) {
+        val resolver = app.contentResolver
+        val bytes = runCatching {
+            resolver.openInputStream(uri)?.use { it.readBytes() }
+        }.getOrNull()
+        val mimetype = resolver.getType(uri) ?: "image/webp"
+        bytes to mimetype
+    }
+
     /** Rehidrata el [IdentityClient] con la sesión guardada en Room. */
     private fun hidratarIdentity(sesion: SesionNegocio) {
         // La URL del server no se guarda por sesión: IdentityClient usa la config de
@@ -160,9 +203,11 @@ class SesionViewModel : ViewModel() {
         IdentityClient.negocioToken = sesion.token
         IdentityClient.establecimientoUuid = sesion.establecimientoUuid
         IdentityClient.cuentaNegocio = sesion.nombreMostrar?.let { nombre ->
-            com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio(
+            IdentityCuentaNegocio(
                 email = sesion.email.orEmpty(),
                 nombreMostrar = nombre,
+                tipoEstablecimiento = sesion.tipo?.apiValor(),
+                logoUrl = sesion.logoUrl,
             )
         }
     }
