@@ -100,6 +100,7 @@ fun ExpoScreen(
                     Spacer(Modifier.width(8.dp))
                     PbRoomStatus(
                         active = uiState.roomActive,
+                        fgsOk = uiState.fgsOk,
                         onToggle = viewModel::toggleLocal,
                     )
                     Spacer(Modifier.width(16.dp))
