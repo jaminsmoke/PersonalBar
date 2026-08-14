@@ -105,6 +105,32 @@ data class Reserva(
     val canceladaEn: Long? = null,
 )
 
+/** Estado de una invitación por email (mirror local; la aceptación vive en Identity Web). */
+@Serializable
+enum class InvitacionEstado { PENDIENTE, ACEPTADA, REVOCADA }
+
+/**
+ * Invitación por email creada desde Bar (registro local; la verdad vive en Identity).
+ * La aceptación ocurre en Identity Web (magic-link), fuera de Bar.
+ */
+@Serializable
+data class Invitacion(
+    val id: String,
+    val email: String,
+    val rol: String = "staff",
+    val estado: InvitacionEstado = InvitacionEstado.PENDIENTE,
+    val expiraEn: String? = null,
+    val creadaEn: Long = System.currentTimeMillis(),
+)
+
+/** Configuración de la conexión con Identity (v0.1 in-memory; se pierde al reiniciar). */
+data class IdentityConfig(
+    val conectado: Boolean = false,
+    val baseUrl: String? = null,
+    val establecimientoUuid: String? = null,
+    val error: String? = null,
+)
+
 /** Rol de un camarero en el establecimiento. */
 @Serializable
 enum class RolCamarero { DUENO, STAFF }

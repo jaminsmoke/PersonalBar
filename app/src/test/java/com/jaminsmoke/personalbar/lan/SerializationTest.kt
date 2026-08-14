@@ -3,6 +3,8 @@ package com.jaminsmoke.personalbar.lan
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.Establecimiento
+import com.jaminsmoke.personalbar.data.Invitacion
+import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.RolCamarero
@@ -14,6 +16,7 @@ import com.jaminsmoke.personalbar.data.TicketEstado
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SerializationTest {
@@ -46,6 +49,48 @@ class SerializationTest {
         )
         val json = LanJson.encodeToString(ticket)
         assertEquals(ticket, LanJson.decodeFromString<Ticket>(json))
+    }
+
+    @Test
+    fun invitacionRoundTrip() {
+        val invitacion = Invitacion(
+            id = "inv-1",
+            email = "ana@example.com",
+            rol = "staff",
+            estado = InvitacionEstado.PENDIENTE,
+            expiraEn = "2026-08-17T12:00:00Z",
+        )
+        val json = LanJson.encodeToString(invitacion)
+        assertEquals(invitacion, LanJson.decodeFromString<Invitacion>(json))
+    }
+
+    @Test
+    fun identityInvitacionRoundTrip() {
+        val invitacion = IdentityInvitacion(
+            id = "11111111-1111-4111-8111-111111111111",
+            email = "ana@example.com",
+            rol = "staff",
+            estado = "pendiente",
+            expiraEn = "2026-08-17T12:00:00Z",
+        )
+        val json = LanJson.encodeToString(invitacion)
+        // El campo del server es snake_case: expira_en
+        assertTrue(json.contains("\"expira_en\""))
+        assertEquals(invitacion, LanJson.decodeFromString<IdentityInvitacion>(json))
+    }
+
+    @Test
+    fun identityMembresiaRoundTrip() {
+        val membresia = IdentityMembresia(
+            id = "m-1",
+            establecimientoId = "e-1",
+            camareroId = "c-1",
+            rol = "staff",
+            estado = "activa",
+        )
+        val json = LanJson.encodeToString(membresia)
+        assertTrue(json.contains("\"camarero_id\""))
+        assertEquals(membresia, LanJson.decodeFromString<IdentityMembresia>(json))
     }
 
     @Test

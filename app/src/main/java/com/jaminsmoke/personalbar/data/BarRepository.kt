@@ -38,6 +38,12 @@ interface BarRepository {
     /** Lista blanca de camareros del establecimiento (mirror de Identity). */
     val camareros: StateFlow<List<Camarero>>
 
+    /** Configuración de la conexión con Identity (v0.1 in-memory). */
+    val identityConfig: StateFlow<IdentityConfig>
+
+    /** Invitaciones por email creadas desde Bar (registro local; la verdad vive en Identity). */
+    val invitaciones: StateFlow<List<Invitacion>>
+
     /** Eventos de sala (listo/servido) para re-enviar por SSE a Commander. */
     val eventos: SharedFlow<SalaEvent>
 
@@ -91,4 +97,16 @@ interface BarRepository {
 
     /** @return true si se revocó; false si no existe. */
     fun revocarCamarero(camareroId: String): Boolean
+
+    /** Actualiza la configuración de la conexión con Identity (estado de la UI). */
+    fun setIdentityConfig(config: IdentityConfig)
+
+    /** Registra una invitación creada en Identity (pendiente). */
+    fun registrarInvitacion(invitacion: Invitacion)
+
+    /** @return true si la invitación local existe y se marcó revocada. */
+    fun revocarInvitacionLocal(invitacionId: String): Boolean
+
+    /** Espejo: asegura que cada id (miembros ACTIVA de Identity) esté en la lista blanca local. */
+    fun sincronizarMiembros(camareroIds: List<String>)
 }

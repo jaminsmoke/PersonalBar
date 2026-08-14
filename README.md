@@ -127,15 +127,17 @@ El nodo vive en un foreground service (`BarLanService`) para sobrevivir con la *
 
 Permisos: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `POST_NOTIFICATIONS` (runtime en API 33+), `WAKE_LOCK`.
 
-### Lista blanca de camareros
+### Lista blanca de camareros (Identity)
 
 Bar guarda la **lista blanca del establecimiento** (a quién acepta en la LAN). La identidad canónica vive en Identity, que emite el QR permanente `phid1:<camarero_id>:<credencial_id>:<firma-ed25519>`.
 
-Dos canales de alta (producto):
-- **QR** (v0.1): pegar el `phid1` en la sección «Camareros»; Bar parsea `camarero_id` y da de alta local. El escaneo con cámara y la verificación Ed25519 offline llegan después (dependen de que Identity exponga su clave pública).
-- **Email** (pendiente de Identity): el jefe añade el email registrado y se envía una invitación con enlace. Bloqueado por Identity hoy (ítem en su kanban: clave pública + invitación + búsqueda por email).
+**Conexión** (Ajustes → Identity): URL de Identity + email/contraseña de la **cuenta de negocio** → `POST /v1/auth/negocio/login`; Bar crea/encuentra su establecimiento y guarda el UUID. La config es in-memory en v0.1 (se pierde al reiniciar). Desde el emulador, Identity corre en el host en `http://10.0.2.2:8080`.
 
-En v0.1 la lista es in-memory (se pierde al reiniciar). La validación del login de red del Commander contra esta lista se completa cuando Commander envíe su QR.
+Dos canales de alta:
+- **QR** (verificado): al pegar el `phid1`, Bar llama `POST /v1/establecimientos/{id}/miembros/qr`; el server verifica la firma Ed25519 y la credencial activa. Si la rechaza, no da de alta. Sin Identity conectado → alta local sin verificar (fallback v0.1).
+- **Email**: sección «Invitar por email» → `GET /camareros/buscar?email=` valida que el email existe → `POST /invitaciones` → Identity **envía el correo con el magic-link** (TTL 72 h). La aceptación ocurre en **Identity Web** (fuera de Bar); Bar muestra el estado (pendiente/revocada) y puede revocar. «Sincronizar desde Identity» trae los miembros ACTIVA al espejo local.
+
+La lista local es in-memory (se pierde al reiniciar) y sigue siendo la fuente para la LAN; Identity es el espejo (alta/revocación reflejada). La validación del login de red del Commander contra esta lista se completa cuando Commander envíe su QR.
 
 ## Hermanos
 
