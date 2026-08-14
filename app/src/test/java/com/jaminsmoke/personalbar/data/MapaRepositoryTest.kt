@@ -145,4 +145,33 @@ class MapaRepositoryTest {
         )
         assertEquals(MesaVisualStatus.LIBRE, estados["mesa-1"])
     }
+
+    @Test
+    fun ticketsAbiertosDeMesa_filtraPorIdZona() {
+        val r = repo()
+        r.crearRonda(
+            Ronda("r1", "T1", 1, lineas = listOf(Linea("cana", "Caña", 2), Linea("croquetas", "Croquetas", 1))),
+        )
+        r.crearRonda(Ronda("r2", "T2", 1, lineas = listOf(Linea("cana", "Caña", 1))))
+        val t1 = r.mesas.value.first { it.id == "mesa-1" }
+        val abiertos = ticketsAbiertosDeMesa(
+            t1, "Terraza", r.rondas.value, r.bebidaQueue.value, r.comidaQueue.value,
+        )
+        assertEquals(2, abiertos.size)
+        assertTrue(abiertos.all { r.rondas.value.first { rnd -> rnd.id == it.rondaId }.mesaId == "T1" })
+        val t2 = r.mesas.value.first { it.id == "mesa-2" }
+        assertEquals(
+            1,
+            ticketsAbiertosDeMesa(t2, "Terraza", r.rondas.value, r.bebidaQueue.value, r.comidaQueue.value).size,
+        )
+    }
+
+    @Test
+    fun ticketsAbiertosDeMesa_libreVacio() {
+        val r = repo()
+        val t1 = r.mesas.value.first { it.id == "mesa-1" }
+        assertTrue(
+            ticketsAbiertosDeMesa(t1, "Terraza", r.rondas.value, r.bebidaQueue.value, r.comidaQueue.value).isEmpty(),
+        )
+    }
 }

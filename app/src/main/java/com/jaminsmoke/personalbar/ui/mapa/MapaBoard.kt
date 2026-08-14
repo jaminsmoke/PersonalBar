@@ -210,9 +210,9 @@ internal fun MesaCard(
 }
 
 @Composable
-internal fun DragOverlayCard(mesa: Mesa, nombreSala: String) {
+internal fun DragOverlayCard(mesa: Mesa, nombreSala: String, estado: MesaVisualStatus) {
     val (cardWf, cardHf) = mesaDims(mesa.forma, mesa.girada)
-    val fill = mesaStatusFill(MesaVisualStatus.LIBRE)
+    val fill = mesaStatusFill(estado)
     val onFill = mesaStatusOnFill()
     Card(
         modifier = Modifier.width(cardWf.dp).height(cardHf.dp),
