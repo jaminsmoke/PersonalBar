@@ -26,7 +26,7 @@ interface BarRepository {
     /** Cola de comida (tickets COCINA en PENDIENTE/LISTO). */
     val comidaQueue: StateFlow<List<Ticket>>
 
-    /** Tickets servidos (salen de la cola y se acumulan aquí). */
+    /** Tickets completados (recogidos hoy, servidos mañana): salen de la cola y se acumulan aquí. */
     val servidos: StateFlow<List<Ticket>>
 
     /** Rondas recibidas. */
@@ -44,11 +44,11 @@ interface BarRepository {
     /** @return true si la ronda se procesó; false si ya existía (idempotente). */
     fun crearRonda(ronda: Ronda): Boolean
 
-    /** @return true si el ticket se encontró y se marcó listo. */
-    fun marcarListo(ticketId: String): Boolean
+    /** @return true si el ticket estaba PENDIENTE y se marcó PREPARADO con el preparador. */
+    fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean
 
-    /** @return true si el ticket se encontró y pasó a servidos. */
-    fun marcarServido(ticketId: String): Boolean
+    /** @return true si el ticket estaba PREPARADO y pasó a RECOGIDO (sale de la cola). */
+    fun marcarRecogido(ticketId: String): Boolean
 
     /** @return true si se creó la sala; false si el nombre ya existe o está vacío. */
     fun crearSala(nombre: String): Boolean

@@ -46,28 +46,40 @@ class InMemoryBarRepositoryTest {
     }
 
     @Test
-    fun marcarListoCambiaEstadoSinSacarDeLaCola() {
+    fun marcarPreparadoFijaEstadoYPreparadorSinSacarDeLaCola() {
         val repo = repo()
         repo.crearRonda(Ronda("r1", "T3", 1, lineas = listOf(Linea("cana", "Caña", 1))))
         val ticketId = repo.bebidaQueue.value[0].id
-        assertTrue(repo.marcarListo(ticketId))
-        assertEquals(TicketEstado.LISTO, repo.bebidaQueue.value[0].estado)
+        assertTrue(repo.marcarPreparado(ticketId, "Ana"))
+        assertEquals(TicketEstado.PREPARADO, repo.bebidaQueue.value[0].estado)
+        assertEquals("Ana", repo.bebidaQueue.value[0].preparadoPor)
         assertEquals(1, repo.bebidaQueue.value.size)
     }
 
     @Test
-    fun marcarServidoSacaDeLaColaYAcumulaEnServidos() {
+    fun marcarRecogidoSacaDeLaColaYAcumulaEnServidos() {
         val repo = repo()
         repo.crearRonda(Ronda("r1", "T3", 1, lineas = listOf(Linea("cana", "Caña", 1))))
         val ticketId = repo.bebidaQueue.value[0].id
-        assertTrue(repo.marcarServido(ticketId))
+        assertTrue(repo.marcarPreparado(ticketId, "Ana"))
+        assertTrue(repo.marcarRecogido(ticketId))
         assertTrue(repo.bebidaQueue.value.isEmpty())
         assertEquals(1, repo.servidos.value.size)
-        assertEquals(TicketEstado.SERVIDO, repo.servidos.value[0].estado)
+        assertEquals(TicketEstado.RECOGIDO, repo.servidos.value[0].estado)
+        assertEquals("Ana", repo.servidos.value[0].preparadoPor)
     }
 
     @Test
-    fun marcarListoEmiteEvento() = runBlocking {
+    fun marcarRecogidoSinPrepararDevuelveFalse() {
+        val repo = repo()
+        repo.crearRonda(Ronda("r1", "T3", 1, lineas = listOf(Linea("cana", "Caña", 1))))
+        val ticketId = repo.bebidaQueue.value[0].id
+        assertFalse(repo.marcarRecogido(ticketId))
+        assertEquals(1, repo.bebidaQueue.value.size)
+    }
+
+    @Test
+    fun marcarPreparadoEmiteEvento() = runBlocking {
         val repo = repo()
         repo.crearRonda(Ronda("r1", "T3", 1, lineas = listOf(Linea("cana", "Caña", 1))))
         val ticketId = repo.bebidaQueue.value[0].id
@@ -75,25 +87,27 @@ class InMemoryBarRepositoryTest {
         val job = launch(start = CoroutineStart.UNDISPATCHED) {
             repo.eventos.collect { deferred.complete(it) }
         }
-        repo.marcarListo(ticketId)
+        repo.marcarPreparado(ticketId, "Ana")
         val evento = withTimeoutOrNull(2000) { deferred.await() } ?: error("evento no emitido")
-        assertEquals(SalaEvent.TIPO_LISTO, evento.tipo)
+        assertEquals(SalaEvent.TIPO_PREPARADO, evento.tipo)
         assertEquals(ticketId, evento.ticketId)
+        assertEquals("Ana", evento.preparadoPor)
         job.cancel()
     }
 
     @Test
-    fun marcarServidoEmiteEvento() = runBlocking {
+    fun marcarRecogidoEmiteEvento() = runBlocking {
         val repo = repo()
         repo.crearRonda(Ronda("r1", "T3", 1, lineas = listOf(Linea("cana", "Caña", 1))))
         val ticketId = repo.bebidaQueue.value[0].id
+        repo.marcarPreparado(ticketId, "Ana")
         val deferred = CompletableDeferred<SalaEvent>()
         val job = launch(start = CoroutineStart.UNDISPATCHED) {
             repo.eventos.collect { deferred.complete(it) }
         }
-        repo.marcarServido(ticketId)
+        repo.marcarRecogido(ticketId)
         val evento = withTimeoutOrNull(2000) { deferred.await() } ?: error("evento no emitido")
-        assertEquals(SalaEvent.TIPO_SERVIDO, evento.tipo)
+        assertEquals(SalaEvent.TIPO_RECOGIDO, evento.tipo)
         assertEquals(ticketId, evento.ticketId)
         job.cancel()
     }
@@ -101,8 +115,8 @@ class InMemoryBarRepositoryTest {
     @Test
     fun ticketInexistenteDevuelveFalse() {
         val repo = repo()
-        assertFalse(repo.marcarListo("no-existe"))
-        assertFalse(repo.marcarServido("no-existe"))
+        assertFalse(repo.marcarPreparado("no-existe", "Ana"))
+        assertFalse(repo.marcarRecogido("no-existe"))
     }
 
     @Test

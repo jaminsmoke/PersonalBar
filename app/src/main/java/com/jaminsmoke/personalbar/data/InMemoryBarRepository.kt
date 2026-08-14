@@ -65,21 +65,25 @@ class InMemoryBarRepository(
         return true
     }
 
-    override fun marcarListo(ticketId: String): Boolean {
-        val cambiado = transformTicket(ticketId) { it.copy(estado = TicketEstado.LISTO) }
-        if (cambiado) _eventos.tryEmit(SalaEvent.listo(ticketId))
-        return cambiado
+    override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
+        val pendiente = _bebidaQueue.value.any { it.id == ticketId && it.estado == TicketEstado.PENDIENTE } ||
+            _comidaQueue.value.any { it.id == ticketId && it.estado == TicketEstado.PENDIENTE }
+        if (!pendiente) return false
+        transformTicket(ticketId) { it.copy(estado = TicketEstado.PREPARADO, preparadoPor = preparadoPor) }
+        _eventos.tryEmit(SalaEvent.preparado(ticketId, preparadoPor))
+        return true
     }
 
-    override fun marcarServido(ticketId: String): Boolean {
+    override fun marcarRecogido(ticketId: String): Boolean {
         val ticket = _bebidaQueue.value.firstOrNull { it.id == ticketId }
             ?: _comidaQueue.value.firstOrNull { it.id == ticketId }
             ?: return false
-        val servido = ticket.copy(estado = TicketEstado.SERVIDO)
+        if (ticket.estado != TicketEstado.PREPARADO) return false
+        val recogido = ticket.copy(estado = TicketEstado.RECOGIDO)
         _bebidaQueue.update { it.filterNot { t -> t.id == ticketId } }
         _comidaQueue.update { it.filterNot { t -> t.id == ticketId } }
-        _servidos.update { it + servido }
-        _eventos.tryEmit(SalaEvent.servido(ticketId))
+        _servidos.update { it + recogido }
+        _eventos.tryEmit(SalaEvent.recogido(ticketId))
         return true
     }
 

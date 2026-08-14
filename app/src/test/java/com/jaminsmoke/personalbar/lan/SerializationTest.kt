@@ -1,6 +1,7 @@
 package com.jaminsmoke.personalbar.lan
 
 import com.jaminsmoke.personalbar.data.Camarero
+import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Mesa
@@ -8,6 +9,8 @@ import com.jaminsmoke.personalbar.data.RolCamarero
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
+import com.jaminsmoke.personalbar.data.Ticket
+import com.jaminsmoke.personalbar.data.TicketEstado
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
@@ -24,10 +27,25 @@ class SerializationTest {
 
     @Test
     fun salaEventRoundTrip() {
-        val evento = SalaEvent.listo("r1-barra")
+        val evento = SalaEvent.preparado("r1-barra", "Ana")
         val json = LanJson.encodeToString(evento)
         assertEquals(evento, LanJson.decodeFromString<SalaEvent>(json))
-        assertEquals(SalaEvent.TIPO_LISTO, evento.tipo)
+        assertEquals(SalaEvent.TIPO_PREPARADO, evento.tipo)
+        assertEquals("Ana", evento.preparadoPor)
+    }
+
+    @Test
+    fun ticketConPreparadorRoundTrip() {
+        val ticket = Ticket(
+            id = "t1",
+            rondaId = "r1",
+            destino = Destino.BARRA,
+            estado = TicketEstado.PREPARADO,
+            preparadoPor = "Ana",
+            lineas = listOf(Linea("cana", "Caña", 2)),
+        )
+        val json = LanJson.encodeToString(ticket)
+        assertEquals(ticket, LanJson.decodeFromString<Ticket>(json))
     }
 
     @Test

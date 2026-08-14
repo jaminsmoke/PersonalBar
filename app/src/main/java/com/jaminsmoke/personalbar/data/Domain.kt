@@ -9,9 +9,13 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class Destino { BARRA, COCINA }
 
-/** Estado de un ticket en la cola: PENDIENTE → LISTO → SERVIDO (sale de la cola). */
+/**
+ * Estado de un ticket en la cola: PENDIENTE → PREPARADO → RECOGIDO (sale de la cola).
+ * «Preparado» registra quién lo preparó; «Recogido» lo saca de la cola (lo recogió el
+ * camarero de barra). El cierre del ciclo (SERVIDO y ronda finalizada) vive en Commander.
+ */
 @Serializable
-enum class TicketEstado { PENDIENTE, LISTO, SERVIDO }
+enum class TicketEstado { PENDIENTE, PREPARADO, RECOGIDO }
 
 /** Estado de una línea dentro de un ticket. */
 @Serializable
