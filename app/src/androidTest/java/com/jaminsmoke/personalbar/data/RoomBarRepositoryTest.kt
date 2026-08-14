@@ -97,7 +97,7 @@ class RoomBarRepositoryTest {
         assertTrue(repo1.crearMesa(salaTerraza, MesaForma.REDONDA, 2, null))
         assertTrue(repo1.altaCamarero("cam-1", null))
         repo1.setIdentityConfig(
-            IdentityConfig(conectado = true, baseUrl = "http://10.0.2.2:8080", establecimientoUuid = "uuid-1")
+            IdentityConfig(conectado = true, baseUrl = "http://10.0.2.2:8082", establecimientoUuid = "uuid-1")
         )
         val ticketBebida = repo1.bebidaQueue.first().first()
         assertTrue(repo1.marcarPreparado(ticketBebida.id, "cam-1"))
