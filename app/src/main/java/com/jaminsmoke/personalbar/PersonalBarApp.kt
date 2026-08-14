@@ -96,12 +96,12 @@ private fun salasPorDefecto(): List<Sala> = listOf(
 )
 
 /** 4 mesas por defecto en cada sala (editables). IDs `mesa-N` secuenciales para no colisionar con la secuencia del repo. */
-private fun mesasPorDefecto(): List<Mesa> {
+internal fun mesasPorDefecto(): List<Mesa> {
     val salas = listOf("sala-barra", "sala-interior", "sala-terraza")
     val mesas = mutableListOf<Mesa>()
     var numero = 0
     var seq = 0
-    for (salaId in salas) {
+    for ((orden, salaId) in salas.withIndex()) {
         for (indice in 1..4) {
             numero++
             seq++
@@ -113,16 +113,17 @@ private fun mesasPorDefecto(): List<Mesa> {
                 forma = if (indice <= 2) MesaForma.REDONDA else MesaForma.CUADRADA,
                 capacidad = if (indice <= 2) 2 else 4,
                 posX = posicionX(indice),
-                posY = posicionY(indice),
+                posY = posicionY(orden),
             )
         }
     }
     return mesas
 }
 
-private fun posicionX(indice: Int): Float = if (indice % 2 == 1) 40f else 220f
+/** Cada sala ocupa una banda horizontal del canvas 2600×2000; las 4 mesas se espacian en fila. */
+private fun posicionX(indice: Int): Float = 120f + (indice - 1) * 480f
 
-private fun posicionY(indice: Int): Float = if (indice <= 2) 40f else 220f
+private fun posicionY(salaOrden: Int): Float = 120f + salaOrden * 640f
 
 /**
  * Catálogo canónico por defecto del nodo (v0.1). No es «datos demo»: mientras no

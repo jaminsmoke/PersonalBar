@@ -19,13 +19,19 @@ enum class MesaEstado { LIBRE, OCUPADA, EN_COCINA }
 @Serializable
 enum class MesaVisualStatus { LIBRE, OCUPADA, EN_COCINA, RESERVADA, BLOQUEADA }
 
-// ── Grid del board (misma técnica que Commander) ─────────────────────────────
+// ── Grid del board ────────────────────────────────────────────────────────────
+// Bar es tablet apaisado: canvas horizontal propio (2600×2000). Al exportar a
+// Commander se convierten las posiciones a su canvas 2000×2600 (LayoutExport).
 const val CELL_F = 40f
 const val CARD_W = 120f
-const val ZONA_ANCHO = 2000f
-const val ZONA_ALTO = 2600f
+const val ZONA_ANCHO = 2600f
+const val ZONA_ALTO = 2000f
 const val MIN_BOARD_SCALE = 0.08f
 const val MAX_BOARD_SCALE = 3f
+
+/** Canvas del board de Commander (móvil vertical): destino de la conversión de exportación. */
+const val ZONA_ANCHO_COMANDER = 2000f
+const val ZONA_ALTO_COMANDER = 2600f
 
 /** Número de módulos cuadrados (120dp) que ocupa cada forma. */
 fun mesaModulos(forma: MesaForma): Int = when (forma) {
