@@ -50,8 +50,9 @@
     <string name="ticket_camarero">Camarero: %1$s</string>
     <string name="ticket_preparado_por">Preparado por: %1$s</string>
     <string name="ticket_estado_preparado">Preparado</string>
-    <string name="accion_preparado">Marcar preparado</string>
-    <string name="accion_recogido">Recogido</string>
+    <string name="accion_preparado">Preparar</string>
+    <string name="accion_recogido">Recoger</string>
+    <string name="accion_sin_preparador">Sin preparador: elige «Quién soy»</string>
 
     <!-- Colas: sesión del preparador -->
     <string name="cola_quien_soy">Quién soy:</string>
