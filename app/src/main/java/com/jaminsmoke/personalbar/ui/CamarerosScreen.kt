@@ -31,13 +31,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.CamareroEstado
+import com.jaminsmoke.personalbar.data.Invitacion
+import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.RolCamarero
 
 @Composable
 fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
     val camareros by viewModel.camareros.collectAsState()
+    val identityConfig by viewModel.identityConfig.collectAsState()
+    val invitaciones by viewModel.invitaciones.collectAsState()
+    val trabajando by viewModel.trabajando.collectAsState()
+    val mensaje by viewModel.mensaje.collectAsState()
+
     var qrInput by remember { mutableStateOf("") }
-    var errorRes by remember { mutableStateOf<Int?>(null) }
+    var emailInput by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -60,7 +67,6 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
             value = qrInput,
             onValueChange = {
                 qrInput = it
-                errorRes = null
             },
             label = { Text(stringResource(R.string.camareros_pegar_qr)) },
             modifier = Modifier.fillMaxWidth(),
@@ -68,19 +74,15 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
         )
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = {
-                errorRes = when (viewModel.altaPorQr(qrInput)) {
-                    AltaResultado.OK -> {
-                        qrInput = ""
-                        null
-                    }
-                    AltaResultado.QR_INVALIDO -> R.string.camareros_qr_invalido
-                    AltaResultado.YA_EXISTE -> R.string.camareros_ya_existe
-                }
-            }) {
+            Button(
+                onClick = {
+                    if (viewModel.altaPorQr(qrInput) == AltaResultado.OK) qrInput = ""
+                },
+                enabled = !trabajando,
+            ) {
                 Text(stringResource(R.string.camareros_alta))
             }
-            errorRes?.let { res ->
+            mensaje?.let { res ->
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = stringResource(res),
@@ -89,6 +91,21 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
                 )
             }
         }
+        Spacer(Modifier.height(20.dp))
+
+        InvitacionSection(
+            conectado = identityConfig.conectado,
+            invitaciones = invitaciones,
+            trabajando = trabajando,
+            email = emailInput,
+            onEmail = { emailInput = it },
+            onInvitar = {
+                viewModel.invitarPorEmail(emailInput)
+                emailInput = ""
+            },
+            onRevocar = viewModel::revocarInvitacion,
+            onSincronizar = viewModel::sincronizar,
+        )
         Spacer(Modifier.height(20.dp))
 
         if (camareros.isEmpty()) {
@@ -119,6 +136,111 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
             }
         }
     }
+}
+
+/** Alta por email: buscar el camarero en Identity, crear la invitación y mostrar el estado. */
+@Composable
+private fun InvitacionSection(
+    conectado: Boolean,
+    invitaciones: List<Invitacion>,
+    trabajando: Boolean,
+    email: String,
+    onEmail: (String) -> Unit,
+    onInvitar: () -> Unit,
+    onRevocar: (String) -> Unit,
+    onSincronizar: () -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.camareros_invitar_titulo),
+        style = MaterialTheme.typography.titleMedium,
+    )
+    if (!conectado) {
+        Text(
+            text = stringResource(R.string.camareros_sin_identity),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        return
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = email,
+            onValueChange = onEmail,
+            label = { Text(stringResource(R.string.camareros_invitar_email)) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+        )
+        Spacer(Modifier.width(12.dp))
+        Button(onClick = onInvitar, enabled = !trabajando) {
+            Text(stringResource(R.string.camareros_invitar))
+        }
+        Spacer(Modifier.width(12.dp))
+        OutlinedButton(onClick = onSincronizar, enabled = !trabajando) {
+            Text(stringResource(R.string.camareros_sincronizar))
+        }
+    }
+    if (invitaciones.isEmpty()) {
+        Text(
+            text = stringResource(R.string.camareros_invitaciones_vacia),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    } else {
+        invitaciones.forEach { invitacion ->
+            InvitacionRow(invitacion = invitacion, onRevocar = { onRevocar(invitacion.id) })
+        }
+    }
+}
+
+@Composable
+private fun InvitacionRow(
+    invitacion: Invitacion,
+    onRevocar: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = invitacion.email,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = invitacionEstadoText(invitacion.estado),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (invitacion.estado == InvitacionEstado.PENDIENTE) {
+                OutlinedButton(onClick = onRevocar) {
+                    Text(stringResource(R.string.camareros_invitar_revocar))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun invitacionEstadoText(estado: InvitacionEstado): String = when (estado) {
+    InvitacionEstado.PENDIENTE -> stringResource(R.string.camareros_invitacion_estado_pendiente)
+    InvitacionEstado.ACEPTADA -> stringResource(R.string.camareros_invitacion_estado_aceptada)
+    InvitacionEstado.REVOCADA -> stringResource(R.string.camareros_invitacion_estado_revocada)
 }
 
 @Composable

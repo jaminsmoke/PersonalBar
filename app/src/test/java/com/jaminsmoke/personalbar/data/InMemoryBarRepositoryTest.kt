@@ -120,6 +120,44 @@ class InMemoryBarRepositoryTest {
     }
 
     @Test
+    fun identityConfigSeActualiza() {
+        val repo = repo()
+        assertFalse(repo.identityConfig.value.conectado)
+        repo.setIdentityConfig(
+            IdentityConfig(
+                conectado = true,
+                baseUrl = "http://10.0.2.2:8080",
+                establecimientoUuid = "e-1",
+            )
+        )
+        assertTrue(repo.identityConfig.value.conectado)
+        assertEquals("e-1", repo.identityConfig.value.establecimientoUuid)
+    }
+
+    @Test
+    fun invitacionSeRegistraYSePuedeRevocar() {
+        val repo = repo()
+        repo.registrarInvitacion(
+            Invitacion(id = "inv-1", email = "ana@example.com", estado = InvitacionEstado.PENDIENTE)
+        )
+        assertEquals(1, repo.invitaciones.value.size)
+        assertTrue(repo.revocarInvitacionLocal("inv-1"))
+        assertEquals(InvitacionEstado.REVOCADA, repo.invitaciones.value[0].estado)
+        assertFalse(repo.revocarInvitacionLocal("no-existe"))
+    }
+
+    @Test
+    fun sincronizarMiembrosAnadeALaListaBlanca() {
+        val repo = repo()
+        repo.sincronizarMiembros(listOf("c-1", "c-2"))
+        assertEquals(2, repo.camareros.value.size)
+        // idempotente: repetir no duplica
+        repo.sincronizarMiembros(listOf("c-1", "c-2"))
+        assertEquals(2, repo.camareros.value.size)
+        assertTrue(repo.camareros.value.all { it.estado == CamareroEstado.ACTIVA })
+    }
+
+    @Test
     fun crudSalas() {
         val repo = InMemoryBarRepository(
             salasIniciales = listOf(Sala("sala-terraza", "Terraza", 1)),

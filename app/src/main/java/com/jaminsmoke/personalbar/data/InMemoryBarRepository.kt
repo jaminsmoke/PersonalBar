@@ -40,6 +40,8 @@ class InMemoryBarRepository(
     private val _rondas = MutableStateFlow<List<Ronda>>(emptyList())
     private val _catalogo = MutableStateFlow(catalogoInicial)
     private val _camareros = MutableStateFlow<List<Camarero>>(emptyList())
+    private val _identityConfig = MutableStateFlow(IdentityConfig())
+    private val _invitaciones = MutableStateFlow<List<Invitacion>>(emptyList())
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
     override val establecimiento: StateFlow<Establecimiento> = _establecimiento.asStateFlow()
@@ -52,6 +54,8 @@ class InMemoryBarRepository(
     override val rondas: StateFlow<List<Ronda>> = _rondas.asStateFlow()
     override val catalogo: StateFlow<List<Producto>> = _catalogo.asStateFlow()
     override val camareros: StateFlow<List<Camarero>> = _camareros.asStateFlow()
+    override val identityConfig: StateFlow<IdentityConfig> = _identityConfig.asStateFlow()
+    override val invitaciones: StateFlow<List<Invitacion>> = _invitaciones.asStateFlow()
     override val eventos: SharedFlow<SalaEvent> = _eventos.asSharedFlow()
 
     // ── Rondas / tickets ──────────────────────────────────────────────────────
@@ -266,5 +270,27 @@ class InMemoryBarRepository(
             list.map { if (it.id == camareroId) it.copy(estado = CamareroEstado.REVOCADA) else it }
         }
         return true
+    }
+
+    // ── Identity (config + invitaciones + espejo) ─────────────────────────────
+
+    override fun setIdentityConfig(config: IdentityConfig) {
+        _identityConfig.value = config
+    }
+
+    override fun registrarInvitacion(invitacion: Invitacion) {
+        _invitaciones.update { it + invitacion }
+    }
+
+    override fun revocarInvitacionLocal(invitacionId: String): Boolean {
+        if (_invitaciones.value.none { it.id == invitacionId }) return false
+        _invitaciones.update { list ->
+            list.map { if (it.id == invitacionId) it.copy(estado = InvitacionEstado.REVOCADA) else it }
+        }
+        return true
+    }
+
+    override fun sincronizarMiembros(camareroIds: List<String>) {
+        camareroIds.forEach { id -> altaCamarero(id, null) }
     }
 }

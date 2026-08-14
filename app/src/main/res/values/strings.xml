@@ -106,4 +106,32 @@
     <string name="camareros_estado_activa">Activa</string>
     <string name="camareros_estado_revocada">Revocada</string>
     <string name="camareros_identidad">ID: %1$s</string>
+
+    <!-- Identity (conexión + invitaciones por email) -->
+    <string name="identity_titulo">Identity</string>
+    <string name="identity_url">URL de Identity (p. ej. http://10.0.2.2:8080)</string>
+    <string name="identity_email">Email de la cuenta de negocio</string>
+    <string name="identity_password">Contraseña</string>
+    <string name="identity_conectar">Conectar</string>
+    <string name="identity_desconectar">Desconectar</string>
+    <string name="identity_conectado">Conectado · Establecimiento %1$s</string>
+    <string name="identity_campos_incompletos">Rellena URL, email y contraseña</string>
+    <string name="identity_login_fallido">No se pudo conectar: comprueba las credenciales</string>
+    <string name="identity_vincular_fallido">No se pudo vincular el establecimiento en Identity</string>
+    <string name="camareros_qr_rechazado">QR rechazado: la firma no es válida en Identity</string>
+    <string name="camareros_invitar_titulo">Invitar por email</string>
+    <string name="camareros_invitar_email">Email del camarero</string>
+    <string name="camareros_invitar">Invitar</string>
+    <string name="camareros_email_vacio">Escribe un email</string>
+    <string name="camareros_email_no_encontrado">No hay un camarero registrado con ese email</string>
+    <string name="camareros_invitacion_error">No se pudo crear la invitación</string>
+    <string name="camareros_invitacion_enviada">Invitación enviada por email</string>
+    <string name="camareros_invitaciones_vacia">Sin invitaciones pendientes</string>
+    <string name="camareros_invitacion_estado_pendiente">Pendiente</string>
+    <string name="camareros_invitacion_estado_aceptada">Aceptada</string>
+    <string name="camareros_invitacion_estado_revocada">Revocada</string>
+    <string name="camareros_invitar_revocar">Revocar invitación</string>
+    <string name="camareros_sincronizar">Sincronizar desde Identity</string>
+    <string name="camareros_sincronizados">Lista sincronizada con Identity</string>
+    <string name="camareros_sin_identity">Conecta Identity en Ajustes para invitar por email y verificar la firma del QR</string>
 </resources>
