@@ -1,8 +1,10 @@
 package com.jaminsmoke.personalbar.lan
 
+import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Mesa
+import com.jaminsmoke.personalbar.data.RolCamarero
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
@@ -26,6 +28,19 @@ class SerializationTest {
         val json = LanJson.encodeToString(evento)
         assertEquals(evento, LanJson.decodeFromString<SalaEvent>(json))
         assertEquals(SalaEvent.TIPO_LISTO, evento.tipo)
+    }
+
+    @Test
+    fun camareroRoundTrip() {
+        val camarero = Camarero(
+            id = "11111111-1111-4111-8111-111111111111",
+            nombre = "Ana",
+            email = "ana@example.com",
+            rol = RolCamarero.DUENO,
+            credencialId = "22222222-2222-4222-8222-222222222222",
+        )
+        val json = LanJson.encodeToString(camarero)
+        assertEquals(camarero, LanJson.decodeFromString<Camarero>(json))
     }
 
     @Test

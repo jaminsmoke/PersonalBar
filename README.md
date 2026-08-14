@@ -107,7 +107,7 @@ curl -N http://127.0.0.1:18787/v1/eventos
 
 Cleartext solo en rangos LAN privados (`network_security_config`). Identidad = HTTPS a PersonalHostel-Identity, nunca este puerto.
 
-Los Commanders descubren Bar escaneando el /24 contra el puerto 8787 (patrón `EscaneadorRed` de Commander). El registro de camareros (lista blanca) es un ítem aparte.
+Los Commanders descubren Bar escaneando el /24 contra el puerto 8787 (patrón `EscaneadorRed` de Commander).
 
 ### Servicio en primer plano «Local activo»
 
@@ -120,6 +120,16 @@ El nodo vive en un foreground service (`BarLanService`) para sobrevivir con la *
 - Sin arranque al boot en v0.1 (se activa a mano).
 
 Permisos: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `POST_NOTIFICATIONS` (runtime en API 33+), `WAKE_LOCK`.
+
+### Lista blanca de camareros
+
+Bar guarda la **lista blanca del establecimiento** (a quién acepta en la LAN). La identidad canónica vive en Identity, que emite el QR permanente `phid1:<camarero_id>:<credencial_id>:<firma-ed25519>`.
+
+Dos canales de alta (producto):
+- **QR** (v0.1): pegar el `phid1` en la sección «Camareros»; Bar parsea `camarero_id` y da de alta local. El escaneo con cámara y la verificación Ed25519 offline llegan después (dependen de que Identity exponga su clave pública).
+- **Email** (pendiente de Identity): el jefe añade el email registrado y se envía una invitación con enlace. Bloqueado por Identity hoy (ítem en su kanban: clave pública + invitación + búsqueda por email).
+
+En v0.1 la lista es in-memory (se pierde al reiniciar). La validación del login de red del Commander contra esta lista se completa cuando Commander envíe su QR.
 
 ## Hermanos
 

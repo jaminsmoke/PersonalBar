@@ -35,6 +35,9 @@ interface BarRepository {
     /** Catálogo canónico del nodo. */
     val catalogo: StateFlow<List<Producto>>
 
+    /** Lista blanca de camareros del establecimiento (mirror de Identity). */
+    val camareros: StateFlow<List<Camarero>>
+
     /** Eventos de sala (listo/servido) para re-enviar por SSE a Commander. */
     val eventos: SharedFlow<SalaEvent>
 
@@ -82,4 +85,10 @@ interface BarRepository {
 
     /** @return true si se desbloqueó; false si inexistente. */
     fun desbloquearMesa(mesaId: String): Boolean
+
+    /** @return true si se dio de alta; false si ya existe activa. */
+    fun altaCamarero(camareroId: String, credencialId: String?): Boolean
+
+    /** @return true si se revocó; false si no existe. */
+    fun revocarCamarero(camareroId: String): Boolean
 }

@@ -102,3 +102,27 @@ data class Reserva(
     val creadaEn: Long = System.currentTimeMillis(),
     val canceladaEn: Long? = null,
 )
+
+/** Rol de un camarero en el establecimiento. */
+@Serializable
+enum class RolCamarero { DUENO, STAFF }
+
+/** Estado de un camarero en la lista blanca. */
+@Serializable
+enum class CamareroEstado { ACTIVA, REVOCADA }
+
+/**
+ * Camarero de la lista blanca del establecimiento (mirror de Identity).
+ * La identidad canónica vive en Identity; Bar guarda a quién acepta en la LAN.
+ * [id] es el `camarero_id` (UUID) de Identity, extraído del QR `phid1`.
+ */
+@Serializable
+data class Camarero(
+    val id: String,
+    val nombre: String? = null,
+    val email: String? = null,
+    val rol: RolCamarero = RolCamarero.STAFF,
+    val estado: CamareroEstado = CamareroEstado.ACTIVA,
+    val credencialId: String? = null,
+    val altaEn: Long = System.currentTimeMillis(),
+)

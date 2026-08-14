@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Personal Bar</string>
 
     <!-- Sidebar -->
     <string name="nav_colas">Colas</string>
     <string name="nav_mapa">Mapa</string>
-    <string name="nav_alta_qr">Alta QR</string>
+    <string name="nav_camareros">Camareros</string>
     <string name="nav_ajustes">Ajustes</string>
 
     <!-- Local -->
@@ -41,9 +41,6 @@
     <!-- Ticket -->
     <string name="ticket_ronda">Ronda %1$d</string>
     <string name="ticket_camarero">Camarero: %1$s</string>
-
-    <!-- Placeholder de secciones -->
-    <string name="section_placeholder">Sección «%1$s» próximamente</string>
 
     <!-- Mapa -->
     <string name="mapa_todas_salas">Todas</string>
@@ -83,4 +80,20 @@
     <string name="mapa_comanda_solo_vista">Solo vista. El pedido se toma en Commander.</string>
     <string name="mapa_ticket_destino_barra">Bebida</string>
     <string name="mapa_ticket_destino_cocina">Comida</string>
+
+    <!-- Camareros (lista blanca) -->
+    <string name="camareros_titulo">Camareros</string>
+    <string name="camareros_subtitulo">Lista blanca del establecimiento</string>
+    <string name="camareros_pegar_qr" tools:ignore="Typos">QR del camarero (phid1)</string>
+    <string name="camareros_alta">Dar de alta</string>
+    <string name="camareros_qr_invalido">QR inválido: no es un phid1 válido</string>
+    <string name="camareros_ya_existe">Ese camarero ya está dado de alta</string>
+    <string name="camareros_revocar">Revocar</string>
+    <string name="camareros_vacia">Sin camareros</string>
+    <string name="camareros_vacia_subtitulo" tools:ignore="Typos">Pega un QR phid1 para dar de alta al primer camarero</string>
+    <string name="camareros_rol_dueno">Dueño</string>
+    <string name="camareros_rol_staff">Staff</string>
+    <string name="camareros_estado_activa">Activa</string>
+    <string name="camareros_estado_revocada">Revocada</string>
+    <string name="camareros_identidad">ID: %1$s</string>
 </resources>

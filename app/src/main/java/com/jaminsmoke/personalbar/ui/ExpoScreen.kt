@@ -51,7 +51,7 @@ import com.jaminsmoke.personalbar.ui.mapa.MapaScreen
 enum class PbSection(val route: String, val labelRes: Int, val icon: ImageVector) {
     COLAS("colas", R.string.nav_colas, Icons.Outlined.Checklist),
     MAPA("mapa", R.string.nav_mapa, Icons.Default.Map),
-    ALTA_QR("alta_qr", R.string.nav_alta_qr, Icons.Default.QrCode),
+    CAMAREROS("camareros", R.string.nav_camareros, Icons.Default.QrCode),
     AJUSTES("ajustes", R.string.nav_ajustes, Icons.Default.Settings),
 }
 
@@ -106,7 +106,7 @@ fun ExpoScreen(
                     modifier = Modifier.weight(1f),
                 )
                 PbSection.MAPA -> MapaScreen()
-                PbSection.ALTA_QR -> PbSectionPlaceholder(stringResource(R.string.nav_alta_qr))
+                PbSection.CAMAREROS -> CamarerosScreen()
                 PbSection.AJUSTES -> AjustesScreen()
             }
         }
@@ -209,19 +209,3 @@ private fun PbQueueColumn(
     }
 }
 
-@Composable
-private fun PbSectionPlaceholder(name: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.section_placeholder, name),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
