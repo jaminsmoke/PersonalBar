@@ -1,14 +1,18 @@
 package com.jaminsmoke.personalbar.data
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
  * Cuenta del establecimiento (negocio/local). Fuente de verdad en Bar.
- * v0.1: un nodo = un establecimiento; Identity (v0.2) aportará la identidad externa.
+ * v0.1: un nodo = un establecimiento; Identity aporta la identidad externa.
+ * Persistida en Room (tabla singleton, 1 fila).
  */
 @Serializable
+@Entity(tableName = "establecimientos")
 data class Establecimiento(
-    val idEstable: String,
+    @PrimaryKey val idEstable: String,
     val nombre: String,
 )
 
@@ -17,8 +21,9 @@ data class Establecimiento(
  * las mesas cuelgan de una sala.
  */
 @Serializable
+@Entity(tableName = "salas")
 data class Sala(
-    val id: String,
+    @PrimaryKey val id: String,
     val nombre: String,
     val orden: Int,
 )
@@ -28,8 +33,9 @@ data class Sala(
  * identidad de red es [idZona] (prefijo de sala + [indiceZona]), nunca el id local.
  */
 @Serializable
+@Entity(tableName = "mesas")
 data class Mesa(
-    val id: String,
+    @PrimaryKey val id: String,
     val salaId: String,
     val indiceZona: Int,
     val numero: Int = 0,
@@ -51,8 +57,9 @@ data class Mesa(
 
 /** Producto del catálogo canónico del nodo. La categoría deriva el destino. */
 @Serializable
+@Entity(tableName = "productos")
 data class Producto(
-    val id: String,
+    @PrimaryKey val id: String,
     val nombre: String,
     val categoria: String,
     val precio: Double = 0.0,
@@ -72,10 +79,12 @@ data class Linea(
  * Ticket de expo: una ronda partida por destino. Preparado/recogido es por ticket
  * (no por mesa): las cañas pueden estar preparadas sin la pizza. [preparadoPor]
  * es el camarero (lista blanca) que elaboró el ticket, simétrico a `Ronda.camarero`.
+ * Las líneas se persisten como JSON (TypeConverter).
  */
 @Serializable
+@Entity(tableName = "tickets")
 data class Ticket(
-    val id: String,
+    @PrimaryKey val id: String,
     val rondaId: String,
     val destino: Destino,
     val estado: TicketEstado = TicketEstado.PENDIENTE,
@@ -83,10 +92,14 @@ data class Ticket(
     val lineas: List<Linea>,
 )
 
-/** Ronda enviada por Commander: la unidad que Bar parte en tickets BARRA/COCINA. */
+/**
+ * Ronda enviada por Commander: la unidad que Bar parte en tickets BARRA/COCINA.
+ * Las líneas se persisten como JSON (TypeConverter).
+ */
 @Serializable
+@Entity(tableName = "rondas")
 data class Ronda(
-    val id: String,
+    @PrimaryKey val id: String,
     val mesaId: String,          // idZona ("T3")
     val numero: Int,             // número de ronda de la mesa
     val camarero: String? = null,
@@ -96,8 +109,9 @@ data class Ronda(
 
 /** Reserva (hold comercial) sobre una mesa. [mesaId] referencia [Mesa.id] local. */
 @Serializable
+@Entity(tableName = "reservas")
 data class Reserva(
-    val id: String,
+    @PrimaryKey val id: String,
     val mesaId: String,
     val nombre: String,
     val paraEpoch: Long? = null,
@@ -114,8 +128,9 @@ enum class InvitacionEstado { PENDIENTE, ACEPTADA, REVOCADA }
  * La aceptación ocurre en Identity Web (magic-link), fuera de Bar.
  */
 @Serializable
+@Entity(tableName = "invitaciones")
 data class Invitacion(
-    val id: String,
+    @PrimaryKey val id: String,
     val email: String,
     val rol: String = "staff",
     val estado: InvitacionEstado = InvitacionEstado.PENDIENTE,
@@ -123,8 +138,10 @@ data class Invitacion(
     val creadaEn: Long = System.currentTimeMillis(),
 )
 
-/** Configuración de la conexión con Identity (v0.1 in-memory; se pierde al reiniciar). */
+/** Configuración de la conexión con Identity (persistida en Room, tabla singleton). */
+@Entity(tableName = "identity_config")
 data class IdentityConfig(
+    @PrimaryKey val id: String = "local",
     val conectado: Boolean = false,
     val baseUrl: String? = null,
     val establecimientoUuid: String? = null,
@@ -145,8 +162,9 @@ enum class CamareroEstado { ACTIVA, REVOCADA }
  * [id] es el `camarero_id` (UUID) de Identity, extraído del QR `phid1`.
  */
 @Serializable
+@Entity(tableName = "camareros")
 data class Camarero(
-    val id: String,
+    @PrimaryKey val id: String,
     val nombre: String? = null,
     val email: String? = null,
     val rol: RolCamarero = RolCamarero.STAFF,

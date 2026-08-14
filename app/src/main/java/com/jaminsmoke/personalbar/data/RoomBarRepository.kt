@@ -1,0 +1,266 @@
+package com.jaminsmoke.personalbar.data
+
+import android.util.Log
+import androidx.annotation.VisibleForTesting
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+
+/**
+ * Implementación Room del seam [BarRepository] (escritura-through).
+ *
+ * El **cerebro** es un [InMemoryBarRepository] interno (lógica, colas, idempotencia,
+ * secuencias — no se duplica); cada mutación que devuelve `true` persiste el dominio
+ * afectado a Room en un scope de escritura **serializado** (un solo hilo: el último
+ * en ejecutar escribe el estado final correcto).
+ *
+ * Carga inicial en el constructor (síncrona, volumen pequeño): si la BD está vacía
+ * (primera instalación) siembra el seed demo y lo persiste; si no, reconstruye el
+ * estado completo desde Room (colas y servidos se derivan de `estado`+`destino`).
+ */
+class RoomBarRepository(
+    private val db: AppDatabase,
+    establecimientoInicial: Establecimiento = Establecimiento("local-1", "Mi local"),
+    salasIniciales: List<Sala> = emptyList(),
+    catalogoInicial: List<Producto> = emptyList(),
+    mesasIniciales: List<Mesa> = emptyList(),
+    rondasDemo: List<Ronda> = emptyList(),
+) : BarRepository {
+
+    private val dao = db.barDao()
+    private val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
+    private val writesPendientes = java.util.concurrent.atomic.AtomicInteger(0)
+
+    private val inner: InMemoryBarRepository = runBlocking {
+        val salasBd = dao.getSalas()
+        if (salasBd.isEmpty()) {
+            // Primera instalación: sembrar el seed y persistirlo.
+            val seed = InMemoryBarRepository(
+                establecimientoInicial = establecimientoInicial,
+                salasIniciales = salasIniciales,
+                catalogoInicial = catalogoInicial,
+                mesasIniciales = mesasIniciales,
+            )
+            rondasDemo.forEach { seed.crearRonda(it) }
+            persistAll(seed, dao)
+            seed
+        } else {
+            val tickets = dao.getTickets()
+            InMemoryBarRepository(
+                establecimientoInicial = dao.getEstablecimiento() ?: establecimientoInicial,
+                salasIniciales = salasBd,
+                catalogoInicial = dao.getProductos(),
+                mesasIniciales = dao.getMesas(),
+                rondasIniciales = dao.getRondas(),
+                bebidaInicial = tickets.filter { it.destino == Destino.BARRA && it.estado != TicketEstado.RECOGIDO },
+                comidaInicial = tickets.filter { it.destino == Destino.COCINA && it.estado != TicketEstado.RECOGIDO },
+                servidosIniciales = tickets.filter { it.estado == TicketEstado.RECOGIDO },
+                reservasIniciales = dao.getReservas(),
+                camarerosIniciales = dao.getCamareros(),
+                invitacionesIniciales = dao.getInvitaciones(),
+                identityConfigInicial = dao.getIdentityConfig() ?: IdentityConfig(),
+            )
+        }
+    }
+
+    // ── StateFlows (delegados al cerebro) ────────────────────────────────────
+
+    override val establecimiento: StateFlow<Establecimiento> get() = inner.establecimiento
+    override val salas: StateFlow<List<Sala>> get() = inner.salas
+    override val mesas: StateFlow<List<Mesa>> get() = inner.mesas
+    override val reservas: StateFlow<List<Reserva>> get() = inner.reservas
+    override val bebidaQueue: StateFlow<List<Ticket>> get() = inner.bebidaQueue
+    override val comidaQueue: StateFlow<List<Ticket>> get() = inner.comidaQueue
+    override val servidos: StateFlow<List<Ticket>> get() = inner.servidos
+    override val rondas: StateFlow<List<Ronda>> get() = inner.rondas
+    override val catalogo: StateFlow<List<Producto>> get() = inner.catalogo
+    override val camareros: StateFlow<List<Camarero>> get() = inner.camareros
+    override val identityConfig: StateFlow<IdentityConfig> get() = inner.identityConfig
+    override val invitaciones: StateFlow<List<Invitacion>> get() = inner.invitaciones
+    override val eventos: SharedFlow<SalaEvent> get() = inner.eventos
+
+    // ── Rondas / tickets ─────────────────────────────────────────────────────
+
+    override fun crearRonda(ronda: Ronda): Boolean {
+        val ok = inner.crearRonda(ronda)
+        if (ok) persist { dao.replaceRondas(inner.rondas.value); dao.replaceTickets(ticketsActuales()) }
+        return ok
+    }
+
+    override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
+        val ok = inner.marcarPreparado(ticketId, preparadoPor)
+        if (ok) persist { dao.replaceTickets(ticketsActuales()) }
+        return ok
+    }
+
+    override fun marcarRecogido(ticketId: String): Boolean {
+        val ok = inner.marcarRecogido(ticketId)
+        if (ok) persist { dao.replaceTickets(ticketsActuales()) }
+        return ok
+    }
+
+    // ── Salas / mesas ────────────────────────────────────────────────────────
+
+    override fun crearSala(nombre: String): Boolean {
+        val ok = inner.crearSala(nombre)
+        if (ok) persist { dao.replaceSalas(inner.salas.value) }
+        return ok
+    }
+
+    override fun renombrarSala(salaId: String, nombre: String): Boolean {
+        val ok = inner.renombrarSala(salaId, nombre)
+        if (ok) persist { dao.replaceSalas(inner.salas.value) }
+        return ok
+    }
+
+    override fun eliminarSala(salaId: String): Boolean {
+        val ok = inner.eliminarSala(salaId)
+        if (ok) persist { dao.replaceSalas(inner.salas.value) }
+        return ok
+    }
+
+    override fun crearMesa(salaId: String, forma: MesaForma, capacidad: Int, alias: String?): Boolean {
+        val ok = inner.crearMesa(salaId, forma, capacidad, alias)
+        if (ok) persist { dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    override fun editarMesa(mesaId: String, alias: String?, capacidad: Int, forma: MesaForma): Boolean {
+        val ok = inner.editarMesa(mesaId, alias, capacidad, forma)
+        if (ok) persist { dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    override fun borrarMesa(mesaId: String): Boolean {
+        val ok = inner.borrarMesa(mesaId)
+        if (ok) persist { dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    override fun moverMesa(mesaId: String, posX: Float, posY: Float): Boolean {
+        val ok = inner.moverMesa(mesaId, posX, posY)
+        if (ok) persist { dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    override fun girarMesa(mesaId: String): Boolean {
+        val ok = inner.girarMesa(mesaId)
+        if (ok) persist { dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    // ── Reservas / bloqueos ──────────────────────────────────────────────────
+
+    override fun reservar(mesaId: String, nombre: String, paraEpoch: Long?): Boolean {
+        val ok = inner.reservar(mesaId, nombre, paraEpoch)
+        if (ok) persist { dao.replaceReservas(inner.reservas.value); dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    override fun cancelarReserva(mesaId: String): Boolean {
+        val ok = inner.cancelarReserva(mesaId)
+        if (ok) persist { dao.replaceReservas(inner.reservas.value); dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    override fun bloquearMesa(mesaId: String): Boolean {
+        val ok = inner.bloquearMesa(mesaId)
+        if (ok) persist { dao.replaceReservas(inner.reservas.value); dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    override fun desbloquearMesa(mesaId: String): Boolean {
+        val ok = inner.desbloquearMesa(mesaId)
+        if (ok) persist { dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    // ── Camareros / Identity ─────────────────────────────────────────────────
+
+    override fun altaCamarero(camareroId: String, credencialId: String?): Boolean {
+        val ok = inner.altaCamarero(camareroId, credencialId)
+        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        return ok
+    }
+
+    override fun revocarCamarero(camareroId: String): Boolean {
+        val ok = inner.revocarCamarero(camareroId)
+        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        return ok
+    }
+
+    override fun setIdentityConfig(config: IdentityConfig) {
+        inner.setIdentityConfig(config)
+        persist { dao.upsertIdentityConfig(inner.identityConfig.value) }
+    }
+
+    override fun registrarInvitacion(invitacion: Invitacion) {
+        inner.registrarInvitacion(invitacion)
+        persist { dao.replaceInvitaciones(inner.invitaciones.value) }
+    }
+
+    override fun revocarInvitacionLocal(invitacionId: String): Boolean {
+        val ok = inner.revocarInvitacionLocal(invitacionId)
+        if (ok) persist { dao.replaceInvitaciones(inner.invitaciones.value) }
+        return ok
+    }
+
+    override fun sincronizarMiembros(camareroIds: List<String>) {
+        inner.sincronizarMiembros(camareroIds)
+        persist { dao.replaceCamareros(inner.camareros.value) }
+    }
+
+    // ── Persistencia ─────────────────────────────────────────────────────────
+
+    private fun ticketsActuales(): List<Ticket> =
+        inner.bebidaQueue.value + inner.comidaQueue.value + inner.servidos.value
+
+    /** Lanza la escritura en el scope serializado; errores se loguean (estado en memoria sigue mandando). */
+    private fun persist(block: suspend () -> Unit) {
+        writesPendientes.incrementAndGet()
+        writeScope.launch {
+            try {
+                block()
+            } catch (t: Throwable) {
+                Log.w(TAG, "Persistencia Room fallida (estado en memoria intacto)", t)
+            } finally {
+                writesPendientes.decrementAndGet()
+            }
+        }
+    }
+
+    /**
+     * Espera a que las escrituras pendientes terminen. Solo para tests
+     * (recarga determinista); en producción la persistencia es best-effort.
+     */
+    @VisibleForTesting
+    suspend fun awaitPersistencia() {
+        while (writesPendientes.get() > 0) {
+            kotlinx.coroutines.delay(10)
+        }
+    }
+
+    private companion object {
+        const val TAG = "RoomBarRepository"
+
+        /** Escribe el estado completo de [seed] a la BD (primera instalación). */
+        suspend fun persistAll(seed: InMemoryBarRepository, dao: BarDao) {
+            dao.upsertEstablecimiento(seed.establecimiento.value)
+            dao.replaceSalas(seed.salas.value)
+            dao.replaceMesas(seed.mesas.value)
+            dao.replaceProductos(seed.catalogo.value)
+            dao.replaceRondas(seed.rondas.value)
+            dao.replaceTickets(
+                seed.bebidaQueue.value + seed.comidaQueue.value + seed.servidos.value
+            )
+            dao.replaceReservas(seed.reservas.value)
+            dao.replaceCamareros(seed.camareros.value)
+            dao.replaceInvitaciones(seed.invitaciones.value)
+            dao.upsertIdentityConfig(seed.identityConfig.value)
+        }
+    }
+}

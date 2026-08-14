@@ -1,14 +1,16 @@
 package com.jaminsmoke.personalbar
 
 import android.app.Application
+import androidx.room.Room
+import com.jaminsmoke.personalbar.data.AppDatabase
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Establecimiento
-import com.jaminsmoke.personalbar.data.InMemoryBarRepository
 import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.Ronda
+import com.jaminsmoke.personalbar.data.RoomBarRepository
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.lan.BarLanServer
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,14 +19,29 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Application del nodo de sala. Arranca el servidor LAN en [onCreate] y expone el
- * repositorio (fuente de verdad). El FGS «Local activo» es un ítem separado.
+ * repositorio (fuente de verdad, persistida en Room). El FGS «Local activo» es un ítem separado.
  */
 class PersonalBarApp : Application() {
 
     val lanServer: BarLanServer by lazy { BarLanServer(repository) }
 
-    /** Fuente de verdad del nodo (en memoria en v0.1; Room será otra implementación). */
-    val repository: BarRepository by lazy { demoRepository() }
+    /** Fuente de verdad del nodo: Room (esquema v1) con el seed demo solo si la BD está vacía. */
+    val repository: BarRepository by lazy {
+        val db = Room.databaseBuilder(
+            applicationContext,
+            AppDatabase::class.java,
+            "personalbar.db",
+        ).build()
+        val demo = demoData()
+        RoomBarRepository(
+            db = db,
+            establecimientoInicial = demo.establecimiento,
+            salasIniciales = demo.salas,
+            catalogoInicial = demo.catalogo,
+            mesasIniciales = demo.mesas,
+            rondasDemo = demo.rondas,
+        )
+    }
 
     private val _roomActive = MutableStateFlow(false)
     val roomActive: StateFlow<Boolean> = _roomActive.asStateFlow()
@@ -62,8 +79,8 @@ class PersonalBarApp : Application() {
     }
 }
 
-/** Semilla demo v0.1: establecimiento, salas, catálogo, mesas y dos rondas para poblar las colas. */
-private fun demoRepository(): BarRepository {
+/** Datos de la semilla demo v0.1: se siembran solo si la BD está vacía (primera instalación). */
+private fun demoData(): DemoData {
     val establecimiento = Establecimiento(idEstable = "local-1", nombre = "La Terraza")
     val salas = listOf(
         Sala(id = "sala-terraza", nombre = "Terraza", orden = 1),
@@ -82,13 +99,7 @@ private fun demoRepository(): BarRepository {
         Mesa(id = "mesa-3", salaId = "sala-terraza", indiceZona = 3, numero = 3, forma = MesaForma.CUADRADA, capacidad = 4, posX = 40f, posY = 200f),
         Mesa(id = "mesa-7", salaId = "sala-terraza", indiceZona = 7, numero = 4, forma = MesaForma.RECTANGULAR, capacidad = 8, posX = 360f, posY = 40f),
     )
-    val repo = InMemoryBarRepository(
-        establecimientoInicial = establecimiento,
-        salasIniciales = salas,
-        catalogoInicial = catalogo,
-        mesasIniciales = mesas,
-    )
-    repo.crearRonda(
+    val rondas = listOf(
         Ronda(
             id = "r1",
             mesaId = "T3",
@@ -100,9 +111,7 @@ private fun demoRepository(): BarRepository {
                 Linea(productoId = "croquetas", nombreProducto = "Croquetas", cantidad = 1),
                 Linea(productoId = "tostada", nombreProducto = "Tostada con tomate", cantidad = 2),
             ),
-        )
-    )
-    repo.crearRonda(
+        ),
         Ronda(
             id = "r2",
             mesaId = "T7",
@@ -111,7 +120,15 @@ private fun demoRepository(): BarRepository {
             lineas = listOf(
                 Linea(productoId = "cana", nombreProducto = "Caña", cantidad = 3),
             ),
-        )
+        ),
     )
-    return repo
+    return DemoData(establecimiento, salas, catalogo, mesas, rondas)
 }
+
+private data class DemoData(
+    val establecimiento: Establecimiento,
+    val salas: List<Sala>,
+    val catalogo: List<Producto>,
+    val mesas: List<Mesa>,
+    val rondas: List<Ronda>,
+)

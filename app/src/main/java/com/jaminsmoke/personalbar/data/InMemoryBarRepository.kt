@@ -14,34 +14,44 @@ private fun maxNumSuffix(prefijo: String, ids: Collection<String>): Int =
     ids.mapNotNull { it.removePrefix("$prefijo-").toIntOrNull() }.maxOrNull() ?: 0
 
 /**
- * Implementación en memoria del repositorio (v0.1). Sin Room: los datos no
- * sobreviven a reiniciar la app; el seam [BarRepository] permite enchufar Room después.
+ * Implementación en memoria del repositorio: es el **cerebro** del nodo (lógica,
+ * colas, idempotencia, secuencias). Room no duplica esta lógica: [RoomBarRepository]
+ * envuelve una instancia y persiste su estado tras cada mutación.
+ * Acepta estado inicial completo (recarga desde Room) sin efectos secundarios.
  */
 class InMemoryBarRepository(
     establecimientoInicial: Establecimiento = Establecimiento("local-1", "Mi local"),
     salasIniciales: List<Sala> = emptyList(),
     catalogoInicial: List<Producto> = emptyList(),
     mesasIniciales: List<Mesa> = emptyList(),
+    rondasIniciales: List<Ronda> = emptyList(),
+    bebidaInicial: List<Ticket> = emptyList(),
+    comidaInicial: List<Ticket> = emptyList(),
+    servidosIniciales: List<Ticket> = emptyList(),
+    reservasIniciales: List<Reserva> = emptyList(),
+    camarerosIniciales: List<Camarero> = emptyList(),
+    invitacionesIniciales: List<Invitacion> = emptyList(),
+    identityConfigInicial: IdentityConfig = IdentityConfig(),
 ) : BarRepository {
 
     private val catalogoPorId = catalogoInicial.associateBy { it.id }
-    private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>()
+    private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>().also { it.addAll(rondasIniciales.map { r -> r.id }) }
     private var salaSeq = maxNumSuffix("sala", salasIniciales.map { it.id })
     private var mesaSeq = maxNumSuffix("mesa", mesasIniciales.map { it.id })
-    private var reservaSeq = 0
+    private var reservaSeq = maxNumSuffix("reserva", reservasIniciales.map { it.id })
 
     private val _establecimiento = MutableStateFlow(establecimientoInicial)
     private val _salas = MutableStateFlow(salasIniciales)
     private val _mesas = MutableStateFlow(mesasIniciales)
-    private val _reservas = MutableStateFlow<List<Reserva>>(emptyList())
-    private val _bebidaQueue = MutableStateFlow<List<Ticket>>(emptyList())
-    private val _comidaQueue = MutableStateFlow<List<Ticket>>(emptyList())
-    private val _servidos = MutableStateFlow<List<Ticket>>(emptyList())
-    private val _rondas = MutableStateFlow<List<Ronda>>(emptyList())
+    private val _reservas = MutableStateFlow(reservasIniciales)
+    private val _bebidaQueue = MutableStateFlow(bebidaInicial)
+    private val _comidaQueue = MutableStateFlow(comidaInicial)
+    private val _servidos = MutableStateFlow(servidosIniciales)
+    private val _rondas = MutableStateFlow(rondasIniciales)
     private val _catalogo = MutableStateFlow(catalogoInicial)
-    private val _camareros = MutableStateFlow<List<Camarero>>(emptyList())
-    private val _identityConfig = MutableStateFlow(IdentityConfig())
-    private val _invitaciones = MutableStateFlow<List<Invitacion>>(emptyList())
+    private val _camareros = MutableStateFlow(camarerosIniciales)
+    private val _identityConfig = MutableStateFlow(identityConfigInicial)
+    private val _invitaciones = MutableStateFlow(invitacionesIniciales)
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
     override val establecimiento: StateFlow<Establecimiento> = _establecimiento.asStateFlow()

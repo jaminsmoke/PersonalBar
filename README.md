@@ -131,13 +131,23 @@ Permisos: `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE`, `POST_NOT
 
 Bar guarda la **lista blanca del establecimiento** (a quién acepta en la LAN). La identidad canónica vive en Identity, que emite el QR permanente `phid1:<camarero_id>:<credencial_id>:<firma-ed25519>`.
 
-**Conexión** (Ajustes → Identity): URL de Identity + email/contraseña de la **cuenta de negocio** → `POST /v1/auth/negocio/login`; Bar crea/encuentra su establecimiento y guarda el UUID. La config es in-memory en v0.1 (se pierde al reiniciar). Desde el emulador, Identity corre en el host en `http://10.0.2.2:8080`.
+**Conexión** (Ajustes → Identity): URL de Identity + email/contraseña de la **cuenta de negocio** → `POST /v1/auth/negocio/login`; Bar crea/encuentra su establecimiento y guarda el UUID. La config se **persiste en Room** (sobrevive a reinicios). Desde el emulador, Identity corre en el host en `http://10.0.2.2:8080`.
 
 Dos canales de alta:
 - **QR** (verificado): al pegar el `phid1`, Bar llama `POST /v1/establecimientos/{id}/miembros/qr`; el server verifica la firma Ed25519 y la credencial activa. Si la rechaza, no da de alta. Sin Identity conectado → alta local sin verificar (fallback v0.1).
 - **Email**: sección «Invitar por email» → `GET /camareros/buscar?email=` valida que el email existe → `POST /invitaciones` → Identity **envía el correo con el magic-link** (TTL 72 h). La aceptación ocurre en **Identity Web** (fuera de Bar); Bar muestra el estado (pendiente/revocada) y puede revocar. «Sincronizar desde Identity» trae los miembros ACTIVA al espejo local.
 
-La lista local es in-memory (se pierde al reiniciar) y sigue siendo la fuente para la LAN; Identity es el espejo (alta/revocación reflejada). La validación del login de red del Commander contra esta lista se completa cuando Commander envíe su QR.
+La lista local (persistida en Room) sigue siendo la fuente para la LAN; Identity es el espejo (alta/revocación reflejada). La validación del login de red del Commander contra esta lista se completa cuando Commander envíe su QR.
+
+## Persistencia (Room)
+
+El nodo **persiste todo en Room** (`personalbar.db`, esquema v1 exportado a `app/schemas/`): establecimiento, salas/mesas (layout), catálogo, rondas, tickets (colas + servidos), reservas, camareros (lista blanca), invitaciones y la config de Identity.
+
+- **Arquitectura**: `RoomBarRepository` envuelve el `InMemoryBarRepository` (cerebro: lógica, colas, idempotencia, secuencias). Cada mutación actualiza el estado en memoria y **persiste por dominio** en un scope serializado; si una escritura falla, el estado en memoria sigue mandando y se re-persiste en la siguiente mutación.
+- **Arranque**: carga todo de Room; si la BD está vacía (primera instalación) siembra el seed demo (establecimiento «La Terraza», 3 salas, catálogo, 4 mesas, 2 rondas).
+- **No se persisten** los eventos SSE (`SalaEvent`): al reconectar, Commander re-sincroniza por `/v1/estado`.
+- **Migraciones**: schema exportado desde v1 para versionar cambios futuros igual que Commander.
+- Los eventos `ticket.preparado`/`ticket.recogido` y el `preparadoPor` sobreviven al reinicio (los tickets se persisten con su estado).
 
 ## Hermanos
 
