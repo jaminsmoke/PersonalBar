@@ -306,6 +306,8 @@ private fun PbQueueColumn(
                         lineas = ticket.lineas,
                         preparadoPor = ticket.preparadoPor,
                         estado = ticket.estado,
+                        numeroCola = ticket.numeroCola,
+                        destino = ticket.destino,
                         onPreparar = if (puedePreparar) ({ onPreparar(ticket.id) }) else null,
                         onRecoger = { onRecoger(ticket.id) },
                     )

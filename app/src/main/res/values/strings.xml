@@ -33,6 +33,8 @@
     <!-- Colas -->
     <string name="cola_bebida">Bebida</string>
     <string name="cola_comida">Comida</string>
+    <string name="cola_id_bebida">Cola %1$d Bebida</string>
+    <string name="cola_id_comida">Cola %1$d Comida</string>
     <string name="cola_bebida_vacia_titulo">Sin bebidas pendientes</string>
     <string name="cola_bebida_vacia_subtitulo">Cuando llegue una ronda con bebida, el ticket aparecerá aquí.</string>
     <string name="cola_comida_vacia_titulo">Sin comida pendiente</string>

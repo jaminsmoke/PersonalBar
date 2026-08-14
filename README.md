@@ -146,8 +146,16 @@ El nodo **persiste todo en Room** (`personalbar.db`, esquema v1 exportado a `app
 - **Arquitectura**: `RoomBarRepository` envuelve el `InMemoryBarRepository` (cerebro: lógica, colas, idempotencia, secuencias). Cada mutación actualiza el estado en memoria y **persiste por dominio** en un scope serializado; si una escritura falla, el estado en memoria sigue mandando y se re-persiste en la siguiente mutación.
 - **Arranque**: carga todo de Room; si la BD está vacía (primera instalación) siembra el seed demo (establecimiento «La Terraza», 3 salas, catálogo, 4 mesas, 2 rondas).
 - **No se persisten** los eventos SSE (`SalaEvent`): al reconectar, Commander re-sincroniza por `/v1/estado`.
-- **Migraciones**: schema exportado desde v1 para versionar cambios futuros igual que Commander.
+- **Migraciones**: schema exportado desde v1 para versionar cambios futuros igual que Commander. v2 añade `tickets.numeroCola` (id de cola visible/hablable) con `MIGRATION_1_2` + backfill por destino en `RoomBarRepository` al cargar.
 - Los eventos `ticket.preparado`/`ticket.recogido` y el `preparadoPor` sobreviven al reinicio (los tickets se persisten con su estado).
+
+### Id visible de cola («Cola N Bebida/Comida»)
+
+Cada ticket en cola tiene un **id de orden estable y hablable** por destino (`numeroCola`, migración Room v2): «Cola 1 Bebida», «Cola 2 Comida»…
+
+- **Monótono en el turno, no compacta**: si se recoge Cola 1 Bebida, Cola 2 Bebida sigue siendo 2 (ancla estable para voz y tacto; una ronda = 2 tickets, mesa+ronda sería ambiguo).
+- **Color por estado**: tarjeta **amarilla** PENDIENTE (post-it) y **verde** PREPARADO (listo), fuera del scheme como los tokens del mapa. Las recogidas salen de expo.
+- Se muestra en la tarjeta de la expo y en el sheet de comanda del mapa (misma `PbTicketCard`).
 
 ## Hermanos
 

@@ -61,3 +61,14 @@ val PbBoardGridMajor = Color(0xFF3D3428).copy(alpha = 0.22f)
 /** Gradiente FAB / botón primario (gold). */
 val PbGoldGradientTop = Color(0xFFE9C349)
 val PbGoldGradientBottom = Color(0xFFAF8D11)
+
+// ─── Estado de ticket en la expo (fuera del scheme, como MesaColors) ─────────
+// Lectura a distancia: PENDIENTE = post-it amarillo, PREPARADO = listo verde.
+
+/** Fondo de tarjeta PENDIENTE (post-it). */
+val PbTicketPendiente = Color(0xFFFFE082)
+val PbOnTicketPendiente = Color(0xFF3C2F00)
+
+/** Fondo de tarjeta PREPARADO (listo). */
+val PbTicketPreparado = Color(0xFFA5D6A7)
+val PbOnTicketPreparado = Color(0xFF1B5E20)

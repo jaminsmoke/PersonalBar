@@ -89,6 +89,11 @@ data class Ticket(
     val destino: Destino,
     val estado: TicketEstado = TicketEstado.PENDIENTE,
     val preparadoPor: String? = null,
+    /**
+     * Id de cola visible/hablable por destino en el turno («Cola 1 Bebida»).
+     * Monótono: al recoger Cola 1, Cola 2 no pasa a 1 (ancla estable para voz/tacto).
+     */
+    val numeroCola: Int = 0,
     val lineas: List<Linea>,
 )
 
