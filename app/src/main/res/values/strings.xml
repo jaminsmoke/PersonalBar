@@ -30,16 +30,6 @@
 
     <!-- Ajustes -->
     <string name="ajustes_titulo_establecimiento">Establecimiento</string>
-    <string name="ajustes_titulo_salas">Salas</string>
-    <string name="ajustes_nueva_sala">Nueva sala</string>
-    <string name="ajustes_anadir">Añadir</string>
-    <string name="ajustes_renombrar">Renombrar</string>
-    <string name="ajustes_eliminar">Eliminar</string>
-    <string name="ajustes_sala_creada">Sala creada</string>
-    <string name="ajustes_sala_renombrada">Sala renombrada</string>
-    <string name="ajustes_sala_eliminada">Sala eliminada</string>
-    <string name="ajustes_error_nombre">Nombre vacío o ya en uso</string>
-    <string name="ajustes_error_eliminar">No se puede eliminar: tiene mesas</string>
 
     <!-- Colas -->
     <string name="cola_bebida">Bebida</string>
@@ -97,6 +87,9 @@
     <string name="mapa_estado_bloqueada">Bloqueada</string>
     <string name="mapa_sin_mesas_titulo">Sin mesas</string>
     <string name="mapa_sin_mesas_subtitulo">Crea la primera mesa de esta sala</string>
+    <string name="mapa_sin_salas_titulo">Sin salas</string>
+    <string name="mapa_sin_salas_subtitulo">Crea la primera sala del establecimiento</string>
+    <string name="mapa_crear_primera_sala">Crear la primera sala</string>
     <string name="mapa_zoom_in">Acercar</string>
     <string name="mapa_zoom_out">Alejar</string>
     <string name="mapa_encajar">Encajar</string>
