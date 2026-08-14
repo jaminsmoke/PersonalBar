@@ -138,4 +138,24 @@
     <string name="camareros_sincronizar">Sincronizar desde Identity</string>
     <string name="camareros_sincronizados">Lista sincronizada con Identity</string>
     <string name="camareros_sin_identity">Conecta Identity en Ajustes para invitar por email y verificar la firma del QR</string>
+
+    <!-- Voz en colas -->
+    <string name="voz_escuchar">Escuchar</string>
+    <string name="voz_escuchando">Escuchando…</string>
+    <string name="voz_pista">Di «Cola 1 Bebida preparado» o «Cola 2 Comida recogido»</string>
+    <string name="voz_no_entendido">No entendí la orden. Prueba «Cola 1 Bebida preparado»</string>
+    <string name="voz_ticket_no_encontrado">No hay ninguna orden en cola con ese número</string>
+    <string name="voz_estado_ilegal">Esa orden no está en el estado adecuado para esa acción</string>
+    <string name="voz_preparador_no_reconocido">Preparador no reconocido: no está en la lista blanca</string>
+    <string name="voz_sin_sesion">Elige un camarero en «Quién soy» antes de preparar</string>
+    <string name="voz_ok_preparado">Preparado</string>
+    <string name="voz_ok_recogido">Recogido</string>
+    <string name="voz_permiso_denegado">Sin permiso de micrófono no puedo escuchar</string>
+    <string name="voice_error_audio">No se captó audio, inténtalo de nuevo</string>
+    <string name="voice_error_network">Error de red con el reconocimiento de voz</string>
+    <string name="voice_error_network_timeout">Tiempo de espera de red agotado</string>
+    <string name="voice_error_no_match">No te he oído bien, inténtalo de nuevo</string>
+    <string name="voice_error_permissions">Falta el permiso de micrófono</string>
+    <string name="voice_error_unavailable">El reconocimiento de voz no está disponible en este dispositivo</string>
+    <string name="voice_error_generic">Error de voz (%d), inténtalo de nuevo</string>
 </resources>

@@ -3,6 +3,7 @@ package com.jaminsmoke.personalbar.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jaminsmoke.personalbar.PersonalBarApp
+import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.CamareroEstado
@@ -11,6 +12,10 @@ import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Ticket
 import com.jaminsmoke.personalbar.data.TicketEstado
 import com.jaminsmoke.personalbar.lan.BarLanService
+import com.jaminsmoke.personalbar.ui.voz.OrdenColaVoz
+import com.jaminsmoke.personalbar.ui.voz.VozColaParser
+import com.jaminsmoke.personalbar.ui.voz.VozRecognizer
+import com.jaminsmoke.personalbar.ui.voz.mensajeErrorVoz
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,6 +64,20 @@ class ExpoViewModel : ViewModel() {
     /** Quién prepara ahora («en mano»): último chip pulsado de los de servicio. */
     private val _enMano = MutableStateFlow<Camarero?>(null)
     val enMano: StateFlow<Camarero?> = _enMano.asStateFlow()
+
+    /** Voz: true mientras el reconocedor escucha. */
+    private val _escuchando = MutableStateFlow(false)
+    val escuchando: StateFlow<Boolean> = _escuchando.asStateFlow()
+
+    /** Voz: último texto parcial reconocido (feedback visual). */
+    private val _parcial = MutableStateFlow<String?>(null)
+    val parcial: StateFlow<String?> = _parcial.asStateFlow()
+
+    /** Voz: mensaje de feedback (OK / error), texto ya resuelto. */
+    private val _mensajeVoz = MutableStateFlow<String?>(null)
+    val mensajeVoz: StateFlow<String?> = _mensajeVoz.asStateFlow()
+
+    private val recognizer: VozRecognizer = VozRecognizer(PersonalBarApp.get())
 
     init {
         val base = combine(
@@ -136,6 +155,100 @@ class ExpoViewModel : ViewModel() {
     /** Marca el ticket como recogido (sale de la cola). */
     fun marcarRecogido(ticketId: String) {
         repository.marcarRecogido(ticketId)
+    }
+
+    // ── Voz en colas ────────────────────────────────────────────────────────
+
+    init {
+        recognizer.onResultado = { texto -> procesarOrden(texto) }
+        recognizer.onParcial = { parcial -> _parcial.value = parcial }
+        recognizer.onError = { error ->
+            _escuchando.value = false
+            _mensajeVoz.value = mensajeErrorVoz(PersonalBarApp.get(), error)
+        }
+    }
+
+    /** Empieza a escuchar la orden de cola por voz. */
+    fun empezarEscucha() {
+        _mensajeVoz.value = null
+        _parcial.value = null
+        _escuchando.value = true
+        recognizer.empezar()
+    }
+
+    /** Para la escucha en curso (botón o al salir). */
+    fun detenerEscucha() {
+        recognizer.detener()
+        _escuchando.value = false
+    }
+
+    /** Permiso de micrófono denegado: informa sin entrar en escucha. */
+    fun notificarPermisoDenegado() {
+        _mensajeVoz.value = PersonalBarApp.get().getString(R.string.voz_permiso_denegado)
+    }
+
+    /** Procesa el texto reconocido: parsea, resuelve el ticket y ejecuta la mutación. */
+    private fun procesarOrden(texto: String) {
+        _escuchando.value = false
+        when (val orden = VozColaParser.parsear(texto)) {
+            is OrdenColaVoz.Preparado -> ejecutarPreparado(orden)
+            is OrdenColaVoz.Recogido -> ejecutarRecogido(orden)
+            OrdenColaVoz.NoEntendido -> _mensajeVoz.value =
+                PersonalBarApp.get().getString(R.string.voz_no_entendido)
+        }
+    }
+
+    private fun ejecutarPreparado(orden: OrdenColaVoz.Preparado) {
+        val app = PersonalBarApp.get()
+        val ticket = resolverTicket(orden.numeroCola, orden.destino, TicketEstado.PENDIENTE)
+            ?: run { _mensajeVoz.value = app.getString(R.string.voz_ticket_no_encontrado); return }
+        val preparador = if (orden.nombre == null) {
+            _enMano.value ?: run {
+                _mensajeVoz.value = app.getString(R.string.voz_sin_sesion)
+                return
+            }
+        } else {
+            resolverPreparador(orden.nombre) ?: run {
+                _mensajeVoz.value = app.getString(R.string.voz_preparador_no_reconocido)
+                return
+            }
+        }
+        repository.marcarPreparado(ticket.id, preparador.nombre ?: preparador.id.take(8))
+        _mensajeVoz.value = app.getString(R.string.voz_ok_preparado)
+    }
+
+    private fun ejecutarRecogido(orden: OrdenColaVoz.Recogido) {
+        val app = PersonalBarApp.get()
+        val ticket = resolverTicket(orden.numeroCola, orden.destino, TicketEstado.PREPARADO)
+            ?: run { _mensajeVoz.value = app.getString(R.string.voz_estado_ilegal); return }
+        repository.marcarRecogido(ticket.id)
+        _mensajeVoz.value = app.getString(R.string.voz_ok_recogido)
+    }
+
+    /** Resuelve un ticket por (numeroCola, destino) dentro de la cola activa con el estado dado. */
+    private fun resolverTicket(numeroCola: Int, destino: Destino, estado: TicketEstado): Ticket? {
+        val cola = when (destino) {
+            Destino.BARRA -> repository.bebidaQueue.value
+            Destino.COCINA -> repository.comidaQueue.value
+        }
+        return cola.firstOrNull { it.numeroCola == numeroCola && it.estado == estado }
+    }
+
+    /**
+     * Resuelve el nombre hablado contra la lista blanca ACTIVA: compara contra el
+     * nombre (si existe) o el prefijo corto del id (`id.take(8)`), normalizando ambos.
+     */
+    private fun resolverPreparador(nombreHablado: String): Camarero? {
+        val norm = VozColaParser.normalizar(nombreHablado)
+        return repository.camareros.value.firstOrNull { c ->
+            c.estado == CamareroEstado.ACTIVA &&
+                ((c.nombre != null && VozColaParser.normalizar(c.nombre) == norm) ||
+                    VozColaParser.normalizar(c.id.take(8)) == norm)
+        }
+    }
+
+    override fun onCleared() {
+        recognizer.destruir()
     }
 }
 

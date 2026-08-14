@@ -165,6 +165,15 @@ Cada ticket en cola tiene un **id de orden estable y hablable** por destino (`nu
 - **Color por estado**: tarjeta **amarilla** PENDIENTE (post-it) y **verde** PREPARADO (listo), fuera del scheme como los tokens del mapa. Las recogidas salen de expo.
 - Se muestra en la tarjeta de la expo y en el sheet de comanda del mapa (misma `PbTicketCard`).
 
+## Voz en colas
+
+La sección Colas tiene una **barra de escucha por voz** (botón grande con micrófono bajo «Quién soy») para cambiar el estado de una orden **ya identificada** por su id de cola. Reutiliza el `SpeechRecognizer` de Commander (timeouts RMS, `es-ES`, silencio permisivo en barra ruidosa) con otra gramática:
+
+- **Preparado**: `<nombre del preparador> Cola N <Bebida|Comida> preparado` — p. ej. «Lucía, Cola 1 Bebida preparado». El nombre debe estar en la lista blanca ACTIVA; si no se reconoce, se rechaza (no se escribe texto crudo). Sin nombre, se atribuye al camarero «en mano».
+- **Recogido**: `[nombre] Cola N <Bebida|Comida> recogido` — el nombre es opcional y se ignora al casar.
+
+El parser acepta números en letra («cola uno», «treinta y cinco»), relleno («de», «la») y sinónimos de acción. El destino hablado es **Bebida/Comida** (nunca «Cocina», que es el nombre interno del enum). Permiso `RECORD_AUDIO` (runtime). Sin motor de voz en el dispositivo, el botón informa del error y no entra en escucha.
+
 ## Hermanos
 
 - [PersonalComander](https://github.com/jaminsmoke/PersonalComander) — sala (cliente). Red LAN diferida hasta que Bar reciba rondas.
