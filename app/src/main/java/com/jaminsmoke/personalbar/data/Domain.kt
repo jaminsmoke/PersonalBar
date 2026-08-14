@@ -1,5 +1,6 @@
 package com.jaminsmoke.personalbar.data
 
+import java.text.Normalizer
 import kotlinx.serialization.Serializable
 
 /**
@@ -53,4 +54,15 @@ fun zonaPrefijo(zona: String): String = when {
     zona.contains("VIP", ignoreCase = true) || zona.contains("Reservado", ignoreCase = true) -> "V"
     zona.isBlank() -> "M"
     else -> zona.trim().firstOrNull()?.uppercase() ?: "M"
+}
+
+/**
+ * Slug estable para ids de producto: minúsculas, acentos fuera, no-alfanuméricos
+ * a guion. «Caña» → `cana`; «Tostada con tomate» → `tostada-con-tomate`.
+ * Devuelve cadena vacía si no queda nada (p. ej. solo símbolos).
+ */
+fun slugProducto(nombre: String): String {
+    val nfd = Normalizer.normalize(nombre.trim().lowercase(), Normalizer.Form.NFD)
+    val ascii = nfd.replace(Regex("\\p{M}+"), "")
+    return ascii.replace(Regex("[^a-z0-9]+"), "-").trim('-')
 }

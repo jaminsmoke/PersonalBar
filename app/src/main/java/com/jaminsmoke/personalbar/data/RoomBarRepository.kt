@@ -100,6 +100,24 @@ class RoomBarRepository(
         return ok
     }
 
+    override fun crearProducto(nombre: String, categoria: String, precio: Double): Boolean {
+        val ok = inner.crearProducto(nombre, categoria, precio)
+        if (ok) persist { dao.replaceProductos(inner.catalogo.value) }
+        return ok
+    }
+
+    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean): Boolean {
+        val ok = inner.editarProducto(id, nombre, categoria, precio, disponible)
+        if (ok) persist { dao.replaceProductos(inner.catalogo.value) }
+        return ok
+    }
+
+    override fun borrarProducto(id: String): Boolean {
+        val ok = inner.borrarProducto(id)
+        if (ok) persist { dao.replaceProductos(inner.catalogo.value) }
+        return ok
+    }
+
     override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
         val ok = inner.marcarPreparado(ticketId, preparadoPor)
         if (ok) persist { dao.replaceTickets(ticketsActuales()) }

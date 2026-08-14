@@ -53,6 +53,18 @@ interface BarRepository {
     /** @return true si la ronda se procesó; false si ya existía (idempotente). */
     fun crearRonda(ronda: Ronda): Boolean
 
+    /**
+     * @return true si se creó el producto con id auto-slug inmutable; false si el
+     * nombre o la categoría están vacíos. El id se genera desde el nombre.
+     */
+    fun crearProducto(nombre: String, categoria: String, precio: Double): Boolean
+
+    /** @return true si se actualizó; false si no existe o los campos quedan vacíos. No cambia el id. */
+    fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean): Boolean
+
+    /** @return true si se borró; false si no existe. */
+    fun borrarProducto(id: String): Boolean
+
     /** @return true si el ticket estaba PENDIENTE y se marcó PREPARADO con el preparador. */
     fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean
 

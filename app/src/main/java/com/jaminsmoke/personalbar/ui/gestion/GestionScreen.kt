@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.ui.CamarerosScreen
+import com.jaminsmoke.personalbar.ui.CartaScreen
 
 /**
  * Acceso del hub de Gestión: icono + nombre de contexto debajo.
@@ -45,6 +47,7 @@ enum class GestionAcceso(
     val icon: ImageVector,
 ) {
     CAMAREROS(R.string.gestion_camareros, Icons.Default.QrCode),
+    CARTA(R.string.gestion_carta, Icons.Default.RestaurantMenu),
 }
 
 /**
@@ -66,6 +69,12 @@ fun GestionScreen() {
             onVolver = { seleccion = null },
         ) {
             CamarerosScreen()
+        }
+        GestionAcceso.CARTA -> GestionSubPantalla(
+            titulo = stringResource(R.string.gestion_carta),
+            onVolver = { seleccion = null },
+        ) {
+            CartaScreen()
         }
     }
 }

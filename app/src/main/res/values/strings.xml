@@ -12,6 +12,7 @@
     <string name="gestion_titulo">Gestión</string>
     <string name="gestion_volver">Volver</string>
     <string name="gestion_camareros">Camareros</string>
+    <string name="gestion_carta">Carta</string>
 
     <!-- Local -->
     <string name="local_activo">Local activo</string>
@@ -116,6 +117,25 @@
     <string name="camareros_estado_activa">Activa</string>
     <string name="camareros_estado_revocada">Revocada</string>
     <string name="camareros_identidad">ID: %1$s</string>
+
+    <!-- Carta (catálogo) -->
+    <string name="carta_titulo">Carta</string>
+    <string name="carta_subtitulo">Catálogo de productos del bar</string>
+    <string name="carta_nuevo_producto">Nuevo producto</string>
+    <string name="carta_campo_nombre">Nombre</string>
+    <string name="carta_campo_categoria">Categoría</string>
+    <string name="carta_campo_precio">Precio</string>
+    <string name="carta_campo_disponible">Disponible</string>
+    <string name="carta_guardar">Guardar</string>
+    <string name="carta_editar">Editar</string>
+    <string name="carta_borrar_titulo">¿Borrar producto?</string>
+    <string name="carta_borrar_mensaje">Se borrará «%1$s» del catálogo.</string>
+    <string name="carta_vacia">Catálogo vacío</string>
+    <string name="carta_vacia_subtitulo">Crea el primer producto de la carta</string>
+    <string name="carta_error_nombre_categoria">Nombre y categoría obligatorios</string>
+    <string name="carta_categoria_bebida">Bebida</string>
+    <string name="carta_categoria_comida">Comida</string>
+    <string name="carta_no_disponible">No disponible</string>
 
     <!-- Identity (invitaciones por email) -->
     <string name="camareros_qr_rechazado">QR rechazado: la firma no es válida en Identity</string>
