@@ -193,6 +193,31 @@ data class SesionNegocio(
     val logoUrl: String? = null,
 )
 
+/**
+ * Clave pública Ed25519 de Identity para verificar QRs `phid1` offline.
+ * Tabla singleton (PK fija «local»); se refresca al conectar a Identity.
+ * [publicKey] es la clave base64url (32 bytes) que devuelve `GET /v1/keys/qr`.
+ */
+@Entity(tableName = "qr_keys")
+data class QrKey(
+    @PrimaryKey val id: String = "local",
+    val keyId: String = "",
+    val publicKey: String = "",
+    val algorithm: String = "Ed25519",
+)
+
+/**
+ * Alta de camarero hecha offline (verificada localmente) pendiente de subir a
+ * Identity (membresia) cuando vuelva la conexión. [payload] es el QR `phid1`
+ * completo para reenviar a `POST /miembros/qr`.
+ */
+@Entity(tableName = "altas_pendientes")
+data class AltaPendiente(
+    @PrimaryKey val camareroId: String,
+    val payload: String,
+    val creadaEn: Long = System.currentTimeMillis(),
+)
+
 /** Rol de un camarero en el establecimiento. */
 @Serializable
 enum class RolCamarero { DUENO, STAFF }

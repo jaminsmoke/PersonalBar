@@ -4,13 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
+import com.jaminsmoke.personalbar.data.AltaPendiente
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.Invitacion
 import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.Phid1
+import com.jaminsmoke.personalbar.data.QrKey
 import com.jaminsmoke.personalbar.data.QrParser
+import com.jaminsmoke.personalbar.data.QrVerificador
+import com.jaminsmoke.personalbar.lan.IdentityCamareroClient
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,12 +52,13 @@ class CamarerosViewModel : ViewModel() {
             ?: return AltaResultado.QR_INVALIDO.also { _mensaje.value = R.string.camareros_qr_invalido }
         if (repository.identityConfig.value.conectado) {
             if (!isOnline.value) {
-                _mensaje.value = R.string.sin_conexion_aviso
-                return AltaResultado.QR_INVALIDO
+                // Offline: verificar localmente contra la clave pública cacheada.
+                return altaOffline(payload, phid)
             }
             _trabajando.value = true
             viewModelScope.launch {
                 val ok = IdentityNegocioClient.altaPorQr(payload, "staff")
+                refrescarClaveQr()
                 _trabajando.value = false
                 if (!ok) {
                     _mensaje.value = R.string.camareros_qr_rechazado
@@ -72,6 +77,54 @@ class CamarerosViewModel : ViewModel() {
         } else {
             _mensaje.value = R.string.camareros_ya_existe
             AltaResultado.YA_EXISTE
+        }
+    }
+
+    /**
+     * Alta offline: verifica la firma Ed25519 del QR contra la clave pública de
+     * Identity cacheada y, si es válida, da de alta localmente y registra el alta
+     * como pendiente de subir a Identity al reconectar.
+     */
+    private fun altaOffline(payload: String, phid: Phid1): AltaResultado {
+        val clave = repository.qrKey.value
+        if (clave == null || clave.publicKey.isBlank()) {
+            _mensaje.value = R.string.camareros_qr_sin_clave
+            return AltaResultado.QR_INVALIDO
+        }
+        if (!QrVerificador.verificar(payload, clave.publicKey)) {
+            _mensaje.value = R.string.camareros_qr_rechazado
+            return AltaResultado.QR_INVALIDO
+        }
+        if (!repository.altaCamarero(phid.camareroId, phid.credencialId)) {
+            _mensaje.value = R.string.camareros_ya_existe
+            return AltaResultado.YA_EXISTE
+        }
+        repository.registrarAltaPendiente(AltaPendiente(camareroId = phid.camareroId, payload = payload))
+        _mensaje.value = null
+        return AltaResultado.OK
+    }
+
+    /** Cachea la clave pública Ed25519 de Identity (best-effort, solo online). */
+    fun refrescarClaveQr() {
+        if (!repository.identityConfig.value.conectado || !isOnline.value) return
+        viewModelScope.launch {
+            val key = IdentityCamareroClient.clavePublicaQr() ?: return@launch
+            repository.guardarClaveQr(
+                QrKey(keyId = key.keyId, publicKey = key.publicKey, algorithm = key.algorithm.ifBlank { "Ed25519" })
+            )
+        }
+    }
+
+    /** Sube las altas offline pendientes a Identity (membresia) y las limpia. */
+    fun sincronizarAltasPendientes() {
+        if (!repository.identityConfig.value.conectado || !isOnline.value) return
+        viewModelScope.launch {
+            val pendientes = repository.altasPendientes.value.toList()
+            pendientes.forEach { alta ->
+                if (IdentityNegocioClient.altaPorQr(alta.payload, "staff")) {
+                    repository.eliminarAltaPendiente(alta.camareroId)
+                }
+            }
         }
     }
 
@@ -140,10 +193,12 @@ class CamarerosViewModel : ViewModel() {
         if (!repository.identityConfig.value.conectado) return
         _trabajando.value = true
         viewModelScope.launch {
+            refrescarClaveQr()
             val miembros = IdentityNegocioClient.listarMiembros()
                 .filter { it.estado.equals("activa", ignoreCase = true) }
                 .map { it.camareroId }
             repository.sincronizarMiembros(miembros)
+            sincronizarAltasPendientes()
             _trabajando.value = false
             _mensaje.value = R.string.camareros_sincronizados
         }

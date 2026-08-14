@@ -99,6 +99,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.ktor.server.sse)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.tink.android)
     testImplementation(libs.junit)
     testImplementation(libs.ktor.server.test.host)
     androidTestImplementation(libs.androidx.junit)

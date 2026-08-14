@@ -27,8 +27,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Camarero::class,
         IdentityConfig::class,
         SesionNegocio::class,
+        QrKey::class,
+        AltaPendiente::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -99,6 +101,29 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL("DROP TABLE sesion_negocio")
                 db.execSQL("ALTER TABLE sesion_negocio_new RENAME TO sesion_negocio")
+            }
+        }
+
+        /**
+         * v5→v6: `qr_keys` (clave pública Ed25519 de Identity para verificar
+         * QRs offline) y `altas_pendientes` (altas offline con sync diferido).
+         * Tablas nuevas; sin datos previos que migrar.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS qr_keys (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "keyId TEXT NOT NULL, " +
+                        "publicKey TEXT NOT NULL, " +
+                        "algorithm TEXT NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS altas_pendientes (" +
+                        "camareroId TEXT NOT NULL PRIMARY KEY, " +
+                        "payload TEXT NOT NULL, " +
+                        "creadaEn INTEGER NOT NULL)"
+                )
             }
         }
     }

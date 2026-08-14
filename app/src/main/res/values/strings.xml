@@ -144,6 +144,7 @@
 
     <!-- Identity (invitaciones por email) -->
     <string name="camareros_qr_rechazado">QR rechazado: la firma no es válida en Identity</string>
+    <string name="camareros_qr_sin_clave">Sin clave de verificación: conecta una vez a internet para poder dar de alta offline</string>
     <string name="camareros_invitar_titulo">Invitar por email</string>
     <string name="camareros_invitar_email">Email del camarero</string>
     <string name="camareros_invitar">Invitar</string>
