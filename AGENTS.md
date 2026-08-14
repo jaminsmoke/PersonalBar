@@ -415,7 +415,7 @@ Cuando exista `app/`, alinear con Commander:
 - **Language**: Spanish for UI strings & comments, English for code symbols
 - **Compose**: `@Composable` functions use `PascalCase`; modifiers as first parameter where possible
 - **State**: `StateFlow` in ViewModels, `collectAsState()` in UI
-- **Colors**: prefer `MaterialTheme.colorScheme.*` over hardcoded `Color(0xFF...)`
+- **Colors**: prefer `MaterialTheme.colorScheme.*` over hardcoded `Color(0xFF...)`. **Excepción espacial**: el plano del mapa (`PbBoardCanvas`, grid) y los fills de mesa (`MesaColors`) son tokens de espacio físico, no del tema dark. El viewport alrededor del plano sí usa `colorScheme`.
 - **Icons**: `Icons.Default.*` or `Icons.AutoMirrored.Filled.*`; always set `contentDescription` (never `null` for interactive icons)
 - **Strings**: all user-facing text in `res/values/strings.xml`
 - **Room**: operations touching 2+ tables MUST use `@Transaction` or `db.withTransaction {}`

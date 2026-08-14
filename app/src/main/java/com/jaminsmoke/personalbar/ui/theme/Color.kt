@@ -50,6 +50,14 @@ val PbOnErrorContainer = Color(0xFFFFDAD6)
 val PbInverseSurface = Color(0xFFE0E3E5)
 val PbInverseOnSurface = Color(0xFF2D3133)
 
+/**
+ * Plano del board: sepia/crema, fuera del ColorScheme.
+ * El viewport alrededor sigue en surface oscura. Las mesas pastel necesitan este suelo.
+ */
+val PbBoardCanvas = Color(0xFFF2E8D5)
+val PbBoardGrid = Color(0xFF3D3428).copy(alpha = 0.14f)
+val PbBoardGridMajor = Color(0xFF3D3428).copy(alpha = 0.22f)
+
 /** Gradiente FAB / botón primario (gold). */
 val PbGoldGradientTop = Color(0xFFE9C349)
 val PbGoldGradientBottom = Color(0xFFAF8D11)

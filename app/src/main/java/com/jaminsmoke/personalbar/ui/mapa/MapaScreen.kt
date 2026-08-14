@@ -3,7 +3,9 @@ package com.jaminsmoke.personalbar.ui.mapa
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +36,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
@@ -74,10 +78,14 @@ import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.CELL_F
 import com.jaminsmoke.personalbar.data.MAX_BOARD_SCALE
 import com.jaminsmoke.personalbar.data.MIN_BOARD_SCALE
+import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.MesaVisualStatus
+import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
+import com.jaminsmoke.personalbar.data.Ticket
+import com.jaminsmoke.personalbar.data.ticketsAbiertosDeMesa
 import com.jaminsmoke.personalbar.data.ZONA_ALTO
 import com.jaminsmoke.personalbar.data.ZONA_ANCHO
 import com.jaminsmoke.personalbar.data.calcularEscalaAjuste
@@ -85,9 +93,15 @@ import com.jaminsmoke.personalbar.data.clampAlBorde
 import com.jaminsmoke.personalbar.data.findNearestFreeCell
 import com.jaminsmoke.personalbar.data.limitarPan
 import com.jaminsmoke.personalbar.data.mesaDims
-import com.jaminsmoke.personalbar.data.mesaModulos
 import com.jaminsmoke.personalbar.data.panTrasZoom
 import com.jaminsmoke.personalbar.data.zonaEmoji
+import com.jaminsmoke.personalbar.ui.components.PbTicketCard
+import com.jaminsmoke.personalbar.ui.theme.PbBoardCanvas
+import com.jaminsmoke.personalbar.ui.theme.PbBoardGrid
+import com.jaminsmoke.personalbar.ui.theme.PbBoardGridMajor
+import com.jaminsmoke.personalbar.ui.theme.mesaStatusAccent
+import com.jaminsmoke.personalbar.ui.theme.mesaStatusFill
+import com.jaminsmoke.personalbar.ui.theme.mesaStatusOnFill
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,6 +111,9 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
     val salas by viewModel.salas.collectAsState()
     val estados by viewModel.estados.collectAsState()
     val salaSeleccionada by viewModel.salaSeleccionada.collectAsState()
+    val rondas by viewModel.rondas.collectAsState()
+    val bebida by viewModel.bebida.collectAsState()
+    val comida by viewModel.comida.collectAsState()
 
     val salasById = remember(salas) { salas.associateBy { it.id } }
     val mesasFiltradas = remember(mesas, salaSeleccionada) {
@@ -106,6 +123,7 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
     var mesaEditando by remember { mutableStateOf<Mesa?>(null) }
     var mesaBorrando by remember { mutableStateOf<Mesa?>(null) }
     var mesaReservando by remember { mutableStateOf<Mesa?>(null) }
+    var mesaVista by remember { mutableStateOf<Mesa?>(null) }
     var crearVisible by remember { mutableStateOf(false) }
     var crearSalaVisible by remember { mutableStateOf(false) }
     var salaEditando by remember { mutableStateOf<Sala?>(null) }
@@ -169,12 +187,18 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
         }
 
         if (salaSeleccionada == null) {
-            ListaMesas(mesas = mesasFiltradas, salasById = salasById, estados = estados)
+            ListaMesas(
+                mesas = mesasFiltradas,
+                salasById = salasById,
+                estados = estados,
+                onClick = { mesaVista = it },
+            )
         } else {
             BoardView(
                 mesas = mesasFiltradas,
                 salasById = salasById,
                 estados = estados,
+                onClick = { mesaVista = it },
                 onEdit = { mesaEditando = it },
                 onDelete = { mesaBorrando = it },
                 onReservar = { mesaReservando = it },
@@ -254,6 +278,18 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
             dismissButton = { TextButton(onClick = { salaBorrando = null }) { Text(stringResource(R.string.mapa_cancelar)) } },
         )
     }
+
+    mesaVista?.let { mesa ->
+        val nombreSala = salasById[mesa.salaId]?.nombre.orEmpty()
+        val tickets = ticketsAbiertosDeMesa(mesa, nombreSala, rondas, bebida, comida)
+        ComandaVistaSheet(
+            mesa = mesa,
+            nombreSala = nombreSala,
+            tickets = tickets,
+            rondas = rondas,
+            onDismiss = { mesaVista = null },
+        )
+    }
 }
 
 @Composable
@@ -261,6 +297,7 @@ private fun ListaMesas(
     mesas: List<Mesa>,
     salasById: Map<String, Sala>,
     estados: Map<String, MesaVisualStatus>,
+    onClick: (Mesa) -> Unit,
 ) {
     if (mesas.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -277,20 +314,25 @@ private fun ListaMesas(
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(mesas, key = { it.id }) { mesa ->
                 val estado = estados[mesa.id] ?: MesaVisualStatus.LIBRE
+                val fill = mesaStatusFill(estado)
+                val accent = mesaStatusAccent(estado)
+                val onFill = mesaStatusOnFill()
                 Card(
-                    Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    Modifier.fillMaxWidth().clickable { onClick(mesa) },
+                    colors = CardDefaults.cardColors(containerColor = fill, contentColor = onFill),
+                    border = BorderStroke(1.dp, accent.copy(alpha = 0.45f)),
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(
                                 "${mesa.nombreVisible(salasById[mesa.salaId]?.nombre.orEmpty())} · ${salasById[mesa.salaId]?.nombre.orEmpty()}",
                                 fontWeight = FontWeight.Bold,
+                                color = onFill,
                             )
                             Text(
                                 "${mesa.capacidad}p · ${estadoLabel(estado)}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = accent,
                             )
                         }
                     }
@@ -306,6 +348,7 @@ private fun BoardView(
     mesas: List<Mesa>,
     salasById: Map<String, Sala>,
     estados: Map<String, MesaVisualStatus>,
+    onClick: (Mesa) -> Unit,
     onEdit: (Mesa) -> Unit,
     onDelete: (Mesa) -> Unit,
     onReservar: (Mesa) -> Unit,
@@ -404,38 +447,56 @@ private fun BoardView(
                 .drawWithCache {
                     val spacing = CELL_F.dp.toPx()
                     val majorSpacing = spacing * 5f
-                    val grid = scheme.outlineVariant
-                    val major = scheme.outline
-                    val accent = scheme.secondary
+                    val canvasColor = PbBoardCanvas
+                    val gridColor = PbBoardGrid
+                    val majorColor = PbBoardGridMajor
+                    val glowColor = scheme.secondary.copy(alpha = 0.18f)
+                    val accentColor = scheme.secondary.copy(alpha = 0.55f)
+                    val coreColor = scheme.secondary.copy(alpha = 0.85f)
                     val dotRadius = (1.15.dp.toPx() / scale).coerceIn(0.7f, 7f)
                     val majorStroke = (0.65.dp.toPx() / scale).coerceIn(0.5f, 5f)
-                    val borderW = (2.dp.toPx() / scale).coerceIn(1f, 24f)
+                    val glowW = (12.dp.toPx() / scale).coerceIn(4f, 90f)
+                    val accentW = (2.dp.toPx() / scale).coerceIn(1f, 24f)
+                    val coreW = (1.dp.toPx() / scale).coerceIn(0.8f, 10f)
 
                     onDrawBehind {
+                        drawRect(canvasColor)
                         var majorX = majorSpacing
                         while (majorX < size.width) {
-                            drawLine(major, Offset(majorX, 0f), Offset(majorX, size.height), majorStroke)
+                            drawLine(majorColor, Offset(majorX, 0f), Offset(majorX, size.height), majorStroke)
                             majorX += majorSpacing
                         }
                         var majorY = majorSpacing
                         while (majorY < size.height) {
-                            drawLine(major, Offset(0f, majorY), Offset(size.width, majorY), majorStroke)
+                            drawLine(majorColor, Offset(0f, majorY), Offset(size.width, majorY), majorStroke)
                             majorY += majorSpacing
                         }
                         var x = spacing
                         while (x < size.width) {
                             var y = spacing
                             while (y < size.height) {
-                                drawCircle(grid, dotRadius, Offset(x, y))
+                                drawCircle(gridColor, dotRadius, Offset(x, y))
                                 y += spacing
                             }
                             x += spacing
                         }
                         drawRect(
-                            color = accent.copy(alpha = 0.6f),
-                            topLeft = Offset(borderW / 2f, borderW / 2f),
-                            size = Size(size.width - borderW, size.height - borderW),
-                            style = Stroke(width = borderW),
+                            color = glowColor,
+                            topLeft = Offset(glowW / 2f, glowW / 2f),
+                            size = Size(size.width - glowW, size.height - glowW),
+                            style = Stroke(width = glowW),
+                        )
+                        drawRect(
+                            color = accentColor,
+                            topLeft = Offset(accentW / 2f, accentW / 2f),
+                            size = Size(size.width - accentW, size.height - accentW),
+                            style = Stroke(width = accentW),
+                        )
+                        drawRect(
+                            color = coreColor,
+                            topLeft = Offset(coreW / 2f, coreW / 2f),
+                            size = Size(size.width - coreW, size.height - coreW),
+                            style = Stroke(width = coreW),
                         )
                     }
                 },
@@ -456,7 +517,7 @@ private fun BoardView(
                         modifier = Modifier
                             .offset { IntOffset(animX.dp.roundToPx(), animY.dp.roundToPx()) }
                             .width(mw.dp),
-                        onClick = {},
+                        onClick = { onClick(mesa) },
                         onEdit = { onEdit(mesa) },
                         onDelete = { onDelete(mesa) },
                         onRotate = { onRotate(mesa) },
@@ -511,7 +572,7 @@ private fun BoardView(
                         .width(ow.dp)
                         .zIndex(10f),
                 ) {
-                    DragOverlayCard(mesa, salasById[mesa.salaId]?.nombre.orEmpty())
+                    DragOverlayCard(mesa, salasById[mesa.salaId]?.nombre.orEmpty(), estados[mesa.id] ?: MesaVisualStatus.LIBRE)
                 }
             }
         }
@@ -685,6 +746,68 @@ private fun NombreSalaDialog(titulo: String, inicial: String = "", onDismiss: ()
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapa_cancelar)) } },
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ComandaVistaSheet(
+    mesa: Mesa,
+    nombreSala: String,
+    tickets: List<Ticket>,
+    rondas: List<Ronda>,
+    onDismiss: () -> Unit,
+) {
+    val rondasPorId = remember(rondas) { rondas.associateBy { it.id } }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+        ) {
+            Text(
+                stringResource(R.string.mapa_comanda_titulo, mesa.nombreVisible(nombreSala)),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                stringResource(R.string.mapa_comanda_solo_vista),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
+            )
+            if (tickets.isEmpty()) {
+                Text(
+                    stringResource(R.string.mapa_comanda_vacia),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                tickets.forEach { ticket ->
+                    val ronda = rondasPorId[ticket.rondaId]
+                    val destinoRes = if (ticket.destino == Destino.BARRA) {
+                        R.string.mapa_ticket_destino_barra
+                    } else {
+                        R.string.mapa_ticket_destino_cocina
+                    }
+                    Text(
+                        stringResource(destinoRes),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                    PbTicketCard(
+                        mesa = mesa.nombreVisible(nombreSala),
+                        ronda = ronda?.numero ?: 0,
+                        camarero = ronda?.camarero,
+                        lineas = ticket.lineas.map { "${it.cantidad}× ${it.nombreProducto}" },
+                    )
+                    Spacer(Modifier.padding(bottom = 12.dp))
+                }
+            }
+        }
+    }
 }
 
 internal fun formaLabel(forma: MesaForma): String = when (forma) {

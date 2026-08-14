@@ -25,6 +25,9 @@ class MapaViewModel : ViewModel() {
 
     val mesas: StateFlow<List<Mesa>> = repository.mesas
     val salas: StateFlow<List<Sala>> = repository.salas
+    val rondas: StateFlow<List<Ronda>> = repository.rondas
+    val bebida: StateFlow<List<Ticket>> = repository.bebidaQueue
+    val comida: StateFlow<List<Ticket>> = repository.comidaQueue
 
     private data class SalaDinamica(
         val rondas: List<Ronda>,

@@ -111,3 +111,20 @@ fun derivarEstadoMesas(
         mesa.id to mesaVisualStatus(estado, mesa.bloqueada, reservaActivaPorMesa.containsKey(mesa.id))
     }
 }
+
+/**
+ * Tickets abiertos (cola bebida/comida) de una mesa, por idZona.
+ * Vista de comanda: no incluye servidos.
+ */
+fun ticketsAbiertosDeMesa(
+    mesa: Mesa,
+    nombreSala: String,
+    rondas: List<Ronda>,
+    bebida: List<Ticket>,
+    comida: List<Ticket>,
+): List<Ticket> {
+    val idZona = mesa.idZona(nombreSala)
+    val rondaIds = rondas.filter { it.mesaId == idZona }.map { it.id }.toSet()
+    if (rondaIds.isEmpty()) return emptyList()
+    return (bebida + comida).filter { it.rondaId in rondaIds }
+}

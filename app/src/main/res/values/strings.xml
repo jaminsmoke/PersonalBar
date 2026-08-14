@@ -78,4 +78,9 @@
     <string name="mapa_zoom_out">Alejar</string>
     <string name="mapa_encajar">Encajar</string>
     <string name="mapa_cancelar">Cancelar</string>
+    <string name="mapa_comanda_titulo">Comanda %1$s</string>
+    <string name="mapa_comanda_vacia">Sin comanda abierta</string>
+    <string name="mapa_comanda_solo_vista">Solo vista. El pedido se toma en Commander.</string>
+    <string name="mapa_ticket_destino_barra">Bebida</string>
+    <string name="mapa_ticket_destino_cocina">Comida</string>
 </resources>
