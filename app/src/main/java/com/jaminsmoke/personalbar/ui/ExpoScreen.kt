@@ -1,5 +1,9 @@
 package com.jaminsmoke.personalbar.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,10 +22,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalBar
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,8 +52,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Camarero
@@ -111,11 +120,17 @@ fun ExpoScreen(
             when (section) {
                 PbSection.COLAS -> ExpoColas(
                     uiState = uiState,
+                    escuchando = viewModel.escuchando.collectAsState().value,
+                    parcial = viewModel.parcial.collectAsState().value,
+                    mensajeVoz = viewModel.mensajeVoz.collectAsState().value,
                     onAlternarDeServicio = viewModel::alternarDeServicio,
                     onSeleccionarEnMano = viewModel::seleccionarEnMano,
                     onClearPreparador = viewModel::clearPreparador,
                     onPreparar = viewModel::marcarPreparado,
                     onRecoger = viewModel::marcarRecogido,
+                    onEmpezarEscucha = viewModel::empezarEscucha,
+                    onDetenerEscucha = viewModel::detenerEscucha,
+                    onPermisoDenegado = viewModel::notificarPermisoDenegado,
                     modifier = Modifier.weight(1f),
                 )
                 PbSection.MAPA -> MapaScreen()
@@ -160,13 +175,27 @@ private fun PbSidebar(
 @Composable
 private fun ExpoColas(
     uiState: ExpoUiState,
+    escuchando: Boolean,
+    parcial: String?,
+    mensajeVoz: String?,
     onAlternarDeServicio: (String) -> Unit,
     onSeleccionarEnMano: (String) -> Unit,
     onClearPreparador: () -> Unit,
     onPreparar: (String) -> Unit,
     onRecoger: (String) -> Unit,
+    onEmpezarEscucha: () -> Unit,
+    onDetenerEscucha: () -> Unit,
+    onPermisoDenegado: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val permisoLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { concedido ->
+        if (concedido) onEmpezarEscucha()
+        else onPermisoDenegado()
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         PbPreparadorSelector(
             camareros = uiState.camareros,
@@ -175,6 +204,23 @@ private fun ExpoColas(
             onAlternar = onAlternarDeServicio,
             onSeleccionarEnMano = onSeleccionarEnMano,
             onClear = onClearPreparador,
+        )
+        Spacer(Modifier.height(8.dp))
+        PbVozBar(
+            escuchando = escuchando,
+            parcial = parcial,
+            mensaje = mensajeVoz,
+            onTocar = {
+                if (escuchando) {
+                    onDetenerEscucha()
+                } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                    == PackageManager.PERMISSION_GRANTED
+                ) {
+                    onEmpezarEscucha()
+                } else {
+                    permisoLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            },
         )
         Spacer(Modifier.height(12.dp))
         Row(
@@ -201,6 +247,71 @@ private fun ExpoColas(
                 emptyIcon = Icons.Default.RestaurantMenu,
                 emptyTitle = stringResource(R.string.cola_comida_vacia_titulo),
                 emptySubtitle = stringResource(R.string.cola_comida_vacia_subtitulo),
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/**
+ * Barra de escucha por voz: botón grande a todo lo ancho bajo «Quién soy».
+ * Mientras escucha muestra spinner + texto parcial; después, el feedback (OK/error).
+ */
+@Composable
+private fun PbVozBar(
+    escuchando: Boolean,
+    parcial: String?,
+    mensaje: String?,
+    onTocar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(
+                onClick = onTocar,
+                modifier = Modifier.height(48.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = stringResource(R.string.voz_escuchar),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(if (escuchando) R.string.voz_escuchando else R.string.voz_escuchar),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (escuchando) {
+                    Spacer(Modifier.width(8.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .height(20.dp)
+                            .width(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = when {
+                    escuchando -> parcial ?: stringResource(R.string.voz_pista)
+                    mensaje != null -> mensaje
+                    else -> stringResource(R.string.voz_pista)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (mensaje != null && !escuchando) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 modifier = Modifier.weight(1f),
             )
         }
