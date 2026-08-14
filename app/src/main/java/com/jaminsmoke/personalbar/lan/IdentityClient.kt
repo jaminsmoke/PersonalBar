@@ -12,7 +12,28 @@ import java.net.URLEncoder
 // ── Respuestas del API de Identity (v0.2) que consume Bar ────────────────────
 
 @Serializable
-data class IdentityLoginResponse(val token: String)
+data class IdentityLoginResponse(val token: String, val cuenta: IdentityCuentaNegocio = IdentityCuentaNegocio())
+
+@Serializable
+data class IdentityCuentaNegocio(
+    val id: String = "",
+    val email: String = "",
+    @SerialName("nombre_mostrar") val nombreMostrar: String = "",
+    @SerialName("camarero_vinculado_id") val camareroVinculadoId: String? = null,
+)
+
+@Serializable
+data class IdentityRegistroResponse(val id: String)
+
+@Serializable
+data class LoginRequest(val email: String, val password: String)
+
+@Serializable
+data class RegistroNegocioRequest(
+    @SerialName("nombre_mostrar") val nombreMostrar: String,
+    val email: String,
+    val password: String,
+)
 
 @Serializable
 data class IdentityEstablecimiento(val id: String, val nombre: String)
@@ -50,14 +71,22 @@ data class IdentityMembresia(
  */
 object IdentityClient {
 
+    /** URL por defecto del server Identity en desarrollo (emulador → host). En producción
+     *  será un VPS; el usuario de Bar no configura esta URL (config de entorno). */
+    const val DEFAULT_BASE_URL: String = "http://10.0.2.2:8080"
+
     @Volatile
-    var baseUrl: String? = null
+    var baseUrl: String? = DEFAULT_BASE_URL
 
     @Volatile
     var negocioToken: String? = null
 
     @Volatile
     var establecimientoUuid: String? = null
+
+    /** Perfil de la cuenta de negocio logueada (nombre mostrado, email…). */
+    @Volatile
+    var cuentaNegocio: IdentityCuentaNegocio? = null
 
     val conectado: Boolean get() = baseUrl != null && negocioToken != null && establecimientoUuid != null
 
@@ -69,15 +98,35 @@ object IdentityClient {
         baseUrl = null
         negocioToken = null
         establecimientoUuid = null
+        cuentaNegocio = null
     }
 
-    /** `POST /v1/auth/negocio/login` → guarda el token de la cuenta de negocio. */
+    /** `POST /v1/auth/negocio/registro` → crea la cuenta de negocio. Devuelve el id o null. */
+    suspend fun registroNegocio(nombreMostrar: String, email: String, password: String): String? = withContext(Dispatchers.IO) {
+        val body = LanJson.encodeToString(
+            RegistroNegocioRequest(nombreMostrar = nombreMostrar, email = email, password = password)
+        )
+        val (code, text) = request("POST", "/v1/auth/negocio/registro", body = body, auth = false)
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<IdentityRegistroResponse>(text).id }.getOrNull()
+        } else {
+            null
+        }
+    }
+
+    /** `POST /v1/auth/negocio/login` → guarda el token y el perfil de la cuenta de negocio. */
     suspend fun loginNegocio(email: String, password: String): Boolean = withContext(Dispatchers.IO) {
-        val body = """{"email":"$email","password":"$password"}"""
+        val body = LanJson.encodeToString(LoginRequest(email = email, password = password))
         val (code, text) = request("POST", "/v1/auth/negocio/login", body = body, auth = false)
         if (code in 200..299) {
-            negocioToken = runCatching { LanJson.decodeFromString<IdentityLoginResponse>(text).token }.getOrNull()
-            negocioToken != null
+            val resp = runCatching { LanJson.decodeFromString<IdentityLoginResponse>(text) }.getOrNull()
+            if (resp != null && resp.token.isNotBlank()) {
+                negocioToken = resp.token
+                cuentaNegocio = resp.cuenta.takeIf { it.id.isNotBlank() || it.nombreMostrar.isNotBlank() }
+                true
+            } else {
+                false
+            }
         } else {
             false
         }

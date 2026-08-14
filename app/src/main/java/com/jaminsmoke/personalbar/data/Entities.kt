@@ -153,6 +153,27 @@ data class IdentityConfig(
     val error: String? = null,
 )
 
+/** Tipo de establecimiento (categoría del negocio), pedido en el registro. */
+@Serializable
+enum class TipoEstablecimiento { BAR, RESTAURANTE, CAFETERIA, PUB }
+
+/**
+ * Sesión de la cuenta de negocio en el puesto de Bar (tabla singleton).
+ * Se persiste solo si el usuario marcó «Recuérdame» en el login; si no,
+ * vive en memoria y se pierde al reiniciar. [tipo]/[logoClave] se guardan
+ * aquí mientras Identity no expone esos campos (ítem en su kanban).
+ */
+@Entity(tableName = "sesion_negocio")
+data class SesionNegocio(
+    @PrimaryKey val id: String = "local",
+    val token: String? = null,
+    val email: String? = null,
+    val nombreMostrar: String? = null,
+    val establecimientoUuid: String? = null,
+    val tipo: TipoEstablecimiento? = null,
+    val logoClave: String? = null,
+)
+
 /** Rol de un camarero en el establecimiento. */
 @Serializable
 enum class RolCamarero { DUENO, STAFF }

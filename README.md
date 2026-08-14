@@ -165,6 +165,17 @@ Cada ticket en cola tiene un **id de orden estable y hablable** por destino (`nu
 - **Color por estado**: tarjeta **amarilla** PENDIENTE (post-it) y **verde** PREPARADO (listo), fuera del scheme como los tokens del mapa. Las recogidas salen de expo.
 - Se muestra en la tarjeta de la expo y en el sheet de comanda del mapa (misma `PbTicketCard`).
 
+## Sesión de la cuenta de establecimiento
+
+Bar se identifica con la **cuenta de negocio/establecimiento** (no con camareros). En el **header** hay un icono de cuenta que abre un modal con **dos flujos separados**:
+
+- **Crear cuenta** (registro): nombre, email, contraseña, **tipo** (bar/restaurante/cafetería/pub) y **logo opcional**. Llama a `POST /v1/auth/negocio/registro` y luego vincula el establecimiento (`/v1/establecimientos`).
+- **Iniciar sesión** (login): email + contraseña, con **«Recuérdame»**: si se marca, la sesión (token + perfil) se **persiste en Room** (`sesion_negocio`, migración v4) y se restaura al arrancar; si no, solo en memoria.
+
+Una vez logueado, el header muestra el **nombre del establecimiento** (y el logo cuando exista); **nada de camareros** (los camareros se gestionan en Camareros, dentro de Gestión). El usuario **no ve la URL del server Identity** (config de entorno; en dev `http://10.0.2.2:8080`, en producción un VPS).
+
+**Pendiente de Identity** (ítem en su kanban): los campos `tipo_establecimiento` y `logo` aún no existen en `CuentaNegocio`; Bar los guarda **localmente** (en la sesión) hasta que Identity los exponga.
+
 ## Voz en colas
 
 La sección Colas tiene una **barra de escucha por voz** (botón grande con micrófono bajo «Quién soy») para cambiar el estado de una orden **ya identificada** por su id de cola. Reutiliza el `SpeechRecognizer` de Commander (timeouts RMS, `es-ES`, silencio permisivo en barra ruidosa) con otra gramática:

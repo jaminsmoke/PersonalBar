@@ -116,17 +116,7 @@
     <string name="camareros_estado_revocada">Revocada</string>
     <string name="camareros_identidad">ID: %1$s</string>
 
-    <!-- Identity (conexión + invitaciones por email) -->
-    <string name="identity_titulo">Identity</string>
-    <string name="identity_url">URL de Identity (p. ej. http://10.0.2.2:8080)</string>
-    <string name="identity_email">Email de la cuenta de negocio</string>
-    <string name="identity_password">Contraseña</string>
-    <string name="identity_conectar">Conectar</string>
-    <string name="identity_desconectar">Desconectar</string>
-    <string name="identity_conectado">Conectado · Establecimiento %1$s</string>
-    <string name="identity_campos_incompletos">Rellena URL, email y contraseña</string>
-    <string name="identity_login_fallido">No se pudo conectar: comprueba las credenciales</string>
-    <string name="identity_vincular_fallido">No se pudo vincular el establecimiento en Identity</string>
+    <!-- Identity (invitaciones por email) -->
     <string name="camareros_qr_rechazado">QR rechazado: la firma no es válida en Identity</string>
     <string name="camareros_invitar_titulo">Invitar por email</string>
     <string name="camareros_invitar_email">Email del camarero</string>
@@ -142,7 +132,29 @@
     <string name="camareros_invitar_revocar">Revocar invitación</string>
     <string name="camareros_sincronizar">Sincronizar desde Identity</string>
     <string name="camareros_sincronizados">Lista sincronizada con Identity</string>
-    <string name="camareros_sin_identity">Conecta Identity en Ajustes para invitar por email y verificar la firma del QR</string>
+    <string name="camareros_sin_identity">Inicia sesión con la cuenta del establecimiento (icono del header) para invitar por email y verificar la firma del QR</string>
+
+    <!-- Sesión de la cuenta de negocio (header) -->
+    <string name="sesion_iniciar_sesion">Iniciar sesión</string>
+    <string name="sesion_crear_cuenta">Crear cuenta</string>
+    <string name="sesion_cuenta_negocio">Cuenta del establecimiento</string>
+    <string name="sesion_nombre">Nombre del establecimiento</string>
+    <string name="sesion_email">Email</string>
+    <string name="sesion_password">Contraseña</string>
+    <string name="sesion_tipo">Tipo de establecimiento</string>
+    <string name="sesion_logo">Logo (opcional)</string>
+    <string name="sesion_recordar">Recuérdame</string>
+    <string name="sesion_entrar">Entrar</string>
+    <string name="sesion_registrarse">Registrarse</string>
+    <string name="sesion_cerrar">Cerrar sesión</string>
+    <string name="sesion_campos_incompletos">Rellena los campos obligatorios</string>
+    <string name="sesion_login_fallido">Email o contraseña incorrectos</string>
+    <string name="sesion_registro_fallido">No se pudo crear la cuenta (¿email ya registrado?)</string>
+    <string name="sesion_vincular_fallido">No se pudo vincular el establecimiento</string>
+    <string name="sesion_tipo_bar">Bar</string>
+    <string name="sesion_tipo_restaurante">Restaurante</string>
+    <string name="sesion_tipo_cafeteria">Cafetería</string>
+    <string name="sesion_tipo_pub">Pub de copas</string>
 
     <!-- Voz en colas -->
     <string name="voz_escuchar">Escuchar</string>
