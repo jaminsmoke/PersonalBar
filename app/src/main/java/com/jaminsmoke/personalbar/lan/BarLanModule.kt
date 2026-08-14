@@ -3,6 +3,7 @@ package com.jaminsmoke.personalbar.lan
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.Mesa
+import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
@@ -49,6 +50,12 @@ data class EstadoResponse(
     val comida: List<Ticket>,
     val servidos: List<Ticket>,
     val mesas: List<Mesa>,
+)
+
+/** Carta/catálogo canónico para `GET /v1/carta` (Commander espeja ids de producto). */
+@Serializable
+data class CartaResponse(
+    val productos: List<Producto>,
 )
 
 /** Módulo Ktor del nodo de sala: /health, contrato /v1 y SSE /v1/eventos. */
@@ -109,6 +116,10 @@ fun Application.barModule(repository: BarRepository) {
                     mesas = repository.mesas.value,
                 )
             )
+        }
+
+        get("/v1/carta") {
+            call.respond(CartaResponse(productos = repository.catalogo.value))
         }
 
         sse("/v1/eventos") {
