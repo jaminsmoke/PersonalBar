@@ -71,6 +71,21 @@ fun Application.barModule(repository: BarRepository) {
             )
         }
 
+        post("/v1/sesion") {
+            val qr = runCatching { call.receive<SesionRequest>().qr }
+                .getOrNull()?.trim().orEmpty()
+            when (val resultado = SesionConsulta.evaluar(
+                qr = qr,
+                camareros = repository.camareros.value,
+                qrKey = repository.qrKey.value,
+            )) {
+                is SesionConsulta.Resultado.QrInvalido ->
+                    call.respond(HttpStatusCode.BadRequest)
+                is SesionConsulta.Resultado.Ok ->
+                    call.respond(HttpStatusCode.OK, resultado.respuesta)
+            }
+        }
+
         post("/v1/rondas") {
             val ronda = call.receive<Ronda>()
             val creada = repository.crearRonda(ronda)
