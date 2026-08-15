@@ -34,9 +34,17 @@ Una ronda llega del Commander → Bar la parte en **BARRA** (bebida) y **COCINA*
 
 ## 📱 Capturas
 
-| Expo de colas | Mapa de la sala | Gestión | Carta | Ajustes |
-|:---:|:---:|:---:|:---:|:---:|
-| <img src="docs/screenshots/expo.png" width="400"> | <img src="docs/screenshots/mapa.png" width="400"> | <img src="docs/screenshots/gestion.png" width="400"> | <img src="docs/screenshots/carta.png" width="400"> | <img src="docs/screenshots/ajustes.png" width="400"> |
+| Expo de colas | Mapa de la sala |
+|:---:|:---:|
+| <img src="docs/screenshots/expo.png" alt="Expo de colas" width="360"> | <img src="docs/screenshots/mapa.png" alt="Mapa de la sala" width="360"> |
+
+| Gestión | Carta |
+|:---:|:---:|
+| <img src="docs/screenshots/gestion.png" alt="Gestión" width="360"> | <img src="docs/screenshots/carta.png" alt="Carta" width="360"> |
+
+| Ajustes |
+|:---:|
+| <img src="docs/screenshots/ajustes.png" alt="Ajustes" width="360"> |
 
 ## 🚀 Puesta en marcha
 
