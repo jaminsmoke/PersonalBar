@@ -119,6 +119,30 @@ class MigrationTest {
     }
 
     @Test
+    fun migracion_v6_a_v7_anade_dataOrigin() {
+        // 1. BD en v6 con una sesión de negocio
+        helper.createDatabase(TEST_DB, 6).use { db ->
+            db.execSQL(
+                "INSERT INTO sesion_negocio (id, token, email, nombreMostrar, establecimientoUuid, tipo, logoUrl) " +
+                    "VALUES ('local', 'tok-1', 'negocio@x.es', 'La Terraza', 'e-1', 'BAR', NULL)"
+            )
+        }
+
+        // 2. Migrar a v7: la sesión se conserva y dataOrigin arranca NULL (real)
+        val db = helper.runMigrationsAndValidate(TEST_DB, 7, true, AppDatabase.MIGRATION_6_7)
+        db.use {
+            val cursor = it.query(
+                "SELECT nombreMostrar, dataOrigin FROM sesion_negocio WHERE id = 'local'"
+            )
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("La Terraza", c.getString(0))
+                assertEquals(null, c.getString(1))
+            }
+        }
+    }
+
+    @Test
     fun migracion_v1_a_v2_anade_numeroCola() {
         // 1. BD en v1 con datos
         helper.createDatabase(TEST_DB, 1).use { db ->

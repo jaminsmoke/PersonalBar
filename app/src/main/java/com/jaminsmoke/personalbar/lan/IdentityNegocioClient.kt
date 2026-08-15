@@ -2,15 +2,39 @@ package com.jaminsmoke.personalbar.lan
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.net.URLEncoder
+import com.jaminsmoke.personalbar.BuildConfig
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.Sala
 
 // ── Respuestas del servicio Identity negocio (v0.2) que consume Bar ───────────
+
+/**
+ * Procedencia canónica de Identity (`data_origin = real|test|demo`). Inmutable y
+ * heredada por el establecimiento y sus productos en servidor; Bar solo la propaga
+ * y la valida. [desdeApi] tolera valores desconocidos (respuestas de versiones
+ * futuras) degradando a [REAL].
+ */
+enum class DataOrigin(val apiValor: String) {
+    REAL("real"),
+    TEST("test"),
+    DEMO("demo");
+
+    companion object {
+        fun desdeApi(valor: String?): DataOrigin? = when (valor) {
+            null -> null
+            "real" -> REAL
+            "test" -> TEST
+            "demo" -> DEMO
+            else -> null
+        }
+    }
+}
 
 @Serializable
 data class IdentityLoginResponse(val token: String, val cuenta: IdentityCuentaNegocio = IdentityCuentaNegocio())
@@ -23,10 +47,14 @@ data class IdentityCuentaNegocio(
     @SerialName("tipo_establecimiento") val tipoEstablecimiento: String? = null,
     @SerialName("logo_url") val logoUrl: String? = null,
     @SerialName("camarero_vinculado_id") val camareroVinculadoId: String? = null,
+    @SerialName("data_origin") val dataOrigin: String? = null,
 )
 
 @Serializable
-data class IdentityRegistroResponse(val id: String)
+data class IdentityRegistroResponse(
+    val id: String,
+    @SerialName("data_origin") val dataOrigin: String? = null,
+)
 
 @Serializable
 data class LoginRequest(val email: String, val password: String)
@@ -37,10 +65,18 @@ data class RegistroNegocioRequest(
     val email: String,
     val password: String,
     @SerialName("tipo_establecimiento") val tipoEstablecimiento: String? = null,
+    // Se omite en el JSON cuando es null (real): el default de Identity es `real` y
+    // no debe serializarse explícitamente salvo para test/demo.
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("data_origin") val dataOrigin: String? = null,
 )
 
 @Serializable
-data class IdentityEstablecimiento(val id: String, val nombre: String)
+data class IdentityEstablecimiento(
+    val id: String,
+    val nombre: String,
+    @SerialName("data_origin") val dataOrigin: String? = null,
+)
 
 @Serializable
 data class IdentityCamarero(
@@ -111,6 +147,10 @@ object IdentityNegocioClient {
     @Volatile
     var cuentaNegocio: IdentityCuentaNegocio? = null
 
+    /** Procedencia (`data_origin`) del establecimiento vinculado, devuelta por Identity. */
+    @Volatile
+    var establecimientoDataOrigin: String? = null
+
     val conectado: Boolean get() = baseUrl != null && negocioToken != null && establecimientoUuid != null
 
     fun configurar(url: String) {
@@ -122,6 +162,7 @@ object IdentityNegocioClient {
         negocioToken = null
         establecimientoUuid = null
         cuentaNegocio = null
+        establecimientoDataOrigin = null
     }
 
     /** `POST /v1/auth/negocio/registro` → crea la cuenta de negocio. Devuelve el id o null. */
@@ -131,12 +172,16 @@ object IdentityNegocioClient {
         password: String,
         tipo: String? = null,
     ): String? = withContext(Dispatchers.IO) {
+        // La procedencia solo se envía cuando NO es `real` (builds de test/demo con
+        // -PdataOrigin). En builds normales el campo se omite y Identity aplica `real`.
+        val dataOrigin = DataOrigin.desdeApi(BuildConfig.DATA_ORIGIN)?.takeIf { it != DataOrigin.REAL }
         val body = LanJson.encodeToString(
             RegistroNegocioRequest(
                 nombreMostrar = nombreMostrar,
                 email = email,
                 password = password,
                 tipoEstablecimiento = tipo,
+                dataOrigin = dataOrigin?.apiValor,
             )
         )
         val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/auth/negocio/registro", body = body, auth = false)
@@ -177,28 +222,40 @@ object IdentityNegocioClient {
         if (code in 200..299) bytes else null
     }
 
-    /** Crea o encuentra el establecimiento por nombre y guarda su UUID. */
+    /**
+     * Crea o encuentra el establecimiento por nombre y guarda su UUID. También
+     * captura la procedencia (`data_origin`) devuelta y la valida contra la cuenta:
+     * si ambas son conocidas y no `real` pero difieren, hay linaje incoherente y se
+     * devuelve null sin fijar la sesión.
+     */
     suspend fun vincularEstablecimiento(nombre: String): String? = withContext(Dispatchers.IO) {
+        var encontrado: IdentityEstablecimiento? = null
         // 1. buscar entre los establecimientos de la cuenta (GET /mios)
         val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/mios", token = negocioToken)
         if (code in 200..299) {
             val existentes = runCatching { LanJson.decodeFromString<List<IdentityEstablecimiento>>(text) }
                 .getOrNull().orEmpty()
-            val encontrado = existentes.firstOrNull { it.nombre.equals(nombre, ignoreCase = true) }
-            if (encontrado != null) {
-                establecimientoUuid = encontrado.id
-                return@withContext encontrado.id
-            }
+            encontrado = existentes.firstOrNull { it.nombre.equals(nombre, ignoreCase = true) }
         }
         // 2. crear el establecimiento si no existe
-        val body = """{"nombre":"$nombre"}"""
-        val (c2, t2) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos", body = body, token = negocioToken)
-        if (c2 in 200..299) {
-            val creado = runCatching { LanJson.decodeFromString<IdentityEstablecimiento>(t2) }.getOrNull()
-            creado?.let { establecimientoUuid = it.id }
-            return@withContext creado?.id
+        if (encontrado == null) {
+            val body = """{"nombre":"$nombre"}"""
+            val (c2, t2) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos", body = body, token = negocioToken)
+            if (c2 in 200..299) {
+                encontrado = runCatching { LanJson.decodeFromString<IdentityEstablecimiento>(t2) }.getOrNull()
+            }
         }
-        null
+        val est = encontrado ?: return@withContext null
+        // Coherencia de linaje: cuenta y establecimiento no pueden contradecirse.
+        val cuentaOrigen = cuentaNegocio?.dataOrigin?.let { DataOrigin.desdeApi(it) }
+        val estOrigen = DataOrigin.desdeApi(est.dataOrigin)
+        if (cuentaOrigen != null && estOrigen != null && cuentaOrigen != estOrigen) {
+            establecimientoDataOrigin = null
+            return@withContext null
+        }
+        establecimientoUuid = est.id
+        establecimientoDataOrigin = est.dataOrigin
+        return@withContext est.id
     }
 
     /** `POST /v1/establecimientos/{id}/miembros/qr` — el server verifica la firma Ed25519. */

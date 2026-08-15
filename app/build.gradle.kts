@@ -28,6 +28,12 @@ android {
         versionName = "0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Procedencia canónica del nodo (Identity DataOrigin). `real` por defecto;
+        // builds de test/demo la overriden con `-PdataOrigin=test` (no manipulable
+        // en runtime ni visible en la UI).
+        val dataOrigin = (project.findProperty("dataOrigin") as String?) ?: "real"
+        buildConfigField("String", "DATA_ORIGIN", "\"$dataOrigin\"")
     }
 
     signingConfigs {
@@ -60,6 +66,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     sourceSets {
         // Schemas exportados disponibles para MigrationTestHelper (androidTest).
