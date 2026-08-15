@@ -14,7 +14,7 @@ import { FieldResolver } from "./src/fields"
 
 import { appendBodySection, createItem, getBody, updateBody, moveItem, archiveItem, unarchiveItem, deleteItems, clearFieldValue, setFieldValue, showItem } from "./src/items"
 import { generateConfig, validateConfig } from "./src/config-tools"
-import { listItems } from "./src/list"
+import { listItems, findItems } from "./src/list"
 import { createField, updateField, addFieldOption, deleteField } from "./src/fields-mutations"
 import type { FieldDataType, OptionColor, FieldOption } from "./src/fields-mutations"
 import { convertDraftToIssue } from "./src/conversions"
@@ -76,6 +76,7 @@ Usage:
   bun cli.ts delete-view <viewId>
   bun cli.ts show <itemId>                               # show all fields
   bun cli.ts list [--status X] [--tipo X] [--area X] [--format json]  # list items
+  bun cli.ts find <query> [--exact]          # busca por título; id único si hay 1 match
   bun cli.ts create-field --name "..." --data-type SINGLE_SELECT [--options "A:GRAY,B:BLUE"]
   bun cli.ts update-field --field-id "..." [--name "..."] [--options "A:GRAY,B:BLUE"]
   bun cli.ts add-option --field-id "..." --name "..." --color GRAY --desc "..."
@@ -195,6 +196,32 @@ Usage:
       console.log(`${items.length} items`)
     }
     return
+  }
+
+  if (command === "find") {
+    const query = args[1]
+    if (!query) {
+      console.error("ERROR: query required. Usage: bun cli.ts find <query> [--exact]")
+      process.exit(1)
+    }
+    const flags = parseFlags(args.slice(2))
+    const matches = await findItems(cfg, query, { exact: flags.exact === "true" })
+
+    if (matches.length === 0) {
+      console.error(`No matches for "${query}"`)
+      process.exit(1)
+    }
+    if (matches.length === 1) {
+      // Encadenable: imprime solo el id para $(kanban find "...")
+      console.log(matches[0].id)
+      return
+    }
+    for (const item of matches) {
+      const num = item.number ? `#${item.number}` : "DRAFT"
+      console.log(`${item.id} ${num.padEnd(6)} [${(item.status ?? "-").padEnd(12)}] ${item.title.slice(0, 80)}`)
+    }
+    console.error(`${matches.length} matches for "${query}" — usa un término más específico o --exact`)
+    process.exit(1)
   }
 
   if (command === "show") {

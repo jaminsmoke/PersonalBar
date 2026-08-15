@@ -20,6 +20,10 @@ interface ListItem {
   area?: string
 }
 
+interface FindOptions {
+  exact?: boolean
+}
+
 interface ItemNode {
   id: string
   content: { __typename: string; title: string; number?: number }
@@ -101,37 +105,61 @@ export async function listItems(cfg: KanbanConfig, filters: ListFilters = {}): P
   const items: ListItem[] = []
 
   for (const node of nodes) {
-    const ct = node.content as { __typename: string; title: string; number?: number }
-    const fv: Record<string, string> = {}
-    for (const v of node.fieldValues.nodes) {
-      if (v.name) fv[v.field.name] = v.name
-      if (v.date) fv[v.field.name] = v.date
-    }
-
-    const status = fv["Status"] ?? "-"
-    const version = fv["Versión"] ?? fv["Version"] ?? "-"
-    const tipo = fv["Tipo"] ?? "-"
-    const area = fv["Área principal"] ?? fv["Area"] ?? "-"
+    const item = toListItem(node)
 
     // Apply filters
-    if (filters.status && status !== filters.status) continue
-    if (filters.version && version !== filters.version) continue
-    if (filters.tipo && tipo !== filters.tipo) continue
-    if (filters.area && area !== filters.area) continue
+    if (filters.status && item.status !== filters.status) continue
+    if (filters.version && item.version !== filters.version) continue
+    if (filters.tipo && item.tipo !== filters.tipo) continue
+    if (filters.area && item.area !== filters.area) continue
 
-    items.push({
-      id: node.id,
-      title: ct.title,
-      type: ct.__typename as "DraftIssue" | "Issue",
-      number: ct.number,
-      status,
-      version,
-      tipo,
-      area,
-    })
+    items.push(item)
   }
 
   return items
+}
+
+/**
+ * Map a raw GraphQL item node to a ListItem.
+ * Shared by listItems (filters) and findItems (title search).
+ */
+function toListItem(node: ItemNode): ListItem {
+  const ct = node.content as { __typename: string; title: string; number?: number }
+  const fv: Record<string, string> = {}
+  for (const v of node.fieldValues.nodes) {
+    if (v.name) fv[v.field.name] = v.name
+    if (v.date) fv[v.field.name] = v.date
+  }
+
+  return {
+    id: node.id,
+    title: ct.title,
+    type: ct.__typename as "DraftIssue" | "Issue",
+    number: ct.number,
+    status: fv["Status"] ?? "-",
+    version: fv["Versión"] ?? fv["Version"] ?? "-",
+    tipo: fv["Tipo"] ?? "-",
+    area: fv["Área principal"] ?? fv["Area"] ?? "-",
+  }
+}
+
+/**
+ * Search all kanban items by title.
+ *
+ * Matches case-insensitively: substring by default, exact equality with `exact`.
+ * Always fetches the full board (paginated), so results are correct regardless
+ * of where the matching items sit.
+ */
+export async function findItems(cfg: KanbanConfig, query: string, opts: FindOptions = {}): Promise<ListItem[]> {
+  const nodes = await fetchAllItems(cfg.projectId)
+  const q = query.trim().toLowerCase()
+
+  return nodes
+    .map(toListItem)
+    .filter((item) => {
+      const title = item.title.toLowerCase()
+      return opts.exact ? title === q : title.includes(q)
+    })
 }
 
 /**
