@@ -86,6 +86,7 @@ class SesionViewModel : ViewModel() {
                 establecimientoUuid = uuid,
                 tipo = tipoDesdeApi(perfil?.tipoEstablecimiento),
                 logoUrl = perfil?.logoUrl,
+                dataOrigin = perfil?.dataOrigin ?: IdentityNegocioClient.establecimientoDataOrigin,
             )
             _sesion.value = sesion
             marcarConectado(uuid)
@@ -149,6 +150,8 @@ class SesionViewModel : ViewModel() {
                 establecimientoUuid = uuid,
                 tipo = tipo,
                 logoUrl = logoUrl,
+                dataOrigin = IdentityNegocioClient.cuentaNegocio?.dataOrigin
+                    ?: IdentityNegocioClient.establecimientoDataOrigin,
             )
             _sesion.value = sesion
             marcarConectado(uuid)
@@ -230,6 +233,7 @@ class SesionViewModel : ViewModel() {
                 nombreMostrar = nombre,
                 tipoEstablecimiento = sesion.tipo?.apiValor(),
                 logoUrl = sesion.logoUrl,
+                dataOrigin = sesion.dataOrigin,
             )
         }
     }

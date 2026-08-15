@@ -11,8 +11,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * (id de cola visible/hablable por destino); v3 añade `camareros.deServicio`
  * (varios preparadores activos en el puesto); v4 añade `sesion_negocio`
  * (sesión de la cuenta de negocio con «Recuérdame»); v5 sustituye `logoClave`
- * por `logoUrl` (logo sincronizado contra Identity). Schema exportado a
- * `app/schemas/` para versionar migraciones futuras igual que Commander.
+ * por `logoUrl` (logo sincronizado contra Identity); v7 añade
+ * `sesion_negocio.dataOrigin` (procedencia canónica de Identity). Schema exportado
+ * a `app/schemas/` para versionar migraciones futuras igual que Commander.
  */
 @Database(
     entities = [
@@ -30,7 +31,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         QrKey::class,
         AltaPendiente::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -124,6 +125,17 @@ abstract class AppDatabase : RoomDatabase() {
                         "payload TEXT NOT NULL, " +
                         "creadaEn INTEGER NOT NULL)"
                 )
+            }
+        }
+
+        /**
+         * v6→v7: `sesion_negocio.dataOrigin` (procedencia canónica de Identity,
+         * `real|test|demo`). Columna nullable; las sesiones existentes quedan NULL
+         * (equivalen a `real`).
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sesion_negocio ADD COLUMN dataOrigin TEXT")
             }
         }
     }

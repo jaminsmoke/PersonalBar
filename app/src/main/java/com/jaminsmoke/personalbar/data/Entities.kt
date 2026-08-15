@@ -191,6 +191,8 @@ data class SesionNegocio(
     val establecimientoUuid: String? = null,
     val tipo: TipoEstablecimiento? = null,
     val logoUrl: String? = null,
+    /** Procedencia canónica de Identity (`real|test|demo`) para diagnóstico offline. */
+    val dataOrigin: String? = null,
 )
 
 /**
