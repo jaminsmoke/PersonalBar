@@ -82,4 +82,27 @@ class CamarerosRepositoryTest {
         // Un camarero no dado de alta no puede ponerse de servicio.
         assertFalse(repo.ponerDeServicio("no-existe"))
     }
+
+    @Test
+    fun registrarInvitacionNoDaAltaCamarero() {
+        // Inversión del alta: invitar deja un pendiente (espejo), NO mete al camarero
+        // en la lista blanca. La aceptación (vía Identity) es lo que lo daría de alta.
+        repo.registrarInvitacion(
+            Invitacion(id = "inv-1", email = "ana@example.com", rol = "staff", estado = InvitacionEstado.PENDIENTE)
+        )
+        assertEquals(1, repo.invitaciones.value.size)
+        assertEquals(InvitacionEstado.PENDIENTE, repo.invitaciones.value.first().estado)
+        // La lista blanca sigue vacía: la invitación no es un alta.
+        assertTrue(repo.camareros.value.isEmpty())
+    }
+
+    @Test
+    fun revocarInvitacionNoTocaCamareros() {
+        repo.registrarInvitacion(
+            Invitacion(id = "inv-1", email = "ana@example.com", rol = "staff", estado = InvitacionEstado.PENDIENTE)
+        )
+        assertTrue(repo.revocarInvitacionLocal("inv-1"))
+        assertEquals(InvitacionEstado.REVOCADA, repo.invitaciones.value.first().estado)
+        assertTrue(repo.camareros.value.isEmpty())
+    }
 }
