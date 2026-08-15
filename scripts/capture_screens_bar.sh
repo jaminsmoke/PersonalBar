@@ -95,7 +95,36 @@ adb shell pm clear "$PKG" >/dev/null || true
 # Evita el diálogo de permisos de notificaciones en el primer arranque.
 adb shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
 adb shell am start -n "$PKG/$ACTIVITY" >/dev/null
-sleep 6
+sleep 8
+
+# Espera a que la UI real de la app esté visible (no el launcher ni un diálogo).
+# El primer arranque tras pm clear puede tardar; el diálogo de permisos aparece
+# encima de la app y debe cerrarse ANTES de navegar/capturar.
+wait_ui() {
+  local xml="$TMP/ui.xml"
+  local i
+  for i in 1 2 3 4 5 6 7 8; do
+    adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+    adb pull /sdcard/ui.xml "$(win "$xml")" >/dev/null 2>&1
+    if grep -q '"Colas"\|"Local inactivo"' "$xml" 2>/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+if wait_ui; then
+  # Cierra el diálogo de permisos si sigue encima (p. ej. 'Allow').
+  if grep -q '"Allow"' "$TMP/ui.xml" 2>/dev/null; then
+    tap_text_any "Allow" "Don" || true
+    sleep 2
+    wait_ui || true
+  fi
+  echo "  UI de la app visible"
+else
+  echo "  ! la UI de la app no apareció; se captura igualmente" >&2
+fi
 
 # --- helpers ------------------------------------------------------------------
 # Vuelca la jerarquía UI y devuelve el centro (x y) del primer nodo cuyo text
@@ -198,9 +227,9 @@ tap_text_any "Gestión" && capture gestion
 echo "  navegando a Carta..."
 tap_text_any "Carta" && capture carta
 
-echo "  volviendo al hub y navegando a Ajustes..."
-adb shell input keyevent 4 >/dev/null 2>&1 || true
-sleep 2
+echo "  navegando a Ajustes (rail, sin back: el back puede cerrar la app)..."
+# El rail del sidebar está siempre visible (también dentro de sub-pantallas de
+# Gestión); usar back puede cerrar la actividad y capturar el launcher.
 tap_text_any "Ajustes" "Settings" && capture ajustes
 
 # --- limpieza (nunca dejar datos de prueba) -------------------------------------
