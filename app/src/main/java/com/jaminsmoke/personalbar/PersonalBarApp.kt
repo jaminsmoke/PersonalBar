@@ -11,6 +11,14 @@ import com.jaminsmoke.personalbar.data.RoomBarRepository
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.lan.BarLanServer
 import com.jaminsmoke.personalbar.lan.Conectividad
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +41,7 @@ class PersonalBarApp : Application() {
             AppDatabase::class.java,
             "personalbar.db",
         )
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8)
             .build()
     }
 
@@ -70,25 +78,58 @@ class PersonalBarApp : Application() {
         // El nodo ya no arranca aquí: lo arranca/para BarLanService (FGS «Local activo»).
     }
 
+    /**
+     * Scope del timeout de sesión. Vive ligado al **proceso** (no al FGS): aunque el
+     * FGS no arranque (degradación), el nodo en proceso sigue cortando jornadas
+     * sin heartbeat. Se arranca/para con el ciclo del nodo ([startLocal]/[stopLocal]).
+     */
+    private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var sessionJob: Job? = null
+
     /** Arranca el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
     fun startLocal(): Boolean {
         val ok = lanServer.startServer()
         _roomActive.value = lanServer.isRunning
+        startSessionTimeout()
         return ok
     }
 
     /** Para el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
     fun stopLocal() {
+        stopSessionTimeout()
         lanServer.stopServer()
         _roomActive.value = false
     }
 
+    /** Timer que auto-inactiva las sesiones sin heartbeat dentro del timeout. */
+    private fun startSessionTimeout() {
+        sessionJob?.cancel()
+        sessionJob = sessionScope.launch {
+            while (isActive) {
+                delay(SESSION_CHECK_INTERVAL_MS)
+                repository.cortarSesionesVencidas(HEARTBEAT_TIMEOUT_MS)
+            }
+        }
+    }
+
+    private fun stopSessionTimeout() {
+        sessionJob?.cancel()
+        sessionJob = null
+    }
+
     override fun onTerminate() {
         stopLocal()
+        sessionScope.cancel()
         super.onTerminate()
     }
 
     companion object {
+        /** Sin heartbeat en 30 s, la sesión se corta (auto-inactivación por salida de LAN). */
+        const val HEARTBEAT_TIMEOUT_MS: Long = 30_000L
+
+        /** Cada cuánto se revisa el timeout (5 s). */
+        const val SESSION_CHECK_INTERVAL_MS: Long = 5_000L
+
         @Volatile
         private var instance: PersonalBarApp? = null
 

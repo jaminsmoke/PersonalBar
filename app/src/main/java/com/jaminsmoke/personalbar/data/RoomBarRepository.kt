@@ -259,6 +259,28 @@ class RoomBarRepository(
         return ok
     }
 
+    override fun iniciarSesion(camareroId: String): Boolean {
+        val ok = inner.iniciarSesion(camareroId)
+        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        return ok
+    }
+
+    override fun cortarSesion(camareroId: String): Boolean {
+        val ok = inner.cortarSesion(camareroId)
+        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        return ok
+    }
+
+    override fun registrarHeartbeat(camareroId: String): Boolean = inner.registrarHeartbeat(camareroId)
+
+    override fun tieneSesionActiva(camareroId: String): Boolean = inner.tieneSesionActiva(camareroId)
+
+    override fun cortarSesionesVencidas(timeoutMs: Long): Int {
+        val cortadas = inner.cortarSesionesVencidas(timeoutMs)
+        if (cortadas > 0) persist { dao.replaceCamareros(inner.camareros.value) }
+        return cortadas
+    }
+
     override fun setIdentityConfig(config: IdentityConfig) {
         inner.setIdentityConfig(config)
         persist { dao.upsertIdentityConfig(inner.identityConfig.value) }

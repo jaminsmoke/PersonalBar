@@ -19,6 +19,7 @@ import io.ktor.server.testing.testApplication
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -237,6 +238,111 @@ class BarLanModuleTest {
         assertEquals(setOf("cana", "croquetas"), carta.productos.map { it.id }.toSet())
         // Incluye el flag `disponible` que Commander cachea para ocultar en comanda.
         assertTrue(carta.productos.all { it.disponible })
+    }
+
+    @Test
+    fun iniciarSesionConcedeJornada() = testApplication {
+        val id = "11111111-1111-4111-8111-111111111111"
+        val repository = InMemoryBarRepository(
+            camarerosIniciales = listOf(Camarero(id = id, nombre = "luciaTest")),
+        )
+        application { barModule(repository) }
+
+        val resp = client.post("/v1/sesion/iniciar") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr":"phid1:$id:22222222-2222-4222-8222-222222222222:firmaTest"}""")
+        }
+        assertEquals(HttpStatusCode.OK, resp.status)
+        assertTrue(resp.bodyAsText().contains("\"sesionActiva\":true"))
+        assertTrue(repository.tieneSesionActiva(id))
+    }
+
+    @Test
+    fun iniciarSesionRechazaDesconocido() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+
+        val resp = client.post("/v1/sesion/iniciar") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr":"phid1:11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222:firmaTest"}""")
+        }
+        assertEquals(HttpStatusCode.Forbidden, resp.status)
+    }
+
+    @Test
+    fun cortarSesionBajaJornada() = testApplication {
+        val id = "11111111-1111-4111-8111-111111111111"
+        val repository = InMemoryBarRepository(
+            camarerosIniciales = listOf(Camarero(id = id, nombre = "luciaTest")),
+        )
+        application { barModule(repository) }
+        client.post("/v1/sesion/iniciar") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr":"phid1:$id:22222222-2222-4222-8222-222222222222:firmaTest"}""")
+        }
+
+        val resp = client.post("/v1/sesion/cortar") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr":"phid1:$id:22222222-2222-4222-8222-222222222222:firmaTest"}""")
+        }
+        assertEquals(HttpStatusCode.OK, resp.status)
+        assertFalse(repository.tieneSesionActiva(id))
+    }
+
+    @Test
+    fun heartbeat403SinSesionY200ConSesion() = testApplication {
+        val id = "11111111-1111-4111-8111-111111111111"
+        val repository = InMemoryBarRepository(
+            camarerosIniciales = listOf(Camarero(id = id, nombre = "luciaTest")),
+        )
+        application { barModule(repository) }
+
+        val sinSesion = client.post("/v1/heartbeat") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"camareroId":"$id"}""")
+        }
+        assertEquals(HttpStatusCode.Forbidden, sinSesion.status)
+
+        client.post("/v1/sesion/iniciar") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"qr":"phid1:$id:22222222-2222-4222-8222-222222222222:firmaTest"}""")
+        }
+        val conSesion = client.post("/v1/heartbeat") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"camareroId":"$id"}""")
+        }
+        assertEquals(HttpStatusCode.OK, conSesion.status)
+    }
+
+    @Test
+    fun rondaConContratadoSinSesionDevuelve403() = testApplication {
+        val repository = InMemoryBarRepository(
+            camarerosIniciales = listOf(Camarero(id = "c-1", nombre = "Lucía")),
+        )
+        application { barModule(repository) }
+
+        val resp = client.post("/v1/rondas") {
+            contentType(ContentType.Application.Json)
+            setBody(LanJson.encodeToString(ronda()))
+        }
+        assertEquals(HttpStatusCode.Forbidden, resp.status)
+        assertTrue(repository.bebidaQueue.value.isEmpty())
+    }
+
+    @Test
+    fun rondaConContratadoActivoSeCrea() = testApplication {
+        val repository = InMemoryBarRepository(
+            camarerosIniciales = listOf(Camarero(id = "c-1", nombre = "Lucía")),
+        )
+        repository.iniciarSesion("c-1")
+        application { barModule(repository) }
+
+        val resp = client.post("/v1/rondas") {
+            contentType(ContentType.Application.Json)
+            setBody(LanJson.encodeToString(ronda()))
+        }
+        assertEquals(HttpStatusCode.Created, resp.status)
+        assertEquals(1, repository.bebidaQueue.value.size)
     }
 
     @Test

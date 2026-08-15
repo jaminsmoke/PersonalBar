@@ -248,4 +248,11 @@ data class Camarero(
      * Commander, Bar solo la asigna al establecimiento). Migración Room v3.
      */
     val deServicio: Boolean = false,
+    /**
+     * Sesión de trabajo activa: Bar concedió la jornada (POST /v1/sesion/iniciar)
+     * y aún no la cortó (fin de jornada, revocación o salida de la LAN por
+     * heartbeat). Solo con esto true el camarero puede mandar comandas.
+     * Distinto de [deServicio] (preparador en el puesto). Migración Room v8.
+     */
+    val sesionActiva: Boolean = false,
 )

@@ -152,4 +152,21 @@ interface BarRepository {
 
     /** Elimina un alta pendiente (tras subirla a Identity). */
     fun eliminarAltaPendiente(camareroId: String)
+
+    // ── Sesión de trabajo (jornada concedida por Bar) ────────────────────────
+
+    /** @return true si el camarero ACTIVA pasa a sesión activa (Bar concede la jornada). */
+    fun iniciarSesion(camareroId: String): Boolean
+
+    /** @return true si tenía sesión activa y se corta (emite `sesion.cortada`). */
+    fun cortarSesion(camareroId: String): Boolean
+
+    /** @return true si la sesión sigue activa y se refresca `lastSeen`; false si no hay sesión (→ 403). */
+    fun registrarHeartbeat(camareroId: String): Boolean
+
+    /** @return true si el camarero tiene sesión activa en este momento. */
+    fun tieneSesionActiva(camareroId: String): Boolean
+
+    /** Corta las sesiones sin heartbeat dentro de [timeoutMs]; devuelve cuántas cortó. */
+    fun cortarSesionesVencidas(timeoutMs: Long): Int
 }
