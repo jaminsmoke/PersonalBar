@@ -23,11 +23,14 @@ data class SalaEvent(
     val camarero: String? = null,
     val resumen: String = "",
     val ticket: Ticket? = null,
+    /** Id del camarero afectado (usado por `sesion.cortada`). Null en eventos de ticket. */
+    val camareroId: String? = null,
 ) {
     companion object {
         const val VERSION = 1
         const val TIPO_PREPARADO = "ticket.preparado"
         const val TIPO_RECOGIDO = "ticket.recogido"
+        const val TIPO_SESION_CORTADA = "sesion.cortada"
 
         fun preparado(ticket: Ticket, mesaId: String?, camarero: String?) = SalaEvent(
             tipo = TIPO_PREPARADO,
@@ -47,6 +50,13 @@ data class SalaEvent(
             camarero = camarero,
             resumen = resumenLineas(ticket.lineas),
             ticket = ticket,
+        )
+
+        /** Corte de sesión de trabajo (fin de jornada / revocación / salida de LAN). */
+        fun cortada(camareroId: String) = SalaEvent(
+            tipo = TIPO_SESION_CORTADA,
+            ticketId = "",
+            camareroId = camareroId,
         )
     }
 }

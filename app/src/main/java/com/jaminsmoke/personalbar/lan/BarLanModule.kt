@@ -1,9 +1,11 @@
 package com.jaminsmoke.personalbar.lan
 
 import com.jaminsmoke.personalbar.data.BarRepository
+import com.jaminsmoke.personalbar.data.CandadoComandas
 import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.Producto
+import com.jaminsmoke.personalbar.data.QrParser
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
@@ -39,6 +41,18 @@ val LanJson: Json = Json {
 @Serializable
 data class PreparadoRequest(
     @SerialName("preparado_por") val preparadoPor: String,
+)
+
+/** Respuesta de `POST /v1/sesion/iniciar`: jornada concedida (`sesionActiva=true`). */
+@Serializable
+data class SesionIniciarResponse(
+    @SerialName("sesionActiva") val sesionActiva: Boolean,
+)
+
+/** Cuerpo de `POST /v1/heartbeat`: latido del Commander con su id de Identity. */
+@Serializable
+data class HeartbeatRequest(
+    @SerialName("camareroId") val camareroId: String = "",
 )
 
 /** Estado completo del nodo para `GET /v1/estado` (polling de Commander). */
@@ -87,13 +101,50 @@ fun Application.barModule(repository: BarRepository) {
             }
         }
 
+        post("/v1/sesion/iniciar") {
+            val qr = runCatching { call.receive<SesionRequest>().qr }
+                .getOrNull()?.trim().orEmpty()
+            val phid = QrParser.parsear(qr)
+            when {
+                phid == null -> call.respond(HttpStatusCode.BadRequest)
+                repository.iniciarSesion(phid.camareroId) ->
+                    call.respond(HttpStatusCode.OK, SesionIniciarResponse(sesionActiva = true))
+                else -> call.respond(HttpStatusCode.Forbidden)
+            }
+        }
+
+        post("/v1/sesion/cortar") {
+            val qr = runCatching { call.receive<SesionRequest>().qr }
+                .getOrNull()?.trim().orEmpty()
+            val phid = QrParser.parsear(qr)
+            when {
+                phid == null -> call.respond(HttpStatusCode.BadRequest)
+                repository.cortarSesion(phid.camareroId) -> call.respond(HttpStatusCode.OK)
+                else -> call.respond(HttpStatusCode.NotFound)
+            }
+        }
+
+        post("/v1/heartbeat") {
+            val camareroId = runCatching { call.receive<HeartbeatRequest>().camareroId }
+                .getOrNull()?.trim().orEmpty()
+            when {
+                camareroId.isEmpty() -> call.respond(HttpStatusCode.BadRequest)
+                repository.registrarHeartbeat(camareroId) -> call.respond(HttpStatusCode.OK)
+                else -> call.respond(HttpStatusCode.Forbidden)
+            }
+        }
+
         post("/v1/rondas") {
             val ronda = call.receive<Ronda>()
-            val creada = repository.crearRonda(ronda)
-            val tickets = (repository.bebidaQueue.value + repository.comidaQueue.value)
-                .filter { it.rondaId == ronda.id }
-            val status = if (creada) HttpStatusCode.Created else HttpStatusCode.OK
-            call.respond(status, tickets)
+            if (!CandadoComandas.admitida(ronda, repository.camareros.value)) {
+                call.respond(HttpStatusCode.Forbidden)
+            } else {
+                val creada = repository.crearRonda(ronda)
+                val tickets = (repository.bebidaQueue.value + repository.comidaQueue.value)
+                    .filter { it.rondaId == ronda.id }
+                val status = if (creada) HttpStatusCode.Created else HttpStatusCode.OK
+                call.respond(status, tickets)
+            }
         }
 
         post("/v1/tickets/{id}/preparado") {

@@ -143,6 +143,28 @@ class MigrationTest {
     }
 
     @Test
+    fun migracion_v7_a_v8_anade_sesionActiva() {
+        // 1. BD en v7 con un camarero (sin sesionActiva)
+        helper.createDatabase(TEST_DB, 7).use { db ->
+            db.execSQL(
+                "INSERT INTO camareros (id, nombre, email, rol, estado, credencialId, altaEn, deServicio) " +
+                    "VALUES ('c-1', 'Ana', 'ana@x.es', 'STAFF', 'ACTIVA', NULL, 0, 0)"
+            )
+        }
+
+        // 2. Migrar a v8: nadie con sesión activa por defecto
+        val db = helper.runMigrationsAndValidate(TEST_DB, 8, true, AppDatabase.MIGRATION_7_8)
+        db.use {
+            val cursor = it.query("SELECT sesionActiva FROM camareros WHERE id = 'c-1'")
+            cursor.use { c ->
+                assertNotNull("La columna sesionActiva existe tras migrar", c)
+                c.moveToFirst()
+                assertEquals("Default: sin sesión activa hasta que Bar la conceda", 0, c.getInt(0))
+            }
+        }
+    }
+
+    @Test
     fun migracion_v1_a_v2_anade_numeroCola() {
         // 1. BD en v1 con datos
         helper.createDatabase(TEST_DB, 1).use { db ->

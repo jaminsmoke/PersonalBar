@@ -42,6 +42,9 @@ class InMemoryBarRepository(
     private var mesaSeq = maxNumSuffix("mesa", mesasIniciales.map { it.id })
     private var reservaSeq = maxNumSuffix("reserva", reservasIniciales.map { it.id })
 
+    /** Último heartbeat recibido por camarero (epoch millis). Solo para sesiones activas. */
+    private val lastSeen = ConcurrentHashMap<String, Long>()
+
     private val _establecimiento = MutableStateFlow(establecimientoInicial)
     private val _salas = MutableStateFlow(salasIniciales)
     private val _mesas = MutableStateFlow(mesasIniciales)
@@ -357,12 +360,61 @@ class InMemoryBarRepository(
     }
 
     override fun revocarCamarero(camareroId: String): Boolean {
-        if (_camareros.value.none { it.id == camareroId }) return false
+        val camarero = _camareros.value.firstOrNull { it.id == camareroId } ?: return false
         _camareros.update { list ->
-            list.map { if (it.id == camareroId) it.copy(estado = CamareroEstado.REVOCADA, deServicio = false) else it }
+            list.map { if (it.id == camareroId) it.copy(estado = CamareroEstado.REVOCADA, deServicio = false, sesionActiva = false) else it }
+        }
+        lastSeen.remove(camareroId)
+        if (camarero.sesionActiva) {
+            _eventos.tryEmit(SalaEvent.cortada(camareroId))
         }
         refrescarDeServicio()
         return true
+    }
+
+    // ── Sesión de trabajo ────────────────────────────────────────────────────
+
+    override fun iniciarSesion(camareroId: String): Boolean {
+        val camarero = _camareros.value.firstOrNull { it.id == camareroId } ?: return false
+        if (camarero.estado != CamareroEstado.ACTIVA) return false
+        _camareros.update { list ->
+            list.map { if (it.id == camareroId) it.copy(sesionActiva = true) else it }
+        }
+        lastSeen[camareroId] = System.currentTimeMillis()
+        return true
+    }
+
+    override fun cortarSesion(camareroId: String): Boolean {
+        val camarero = _camareros.value.firstOrNull { it.id == camareroId } ?: return false
+        if (!camarero.sesionActiva) return false
+        _camareros.update { list ->
+            list.map { if (it.id == camareroId) it.copy(sesionActiva = false) else it }
+        }
+        lastSeen.remove(camareroId)
+        _eventos.tryEmit(SalaEvent.cortada(camareroId))
+        return true
+    }
+
+    override fun registrarHeartbeat(camareroId: String): Boolean {
+        val camarero = _camareros.value.firstOrNull { it.id == camareroId } ?: return false
+        if (!camarero.sesionActiva) return false
+        lastSeen[camareroId] = System.currentTimeMillis()
+        return true
+    }
+
+    override fun tieneSesionActiva(camareroId: String): Boolean =
+        _camareros.value.firstOrNull { it.id == camareroId }?.sesionActiva == true
+
+    override fun cortarSesionesVencidas(timeoutMs: Long): Int {
+        val ahora = System.currentTimeMillis()
+        var cortadas = 0
+        _camareros.value.filter { it.sesionActiva }.forEach { camarero ->
+            val visto = lastSeen[camarero.id] ?: return@forEach
+            if (ahora - visto > timeoutMs) {
+                if (cortarSesion(camarero.id)) cortadas++
+            }
+        }
+        return cortadas
     }
 
     override fun ponerDeServicio(camareroId: String): Boolean {
