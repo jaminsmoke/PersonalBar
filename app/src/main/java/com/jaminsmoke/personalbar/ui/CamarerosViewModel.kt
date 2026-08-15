@@ -43,9 +43,10 @@ class CamarerosViewModel : ViewModel() {
     val mensaje: StateFlow<Int?> = _mensaje.asStateFlow()
 
     /**
-     * Alta por QR. Con Identity conectado, delega en `POST /miembros/qr` (el server
-     * verifica la firma); si la rechaza, avisa y NO da de alta local. Sin Identity,
-     * conserva el comportamiento local v0.1.
+     * Alta por QR. Es **respaldo/identificación**, no alta canónica: con Identity
+     * conectado y online no da de alta (el alta canónica es la invitación aceptada);
+     * offline verifica la firma local y registra el alta pendiente; sin Identity,
+     * conserva el alta local v0.1.
      */
     fun altaPorQr(payload: String): AltaResultado {
         val phid = QrParser.parsear(payload)
@@ -55,20 +56,10 @@ class CamarerosViewModel : ViewModel() {
                 // Offline: verificar localmente contra la clave pública cacheada.
                 return altaOffline(payload, phid)
             }
-            _trabajando.value = true
-            viewModelScope.launch {
-                val ok = IdentityNegocioClient.altaPorQr(payload, "staff")
-                refrescarClaveQr()
-                _trabajando.value = false
-                if (!ok) {
-                    _mensaje.value = R.string.camareros_qr_rechazado
-                    return@launch
-                }
-                _mensaje.value = null
-                // Bar recoge la info de la cuenta desde Identity (no la edita):
-                // el nombre/email se guardan cuando el server los expone.
-                repository.altaCamarero(phid.camareroId, phid.credencialId)
-            }
+            // Conectado y online: el QR identifica, no da de alta. La ficha pública
+            // por QR llega con Identity (ítem cruzado); mientras tanto se dirige a la
+            // invitación, que es el alta canónica.
+            _mensaje.value = R.string.camareros_qr_usar_invitacion
             return AltaResultado.OK
         }
         return if (repository.altaCamarero(phid.camareroId, phid.credencialId)) {
@@ -136,7 +127,12 @@ class CamarerosViewModel : ViewModel() {
         }
     }
 
-    /** Canal email: valida el email en Identity y crea la invitación (envía el correo). */
+    /**
+     * Canal email (alta canónica): valida el email en Identity y crea la invitación
+     * (envía el correo). **No** da de alta `ACTIVA` inmediata: el camarero debe
+     * aceptar la invitación; hasta entonces queda pendiente. SQLite solo espeja lo
+     * que Identity devuelva.
+     */
     fun invitarPorEmail(email: String) {
         val e = email.trim()
         if (e.isEmpty()) {
@@ -155,13 +151,7 @@ class CamarerosViewModel : ViewModel() {
                 _mensaje.value = R.string.camareros_email_no_encontrado
                 return@launch
             }
-            // Bar recoge la info de la cuenta (no la edita): guarda nombre/email
-            // si el camarero aún no está en la lista blanca.
-            val nombreCompleto = listOf(camarero.nombre, camarero.apellidos)
-                .filter { it.isNotBlank() }.joinToString(" ").ifBlank { null }
-            if (repository.camareros.value.none { it.id == camarero.id }) {
-                repository.altaCamarero(camarero.id, null, nombreCompleto, camarero.email.ifBlank { null })
-            }
+            // No se da de alta aquí: la invitación queda pendiente hasta la aceptación.
             val invitacion = IdentityNegocioClient.crearInvitacion(e, "staff")
             _trabajando.value = false
             if (invitacion == null) {

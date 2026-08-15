@@ -104,13 +104,17 @@
     <!-- Camareros (lista blanca) -->
     <string name="camareros_titulo">Camareros</string>
     <string name="camareros_subtitulo">Lista blanca del establecimiento</string>
+    <string name="camareros_seccion_miembros">Camareros del establecimiento</string>
+    <string name="camareros_qr_titulo">QR del camarero (identificar / alta offline)</string>
+    <string name="camareros_ficha_titulo">Ficha del camarero</string>
+    <string name="camareros_ficha_cerrar">Cerrar</string>
     <string name="camareros_pegar_qr" tools:ignore="Typos">QR del camarero (phid1)</string>
     <string name="camareros_alta">Dar de alta</string>
+    <string name="camareros_qr_usar_invitacion">Con Identity el alta es por invitación; el QR sirve como respaldo offline y para identificar al camarero</string>
     <string name="camareros_qr_invalido">QR inválido: no es un phid1 válido</string>
     <string name="camareros_ya_existe">Ese camarero ya está dado de alta</string>
     <string name="camareros_revocar">Revocar</string>
     <string name="camareros_vacia">Sin camareros</string>
-    <string name="camareros_vacia_subtitulo" tools:ignore="Typos">Pega un QR phid1 para dar de alta al primer camarero</string>
     <string name="camareros_rol_dueno">Dueño</string>
     <string name="camareros_rol_staff">Staff</string>
     <string name="camareros_estado_activa">Activa</string>
