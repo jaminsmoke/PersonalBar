@@ -81,27 +81,27 @@ Colas de Bebida y Comida separadas y nodo LAN de la familia PersonalHostel: los 
 <div class="pb-shots">
 
 <figure>
-![Expo de colas](screenshots/expo.png)
+<img src="screenshots/expo.png" alt="Expo de colas" loading="lazy">
 <figcaption>Colas de Bebida y Comida con los tickets por destino.</figcaption>
 </figure>
 
 <figure>
-![Mapa de la sala](screenshots/mapa.png)
+<img src="screenshots/mapa.png" alt="Mapa de la sala" loading="lazy">
 <figcaption>La sala del establecimiento, fuente de verdad del layout.</figcaption>
 </figure>
 
 <figure>
-![Gestión](screenshots/gestion.png)
+<img src="screenshots/gestion.png" alt="Gestión" loading="lazy">
 <figcaption>Hub de gestión: camareros y carta.</figcaption>
 </figure>
 
 <figure>
-![Carta](screenshots/carta.png)
+<img src="screenshots/carta.png" alt="Carta" loading="lazy">
 <figcaption>El catálogo de productos del bar.</figcaption>
 </figure>
 
 <figure>
-![Ajustes](screenshots/ajustes.png)
+<img src="screenshots/ajustes.png" alt="Ajustes" loading="lazy">
 <figcaption>El establecimiento: cuenta y local.</figcaption>
 </figure>
 
