@@ -13,6 +13,20 @@
 
 If you are the agent continuing here: read this **entire** file before generating `app/`. Do not implement TPV, Kitchen, rankings, or cut Commander (`enviarACocina`) from this repo.
 
+## Familia PersonalHostel
+
+Familia de producto de hostelería. Owner GitHub: [`jaminsmoke`](https://github.com/jaminsmoke) (cuenta personal). **No** es [SiberIA-Solutions](https://github.com/SiberIA-Solutions) (empresa de desarrollo). No hay organización GitHub de producto: los repos se agrupan con **esta tabla**.
+
+**Al nacer un miembro nuevo** (Kitchen, TPV, …) se añade una fila aquí **en todos** los `AGENTS.md` de la familia.
+
+| App | Repo | Oficio | Kanban |
+|---|---|---|---|
+| **Personal Comander** | [`jaminsmoke/PersonalComander`](https://github.com/jaminsmoke/PersonalComander) | App del camarero (móvil vertical): mesas, comanda, cuenta profesional | [Project 9](https://github.com/users/jaminsmoke/projects/9) |
+| **Personal Bar** (este) | [`jaminsmoke/PersonalBar`](https://github.com/jaminsmoke/PersonalBar) | Puesto del negocio (tablet apaisada): nodo LAN `:8787`, colas, lista blanca, mapa | [Project 11](https://github.com/users/jaminsmoke/projects/11) |
+| **PersonalHostel Identity** | [`jaminsmoke/PersonalHostel-Identity`](https://github.com/jaminsmoke/PersonalHostel-Identity) | Registro canónico (Docker/VPS): camareros `:8080`, negocio `:8082` | [Project 10](https://github.com/users/jaminsmoke/projects/10) |
+
+Kanban: cada app tiene el suyo. Cambio que necesite al otro lado → Detectado en **su** Project. Commander no llama a `:8082`.
+
 ## Stack (provisional)
 
 Align with Commander unless there is a strong reason not to.
