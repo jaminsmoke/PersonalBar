@@ -17,12 +17,12 @@ class IdentityClientsTest {
 
     @Test
     fun negocioApuntaAlServicioNegocio() {
-        assertTrue(IdentityNegocioClient.DEFAULT_BASE_URL.endsWith(":8082"))
+        assertEquals("https://negocio.siberia.solutions", IdentityNegocioClient.DEFAULT_BASE_URL)
     }
 
     @Test
     fun camareroApuntaAlServicioCamareros() {
-        assertTrue(IdentityCamareroClient.DEFAULT_BASE_URL.endsWith(":8080"))
+        assertEquals("https://camareros.siberia.solutions", IdentityCamareroClient.DEFAULT_BASE_URL)
     }
 
     @Test

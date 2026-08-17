@@ -23,8 +23,8 @@ data class IdentityQrPublicKey(
  */
 object IdentityCamareroClient {
 
-    /** URL por defecto del servicio camareros en desarrollo (emulador → host). */
-    const val DEFAULT_BASE_URL: String = "http://10.0.2.2:8080"
+    /** URL por defecto del servicio camareros en el VPS (staging/producción, HTTPS). */
+    const val DEFAULT_BASE_URL: String = "https://camareros.siberia.solutions"
 
     @Volatile
     var baseUrl: String? = DEFAULT_BASE_URL

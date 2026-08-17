@@ -66,6 +66,9 @@ class InMemoryBarRepository(
         camarerosIniciales.filter { it.estado == CamareroEstado.ACTIVA && it.deServicio }
     )
 
+    /** Nº de dispositivos vivos (sesión activa + heartbeat fresco). Se recalcula en cada mutación. */
+    private val _conectados = MutableStateFlow(0)
+
     override val establecimiento: StateFlow<Establecimiento> = _establecimiento.asStateFlow()
     override val salas: StateFlow<List<Sala>> = _salas.asStateFlow()
     override val mesas: StateFlow<List<Mesa>> = _mesas.asStateFlow()
@@ -77,6 +80,7 @@ class InMemoryBarRepository(
     override val catalogo: StateFlow<List<Producto>> = _catalogo.asStateFlow()
     override val camareros: StateFlow<List<Camarero>> = _camareros.asStateFlow()
     override val deServicio: StateFlow<List<Camarero>> = _deServicio.asStateFlow()
+    override val conectados: StateFlow<Int> = _conectados.asStateFlow()
     override val identityConfig: StateFlow<IdentityConfig> = _identityConfig.asStateFlow()
     override val invitaciones: StateFlow<List<Invitacion>> = _invitaciones.asStateFlow()
     override val qrKey: StateFlow<QrKey?> = _qrKey.asStateFlow()
@@ -378,6 +382,7 @@ class InMemoryBarRepository(
             _eventos.tryEmit(SalaEvent.cortada(camareroId))
         }
         refrescarDeServicio()
+        refrescarConectados()
         return true
     }
 
@@ -390,6 +395,7 @@ class InMemoryBarRepository(
             list.map { if (it.id == camareroId) it.copy(sesionActiva = true) else it }
         }
         lastSeen[camareroId] = System.currentTimeMillis()
+        refrescarConectados()
         return true
     }
 
@@ -401,6 +407,7 @@ class InMemoryBarRepository(
         }
         lastSeen.remove(camareroId)
         _eventos.tryEmit(SalaEvent.cortada(camareroId))
+        refrescarConectados()
         return true
     }
 
@@ -408,6 +415,7 @@ class InMemoryBarRepository(
         val camarero = _camareros.value.firstOrNull { it.id == camareroId } ?: return false
         if (!camarero.sesionActiva) return false
         lastSeen[camareroId] = System.currentTimeMillis()
+        refrescarConectados()
         return true
     }
 
@@ -423,7 +431,17 @@ class InMemoryBarRepository(
                 if (cortarSesion(camarero.id)) cortadas++
             }
         }
+        refrescarConectados()
         return cortadas
+    }
+
+    /** Recalcula [conectados]: camareros con sesión activa y heartbeat dentro del timeout. */
+    private fun refrescarConectados() {
+        val ahora = System.currentTimeMillis()
+        _conectados.value = _camareros.value.count { camarero ->
+            camarero.sesionActiva &&
+                ahora - (lastSeen[camarero.id] ?: 0L) <= BarRepository.HEARTBEAT_TIMEOUT_MS
+        }
     }
 
     override fun ponerDeServicio(camareroId: String): Boolean {

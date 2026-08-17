@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,8 +63,20 @@ enum class GestionAcceso(
  * una barra superior de retorno al hub.
  */
 @Composable
-fun GestionScreen() {
+fun GestionScreen(
+    accesoSolicitado: GestionAcceso? = null,
+    onAccesoSolicitadoConsumido: () -> Unit = {},
+) {
     var seleccion by remember { mutableStateOf<GestionAcceso?>(null) }
+
+    // Solicitud externa (p. ej. «Ir al perfil» desde la sesión del header): abre la
+    // sub-pantalla pedida y consume la solicitud.
+    LaunchedEffect(accesoSolicitado) {
+        if (accesoSolicitado != null) {
+            seleccion = accesoSolicitado
+            onAccesoSolicitadoConsumido()
+        }
+    }
 
     when (val actual = seleccion) {
         null -> PbGestionHub(

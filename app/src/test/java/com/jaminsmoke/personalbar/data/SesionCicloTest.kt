@@ -109,4 +109,44 @@ class SesionCicloTest {
         assertEquals(0, repo.cortarSesionesVencidas(-1))
         assertFalse(repo.tieneSesionActiva("c-1"))
     }
+
+    @Test
+    fun conectadosCuentaSesionesConHeartbeatFresco() {
+        val repo = InMemoryBarRepository(
+            camarerosIniciales = listOf(activa("c-1"), activa("c-2")),
+        )
+        assertEquals(0, repo.conectados.value)
+
+        // Sin sesión de trabajo los heartbeats se rechazan (403) y no cuentan.
+        assertFalse(repo.registrarHeartbeat("c-1"))
+        assertEquals(0, repo.conectados.value)
+
+        repo.iniciarSesion("c-1")
+        assertEquals(1, repo.conectados.value)
+        repo.iniciarSesion("c-2")
+        assertEquals(2, repo.conectados.value)
+
+        // Heartbeat fresco sobre sesión activa no cambia el conteo.
+        assertTrue(repo.registrarHeartbeat("c-1"))
+        assertEquals(2, repo.conectados.value)
+
+        repo.cortarSesion("c-2")
+        assertEquals(1, repo.conectados.value)
+    }
+
+    @Test
+    fun conectadosBajanAlVencerElTimeout() {
+        val repo = repoCon(activa())
+        repo.iniciarSesion("c-1")
+        assertEquals(1, repo.conectados.value)
+
+        // Sin heartbeat (lastSeen vencido) el barrido auto-inactiva y recalcula.
+        assertEquals(1, repo.cortarSesionesVencidas(-1))
+        assertEquals(0, repo.conectados.value)
+
+        // Con timeout enorme el heartbeat fresco aguanta y el conteo se mantiene.
+        repo.iniciarSesion("c-1")
+        assertEquals(0, repo.cortarSesionesVencidas(Long.MAX_VALUE))
+        assertEquals(1, repo.conectados.value)
+    }
 }

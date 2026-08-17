@@ -17,9 +17,18 @@
     <string name="gestion_perfil">Perfil</string>
 
     <!-- Local -->
-    <string name="local_activo">Local activo</string>
     <string name="local_inactivo">Local inactivo</string>
-    <string name="local_activo_sin_fgs">Nodo activo sin servicio en primer plano</string>
+    <string name="local_activo_sin_fgs">Local activo sin permiso del sistema</string>
+    <plurals name="local_activo_conectados">
+        <item quantity="one">Local activo · 1 dispositivo conectado</item>
+        <item quantity="other">Local activo · %1$d dispositivos conectados</item>
+    </plurals>
+    <string name="local_toggle_descripcion">Arrancar o parar el nodo de sala</string>
+
+    <!-- Parada del nodo (confirmación) -->
+    <string name="local_parar_titulo">¿Parar el nodo de sala?</string>
+    <string name="local_parar_mensaje">Los Commanders de la sala se quedarán sin conexión hasta que vuelvas a arrancarlo.</string>
+    <string name="local_parar_confirmar">Parar</string>
 
     <!-- FGS «Local activo» -->
     <string name="canal_local">Estado del local</string>
@@ -27,8 +36,6 @@
     <string name="local_activo_notif_texto">El nodo de sala escucha en la LAN</string>
 
     <!-- Conectividad / Identity -->
-    <string name="conexion_online">Conectado</string>
-    <string name="conexion_offline">Sin conexión</string>
     <string name="sin_conexion_aviso">Sin conexión: esta acción requiere internet</string>
 
     <!-- Ajustes -->
@@ -192,6 +199,7 @@
     <string name="sesion_entrar">Entrar</string>
     <string name="sesion_registrarse">Registrarse</string>
     <string name="sesion_cerrar">Cerrar sesión</string>
+    <string name="sesion_ir_al_perfil">Ir al perfil</string>
     <string name="sesion_campos_incompletos">Rellena los campos obligatorios</string>
     <string name="sesion_login_fallido">Email o contraseña incorrectos</string>
     <string name="sesion_registro_fallido">No se pudo crear la cuenta (¿email ya registrado?)</string>

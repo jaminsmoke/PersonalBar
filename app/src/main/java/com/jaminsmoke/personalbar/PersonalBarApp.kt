@@ -107,7 +107,7 @@ class PersonalBarApp : Application() {
         sessionJob = sessionScope.launch {
             while (isActive) {
                 delay(SESSION_CHECK_INTERVAL_MS)
-                repository.cortarSesionesVencidas(HEARTBEAT_TIMEOUT_MS)
+                repository.cortarSesionesVencidas(BarRepository.HEARTBEAT_TIMEOUT_MS)
             }
         }
     }
@@ -124,8 +124,6 @@ class PersonalBarApp : Application() {
     }
 
     companion object {
-        /** Sin heartbeat en 30 s, la sesión se corta (auto-inactivación por salida de LAN). */
-        const val HEARTBEAT_TIMEOUT_MS: Long = 30_000L
 
         /** Cada cuánto se revisa el timeout (5 s). */
         const val SESSION_CHECK_INTERVAL_MS: Long = 5_000L

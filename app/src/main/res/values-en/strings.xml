@@ -17,9 +17,18 @@
     <string name="gestion_perfil">Profile</string>
 
     <!-- Venue -->
-    <string name="local_activo">Venue active</string>
     <string name="local_inactivo">Venue inactive</string>
-    <string name="local_activo_sin_fgs">Node active without foreground service</string>
+    <string name="local_activo_sin_fgs">Venue active without system permission</string>
+    <plurals name="local_activo_conectados">
+        <item quantity="one">Venue active · 1 device connected</item>
+        <item quantity="other">Venue active · %1$d devices connected</item>
+    </plurals>
+    <string name="local_toggle_descripcion">Start or stop the room node</string>
+
+    <!-- Stop node (confirmation) -->
+    <string name="local_parar_titulo">Stop the room node?</string>
+    <string name="local_parar_mensaje">Commanders in the room will lose connection until you start it again.</string>
+    <string name="local_parar_confirmar">Stop</string>
 
     <!-- FGS "Venue active" -->
     <string name="canal_local">Venue status</string>
@@ -27,8 +36,6 @@
     <string name="local_activo_notif_texto">The room node is listening on the LAN</string>
 
     <!-- Connectivity / Identity -->
-    <string name="conexion_online">Connected</string>
-    <string name="conexion_offline">Offline</string>
     <string name="sin_conexion_aviso">Offline: this action requires internet</string>
 
     <!-- Settings -->
@@ -194,6 +201,7 @@
     <string name="sesion_entrar">Sign in</string>
     <string name="sesion_registrarse">Register</string>
     <string name="sesion_cerrar">Sign out</string>
+    <string name="sesion_ir_al_perfil">Go to profile</string>
     <string name="sesion_campos_incompletos">Fill in the required fields</string>
     <string name="sesion_login_fallido">Incorrect email or password</string>
     <string name="sesion_registro_fallido">Could not create the account (email already registered?)</string>

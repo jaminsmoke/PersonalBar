@@ -183,9 +183,10 @@ data class IdentityEnlacePublico(
  */
 object IdentityNegocioClient {
 
-    /** URL por defecto del servicio negocio en desarrollo (emulador → host). En producción
-     *  será un VPS; el usuario de Bar no configura esta URL (config de entorno). */
-    const val DEFAULT_BASE_URL: String = "http://10.0.2.2:8082"
+    /** URL por defecto del servicio negocio en el VPS (staging/producción, HTTPS). El
+     *  usuario de Bar no configura esta URL (config de entorno). En dev local con Docker
+     *  se puede apuntar al host con `IdentityNegocioClient.configurar(...)`. */
+    const val DEFAULT_BASE_URL: String = "https://negocio.siberia.solutions"
 
     /** Path relativo del logo de la cuenta de negocio (así lo devuelve Identity). */
     const val LOGO_PATH: String = "/v1/auth/negocio/me/logo"

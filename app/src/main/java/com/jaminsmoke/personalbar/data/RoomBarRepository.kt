@@ -108,6 +108,7 @@ class RoomBarRepository(
     override val catalogo: StateFlow<List<Producto>> get() = inner.catalogo
     override val camareros: StateFlow<List<Camarero>> get() = inner.camareros
     override val deServicio: StateFlow<List<Camarero>> get() = inner.deServicio
+    override val conectados: StateFlow<Int> get() = inner.conectados
     override val identityConfig: StateFlow<IdentityConfig> get() = inner.identityConfig
     override val invitaciones: StateFlow<List<Invitacion>> get() = inner.invitaciones
     override val qrKey: StateFlow<QrKey?> get() = inner.qrKey

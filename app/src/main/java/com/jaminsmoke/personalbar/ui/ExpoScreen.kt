@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -61,10 +62,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.ui.components.PbColumnHeader
-import com.jaminsmoke.personalbar.ui.components.PbConectividadStatus
 import com.jaminsmoke.personalbar.ui.components.PbEmptyQueue
 import com.jaminsmoke.personalbar.ui.components.PbRoomStatus
 import com.jaminsmoke.personalbar.ui.components.PbTicketCard
+import com.jaminsmoke.personalbar.ui.gestion.GestionAcceso
 import com.jaminsmoke.personalbar.ui.gestion.GestionScreen
 import com.jaminsmoke.personalbar.ui.mapa.MapaScreen
 import com.jaminsmoke.personalbar.ui.sesion.SesionHeader
@@ -84,6 +85,10 @@ fun ExpoScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var section by remember { mutableStateOf(PbSection.COLAS) }
+    // Sub-pantalla de Gestión pedida externamente (p. ej. «Ir al perfil» desde la sesión).
+    var gestionSolicitud by remember { mutableStateOf<GestionAcceso?>(null) }
+    // Parada del nodo pendiente de confirmación (la sala se quedaría ciega).
+    var paradaPendiente by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -95,13 +100,24 @@ fun ExpoScreen(
                     )
                 },
                 actions = {
-                    SesionHeader()
-                    PbConectividadStatus()
+                    SesionHeader(
+                        onAbrirPerfil = {
+                            gestionSolicitud = GestionAcceso.PERFIL
+                            section = PbSection.GESTION
+                        },
+                    )
                     Spacer(Modifier.width(8.dp))
                     PbRoomStatus(
                         active = uiState.roomActive,
                         fgsOk = uiState.fgsOk,
-                        onToggle = viewModel::toggleLocal,
+                        conectados = uiState.conectados,
+                        onToggle = {
+                            if (uiState.roomActive) {
+                                paradaPendiente = true
+                            } else {
+                                viewModel.toggleLocal()
+                            }
+                        },
                     )
                     Spacer(Modifier.width(16.dp))
                 },
@@ -150,11 +166,37 @@ fun ExpoScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
                     PbSection.MAPA -> MapaScreen()
-                    PbSection.GESTION -> GestionScreen()
+                    PbSection.GESTION -> GestionScreen(
+                        accesoSolicitado = gestionSolicitud,
+                        onAccesoSolicitadoConsumido = { gestionSolicitud = null },
+                    )
                     PbSection.AJUSTES -> AjustesScreen()
                 }
             }
         }
+    }
+
+    if (paradaPendiente) {
+        AlertDialog(
+            onDismissRequest = { paradaPendiente = false },
+            title = { Text(stringResource(R.string.local_parar_titulo)) },
+            text = { Text(stringResource(R.string.local_parar_mensaje)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        paradaPendiente = false
+                        viewModel.toggleLocal()
+                    },
+                ) {
+                    Text(stringResource(R.string.local_parar_confirmar))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { paradaPendiente = false }) {
+                    Text(stringResource(R.string.mapa_cancelar))
+                }
+            },
+        )
     }
 }
 

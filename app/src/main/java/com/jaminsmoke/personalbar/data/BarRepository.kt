@@ -44,6 +44,13 @@ interface BarRepository {
     /** Camareros ACTIVA marcados «de servicio» en el puesto (varios a la vez). */
     val deServicio: StateFlow<List<Camarero>>
 
+    /**
+     * Dispositivos vivos en la sala: camareros con sesión de trabajo activa cuyo
+     * heartbeat no ha vencido ([HEARTBEAT_TIMEOUT_MS]). Refleja los Commanders que
+     * «ven» el nodo ahora mismo.
+     */
+    val conectados: StateFlow<Int>
+
     /** Configuración de la conexión con Identity (v0.1 in-memory). */
     val identityConfig: StateFlow<IdentityConfig>
 
@@ -175,4 +182,13 @@ interface BarRepository {
 
     /** Corta las sesiones sin heartbeat dentro de [timeoutMs]; devuelve cuántas cortó. */
     fun cortarSesionesVencidas(timeoutMs: Long): Int
+
+    companion object {
+        /**
+         * Sin heartbeat dentro de este tiempo, la sesión de trabajo se corta
+         * (auto-inactivación por salida de LAN). Es la misma referencia temporal
+         * que define «conectado» en [InMemoryBarRepository.refrescarConectados].
+         */
+        const val HEARTBEAT_TIMEOUT_MS: Long = 30_000L
+    }
 }

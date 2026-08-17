@@ -46,6 +46,8 @@ data class ExpoUiState(
     val deServicio: List<Camarero> = emptyList(),
     /** El que prepara ahora (último chip pulsado); sin él no se marca Preparado. */
     val enMano: Camarero? = null,
+    /** Commanders vivos en la sala (sesión activa + heartbeat fresco). */
+    val conectados: Int = 0,
 )
 
 /** Base intermedia del combine (evita el overload de 6 flows). */
@@ -92,7 +94,7 @@ class ExpoViewModel : ViewModel() {
             ColasBase(bebida, comida, rondas, active, camareros)
         }
         viewModelScope.launch {
-            combine(base, repository.deServicio, _enMano, PersonalBarApp.get().fgsOk) { b, deServicio, enMano, fgsOk ->
+            combine(base, repository.deServicio, _enMano, PersonalBarApp.get().fgsOk, repository.conectados) { b, deServicio, enMano, fgsOk, conectados ->
                 val rondasPorId = b.rondas.associateBy { it.id }
                 ExpoUiState(
                     drinkQueue = b.bebida.map { it.toExpoTicket(rondasPorId) },
@@ -102,6 +104,7 @@ class ExpoViewModel : ViewModel() {
                     camareros = b.camareros.filter { it.estado == CamareroEstado.ACTIVA },
                     deServicio = deServicio,
                     enMano = enMano,
+                    conectados = conectados,
                 )
             }.collect { state ->
                 _uiState.value = state

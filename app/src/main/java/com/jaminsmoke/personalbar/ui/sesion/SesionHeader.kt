@@ -55,6 +55,7 @@ import com.jaminsmoke.personalbar.ui.SesionViewModel
 @Composable
 fun SesionHeader(
     viewModel: SesionViewModel = viewModel(),
+    onAbrirPerfil: () -> Unit = {},
 ) {
     val sesion by viewModel.sesion.collectAsState()
     val logoBytes by viewModel.logoBytes.collectAsState()
@@ -97,6 +98,7 @@ fun SesionHeader(
             sesion = sesion,
             viewModel = viewModel,
             onDismiss = { modalVisible = false },
+            onAbrirPerfil = onAbrirPerfil,
         )
     }
 }
@@ -107,6 +109,7 @@ private fun SesionDialog(
     sesion: SesionNegocio?,
     viewModel: SesionViewModel,
     onDismiss: () -> Unit,
+    onAbrirPerfil: () -> Unit,
 ) {
     val trabajando by viewModel.trabajando.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
@@ -117,17 +120,27 @@ private fun SesionDialog(
             title = { Text(stringResource(R.string.sesion_cuenta_negocio)) },
             text = { Text(sesion.nombreMostrar ?: sesion.email ?: "") },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
-                        viewModel.logout()
                         onDismiss()
+                        onAbrirPerfil()
                     },
                 ) {
-                    Text(stringResource(R.string.sesion_cerrar))
+                    Text(stringResource(R.string.sesion_ir_al_perfil))
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapa_cancelar)) }
+                Row {
+                    TextButton(
+                        onClick = {
+                            viewModel.logout()
+                            onDismiss()
+                        },
+                    ) {
+                        Text(stringResource(R.string.sesion_cerrar))
+                    }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapa_cancelar)) }
+                }
             },
         )
         return
