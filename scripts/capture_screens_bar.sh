@@ -4,7 +4,7 @@
 # normalizadas a 1400px de ancho.
 #
 # Requisitos:
-#   - Emulador Pixel Tablet (apaisado) con la app instalada (o se instala aquí).
+#   - Emulador Tablet-PixelTablet (apaisado) con la app instalada (o se instala aquí).
 #   - adb del Android SDK accesible (busca en $ANDROID_HOME / $ANDROID_SDK_ROOT).
 #
 # Uso:

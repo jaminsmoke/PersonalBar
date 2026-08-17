@@ -110,7 +110,7 @@ Cleartext en internet para identidad: no. Identidad = HTTPS al servidor Identity
 
 ## UI a diseñar
 
-- **Target de dispositivo v0.1: tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). No se adapta a móvil en v0.1. Pruebas en emulador Pixel Tablet.
+- **Target de dispositivo v0.1: tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). No se adapta a móvil en v0.1. Pruebas en emulador `Tablet-PixelTablet`.
 - Cola **Bebida** y cola **Comida** (separadas, mismo dispositivo; dos columnas fijas aprovechando el ancho de la tablet, no tabs).
 - Ticket: mesa, ronda, camarero (cuando haya nombre), líneas, acciones listo.
 - Alta de camarero (pegar/escanear QR).
@@ -459,4 +459,7 @@ tools/kanban-cli/          # bun install; CLI = bun run tools/kanban-cli/cli.ts
 tools/agent-skills/        # jarvis-github-kanban + jarvis-github-agentuse
 .kanbanrc.json             # local Project IDs (gitignored)
 .kanbanrc.json.template    # versioned reproducible reference
+emulador.bat               # launches Tablet-PixelTablet AVD (gitignored)
 ```
+
+Lanzar el emulador: `emulador.bat` en Windows, o `emulator -avd Tablet-PixelTablet`.

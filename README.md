@@ -52,7 +52,7 @@ Una ronda llega del Commander → Bar la parte en **BARRA** (bebida) y **COCINA*
 
 - JDK 17+
 - Android SDK con `platforms;android-37`
-- Emulador o dispositivo Android 7.0+ (API 24+); **tablet apaisado** recomendada (puesto estático de barra)
+- Emulador o dispositivo Android 7.0+ (API 24+); **tablet apaisado** recomendada (AVD `Tablet-PixelTablet`)
 
 ### Build y ejecución
 
@@ -116,7 +116,7 @@ Los activos públicos (logo, favicon, social card y capturas de pantalla) se gen
 # Logo, favicon y og-image (desde la copa de barra de la marca)
 python scripts/generate_assets_bar.py
 
-# Capturas de pantalla (requiere un emulador Pixel Tablet activo; appaisado)
+# Capturas de pantalla (requiere AVD Tablet-PixelTablet activo; apaisado)
 ADB_DEVICE=emulator-5554 bash scripts/capture_screens_bar.sh
 
 # Con rondas demo para que la Expo muestre tickets reales (limpia al final)
