@@ -185,6 +185,15 @@ class InMemoryBarRepository(
         return enBebida || enComida
     }
 
+    // ── Establecimiento (perfil) ─────────────────────────────────────────────
+
+    override fun renombrarEstablecimiento(nombre: String): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        _establecimiento.value = _establecimiento.value.copy(nombre = n)
+        return true
+    }
+
     // ── Salas ─────────────────────────────────────────────────────────────────
 
     override fun reemplazarLayout(salas: List<Sala>, mesas: List<Mesa>) {

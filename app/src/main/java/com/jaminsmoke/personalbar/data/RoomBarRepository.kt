@@ -159,6 +159,12 @@ class RoomBarRepository(
         persist { dao.replaceSalas(inner.salas.value); dao.replaceMesas(inner.mesas.value) }
     }
 
+    override fun renombrarEstablecimiento(nombre: String): Boolean {
+        val ok = inner.renombrarEstablecimiento(nombre)
+        if (ok) persist { dao.upsertEstablecimiento(inner.establecimiento.value) }
+        return ok
+    }
+
     override fun crearSala(nombre: String): Boolean {
         val ok = inner.crearSala(nombre)
         if (ok) persist { dao.replaceSalas(inner.salas.value) }

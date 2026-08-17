@@ -75,7 +75,21 @@ data class RegistroNegocioRequest(
 data class IdentityEstablecimiento(
     val id: String,
     val nombre: String,
+    @SerialName("tipo_establecimiento") val tipoEstablecimiento: String? = null,
+    @SerialName("logo_url") val logoUrl: String? = null,
+    @SerialName("cuenta_negocio_id") val cuentaNegocioId: String? = null,
     @SerialName("data_origin") val dataOrigin: String? = null,
+)
+
+/** Cuerpo de `PATCH /v1/establecimientos/{id}`. Los campos null se omiten (Identity
+ *  exige al menos uno); se envían solo los que cambian. */
+@Serializable
+data class EstablecimientoUpdateRequest(
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val nombre: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("tipo_establecimiento")
+    val tipoEstablecimiento: String? = null,
 )
 
 @Serializable
@@ -385,5 +399,47 @@ object IdentityNegocioClient {
         val id = establecimientoUuid ?: return@withContext null
         val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/enlaces/$enlaceId/rotar", token = negocioToken)
         if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityEnlacePublico>(text) }.getOrNull() else null
+    }
+
+    // ── Perfil del establecimiento (nombre / tipo / logo del local) ──────────
+
+    /** `GET /v1/establecimientos/{id}` → perfil canónico del establecimiento. */
+    suspend fun obtenerEstablecimiento(): IdentityEstablecimiento? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id", token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityEstablecimiento>(text) }.getOrNull() else null
+    }
+
+    /** `PATCH /v1/establecimientos/{id}` → actualiza nombre y/o tipo. Identity exige
+     *  al menos un campo: [nombre] y/o [tipo] no nulos. Devuelve el perfil actualizado. */
+    suspend fun editarEstablecimiento(nombre: String? = null, tipo: String? = null): IdentityEstablecimiento? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val body = LanJson.encodeToString(
+            EstablecimientoUpdateRequest(
+                nombre = nombre?.takeIf { it.isNotBlank() },
+                tipoEstablecimiento = tipo?.takeIf { it.isNotBlank() },
+            )
+        )
+        val (code, text) = IdentityHttp.request(baseUrl, "PATCH", "/v1/establecimientos/$id", body = body, token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityEstablecimiento>(text) }.getOrNull() else null
+    }
+
+    /** `POST /v1/establecimientos/{id}/logo` (multipart) → sube/reemplaza el logo del local. */
+    suspend fun subirLogoEstablecimiento(bytes: ByteArray, mimetype: String): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        IdentityHttp.uploadMultipart(baseUrl, "/v1/establecimientos/$id/logo", "logo", "logo.webp", bytes, mimetype, negocioToken)
+    }
+
+    /** `GET /v1/establecimientos/{id}/logo` → bytes del logo efectivo (local o heredado), o null. */
+    suspend fun obtenerLogoEstablecimiento(): ByteArray? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, bytes) = IdentityHttp.requestBytes(baseUrl, "GET", "/v1/establecimientos/$id/logo", negocioToken)
+        if (code in 200..299) bytes else null
+    }
+
+    /** `DELETE /v1/establecimientos/{id}/logo` → borra el override local (hereda el logo org). */
+    suspend fun borrarLogoEstablecimiento(): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/logo", token = negocioToken).first in 200..299
     }
 }

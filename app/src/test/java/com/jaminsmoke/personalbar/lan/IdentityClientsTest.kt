@@ -71,6 +71,40 @@ class IdentityClientsTest {
     }
 
     @Test
+    fun establecimientoUpdateOmiteCamposNulos() {
+        val soloNombre = LanJson.encodeToString(
+            EstablecimientoUpdateRequest(nombre = "Mi Bar")
+        )
+        assertEquals("""{"nombre":"Mi Bar"}""", soloNombre)
+
+        val soloTipo = LanJson.encodeToString(
+            EstablecimientoUpdateRequest(tipoEstablecimiento = "pub")
+        )
+        assertEquals("""{"tipo_establecimiento":"pub"}""", soloTipo)
+
+        val ambos = LanJson.encodeToString(
+            EstablecimientoUpdateRequest(nombre = "Mi Bar", tipoEstablecimiento = "pub")
+        )
+        assertEquals("""{"nombre":"Mi Bar","tipo_establecimiento":"pub"}""", ambos)
+    }
+
+    @Test
+    fun establecimientoRespuestaDecodifica() {
+        val json = """
+            {"id":"est-1","nombre":"Mi Bar","tipo_establecimiento":"bar",
+             "logo_url":"https://ficha.siberia.solutions/logo.webp",
+             "cuenta_negocio_id":"c-1","data_origin":"real"}
+        """.trimIndent()
+        val est = LanJson.decodeFromString<IdentityEstablecimiento>(json)
+        assertEquals("est-1", est.id)
+        assertEquals("Mi Bar", est.nombre)
+        assertEquals("bar", est.tipoEstablecimiento)
+        assertEquals("https://ficha.siberia.solutions/logo.webp", est.logoUrl)
+        assertEquals("c-1", est.cuentaNegocioId)
+        assertEquals("real", est.dataOrigin)
+    }
+
+    @Test
     fun layoutEntitiesRoundTrip() {
         val salas = listOf(Sala("sala-barra", "Barra", 1))
         val mesas = listOf(

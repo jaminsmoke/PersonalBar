@@ -11,6 +11,9 @@ interface BarRepository {
     /** Cuenta del establecimiento (un nodo = un establecimiento en v0.1). */
     val establecimiento: StateFlow<Establecimiento>
 
+    /** @return true si se renombró; false si el nombre queda vacío. */
+    fun renombrarEstablecimiento(nombre: String): Boolean
+
     /** Salas del mapa (primer nivel del layout). */
     val salas: StateFlow<List<Sala>>
 

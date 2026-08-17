@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,7 @@ import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.ui.CamarerosScreen
 import com.jaminsmoke.personalbar.ui.CartaScreen
 import com.jaminsmoke.personalbar.ui.EnlacesNegocioScreen
+import com.jaminsmoke.personalbar.ui.PerfilEstablecimientoScreen
 
 /**
  * Acceso del hub de Gestión: icono + nombre de contexto debajo.
@@ -51,6 +53,7 @@ enum class GestionAcceso(
     CAMAREROS(R.string.gestion_camareros, Icons.Default.QrCode),
     CARTA(R.string.gestion_carta, Icons.Default.RestaurantMenu),
     ENLACES(R.string.gestion_enlaces, Icons.Default.Link),
+    PERFIL(R.string.gestion_perfil, Icons.Default.Storefront),
 }
 
 /**
@@ -84,6 +87,12 @@ fun GestionScreen() {
             onVolver = { seleccion = null },
         ) {
             EnlacesNegocioScreen()
+        }
+        GestionAcceso.PERFIL -> GestionSubPantalla(
+            titulo = stringResource(R.string.gestion_perfil),
+            onVolver = { seleccion = null },
+        ) {
+            PerfilEstablecimientoScreen()
         }
     }
 }

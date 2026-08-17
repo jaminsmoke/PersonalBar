@@ -14,6 +14,7 @@
     <string name="gestion_camareros">Camareros</string>
     <string name="gestion_carta">Carta</string>
     <string name="gestion_enlaces">Enlaces</string>
+    <string name="gestion_perfil">Perfil</string>
 
     <!-- Local -->
     <string name="local_activo">Local activo</string>
@@ -200,6 +201,25 @@
     <string name="sesion_tipo_cafeteria">Cafetería</string>
     <string name="sesion_tipo_pub">Pub</string>
     <string name="sesion_tipo_copas">Bar de copas</string>
+
+    <!-- Perfil del establecimiento (local) -->
+    <string name="perfil_titulo">Perfil del establecimiento</string>
+    <string name="perfil_subtitulo">Nombre, tipo y logo del local. La fuente de verdad es Identity</string>
+    <string name="perfil_logo">Logo</string>
+    <string name="perfil_cambiar_logo">Cambiar logo</string>
+    <string name="perfil_borrar_logo">Quitar logo</string>
+    <string name="perfil_nombre">Nombre</string>
+    <string name="perfil_nombre_vacio">El nombre no puede quedar vacío</string>
+    <string name="perfil_guardar">Guardar</string>
+    <string name="perfil_cancelar">Cancelar</string>
+    <string name="perfil_editar">Editar</string>
+    <string name="perfil_tipo">Tipo</string>
+    <string name="perfil_email">Email</string>
+    <string name="perfil_uuid">ID del establecimiento</string>
+    <string name="perfil_abrir_ficha">Abrir ficha web</string>
+    <string name="perfil_sin_ficha">Sin ficha web: créala en Enlaces</string>
+    <string name="perfil_guardar_error">No se pudo guardar en Identity</string>
+    <string name="perfil_logo_error">No se pudo actualizar el logo</string>
 
     <!-- Voz en colas -->
     <string name="voz_escuchar">Escuchar</string>
