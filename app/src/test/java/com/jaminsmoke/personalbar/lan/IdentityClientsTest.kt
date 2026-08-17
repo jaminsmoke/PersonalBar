@@ -89,11 +89,25 @@ class IdentityClientsTest {
     }
 
     @Test
+    fun establecimientoUpdateSerializaVisibleDirectorio() {
+        // El opt-in es explícito (true/false), no un campo opcional que se omite.
+        val activo = LanJson.encodeToString(
+            EstablecimientoUpdateRequest(visibleDirectorio = true)
+        )
+        assertEquals("""{"visible_directorio":true}""", activo)
+
+        val inactivo = LanJson.encodeToString(
+            EstablecimientoUpdateRequest(visibleDirectorio = false)
+        )
+        assertEquals("""{"visible_directorio":false}""", inactivo)
+    }
+
+    @Test
     fun establecimientoRespuestaDecodifica() {
         val json = """
             {"id":"est-1","nombre":"Mi Bar","tipo_establecimiento":"bar",
              "logo_url":"https://ficha.siberia.solutions/logo.webp",
-             "cuenta_negocio_id":"c-1","data_origin":"real"}
+             "cuenta_negocio_id":"c-1","data_origin":"real","visible_directorio":true}
         """.trimIndent()
         val est = LanJson.decodeFromString<IdentityEstablecimiento>(json)
         assertEquals("est-1", est.id)
@@ -102,6 +116,15 @@ class IdentityClientsTest {
         assertEquals("https://ficha.siberia.solutions/logo.webp", est.logoUrl)
         assertEquals("c-1", est.cuentaNegocioId)
         assertEquals("real", est.dataOrigin)
+        assertEquals(true, est.visibleDirectorio)
+    }
+
+    @Test
+    fun establecimientoRespuestaSinVisibleDirectorioDecodificaConNull() {
+        // Respuesta de una versión anterior de Identity (sin el campo): tolera null.
+        val json = """{"id":"est-1","nombre":"Mi Bar","data_origin":"real"}"""
+        val est = LanJson.decodeFromString<IdentityEstablecimiento>(json)
+        assertEquals(null, est.visibleDirectorio)
     }
 
     @Test

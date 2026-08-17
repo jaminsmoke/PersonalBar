@@ -222,6 +222,8 @@
     <string name="perfil_sin_ficha">No web profile: create it in Links</string>
     <string name="perfil_guardar_error">Could not save to Identity</string>
     <string name="perfil_logo_error">Could not update the logo</string>
+    <string name="perfil_visible_directorio">Visible in the directory</string>
+    <string name="perfil_visible_directorio_aviso">No email or contact details: only name, type and logo</string>
 
     <!-- Voice in queues -->
     <string name="voz_escuchar">Listen</string>

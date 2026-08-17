@@ -42,6 +42,10 @@ class PerfilEstablecimientoViewModel : ViewModel() {
     private val _fichaUrl = MutableStateFlow<String?>(null)
     val fichaUrl: StateFlow<String?> = _fichaUrl.asStateFlow()
 
+    /** Opt-in del dueño para aparecer en el directorio de establecimientos (sin PII). */
+    private val _visibleDirectorio = MutableStateFlow(false)
+    val visibleDirectorio: StateFlow<Boolean> = _visibleDirectorio.asStateFlow()
+
     private val _trabajando = MutableStateFlow(false)
     val trabajando: StateFlow<Boolean> = _trabajando.asStateFlow()
 
@@ -53,7 +57,7 @@ class PerfilEstablecimientoViewModel : ViewModel() {
         cargar()
     }
 
-    /** Carga la sesión persistida, el logo y la URL de la ficha desde Identity. */
+    /** Carga la sesión persistida, el logo, la URL de la ficha y el opt-in del directorio. */
     fun cargar() {
         viewModelScope.launch {
             _sesion.value = app.db.barDao().getSesionNegocio()
@@ -61,6 +65,22 @@ class PerfilEstablecimientoViewModel : ViewModel() {
             _fichaUrl.value = IdentityNegocioClient.listarEnlacesPublicos()
                 .firstOrNull { it.tipo == "ficha_negocio" && it.estado.equals("activo", ignoreCase = true) }
                 ?.urlPublica
+            _visibleDirectorio.value = IdentityNegocioClient.obtenerEstablecimiento()?.visibleDirectorio ?: false
+        }
+    }
+
+    /** Activa/desactiva la visibilidad del establecimiento en el directorio (opt-in). */
+    fun editarVisibilidad(visible: Boolean) {
+        _mensaje.value = null
+        _trabajando.value = true
+        viewModelScope.launch {
+            val actualizado = IdentityNegocioClient.editarEstablecimiento(visibleDirectorio = visible)
+            if (actualizado != null) {
+                _visibleDirectorio.value = actualizado.visibleDirectorio ?: visible
+            } else {
+                _mensaje.value = R.string.perfil_guardar_error
+            }
+            _trabajando.value = false
         }
     }
 

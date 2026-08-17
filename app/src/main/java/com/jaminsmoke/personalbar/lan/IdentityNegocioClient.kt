@@ -79,6 +79,8 @@ data class IdentityEstablecimiento(
     @SerialName("logo_url") val logoUrl: String? = null,
     @SerialName("cuenta_negocio_id") val cuentaNegocioId: String? = null,
     @SerialName("data_origin") val dataOrigin: String? = null,
+    /** Opt-in del dueño para aparecer en el directorio de establecimientos (sin PII). */
+    @SerialName("visible_directorio") val visibleDirectorio: Boolean? = null,
 )
 
 /** Cuerpo de `PATCH /v1/establecimientos/{id}`. Los campos null se omiten (Identity
@@ -90,6 +92,9 @@ data class EstablecimientoUpdateRequest(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     @SerialName("tipo_establecimiento")
     val tipoEstablecimiento: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("visible_directorio")
+    val visibleDirectorio: Boolean? = null,
 )
 
 @Serializable
@@ -410,14 +415,20 @@ object IdentityNegocioClient {
         if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityEstablecimiento>(text) }.getOrNull() else null
     }
 
-    /** `PATCH /v1/establecimientos/{id}` → actualiza nombre y/o tipo. Identity exige
-     *  al menos un campo: [nombre] y/o [tipo] no nulos. Devuelve el perfil actualizado. */
-    suspend fun editarEstablecimiento(nombre: String? = null, tipo: String? = null): IdentityEstablecimiento? = withContext(Dispatchers.IO) {
+    /** `PATCH /v1/establecimientos/{id}` → actualiza nombre, tipo y/o el opt-in de
+     *  visibilidad en el directorio. Identity exige al menos un campo: [nombre], [tipo]
+     *  y/o [visibleDirectorio] no nulos. Devuelve el perfil actualizado. */
+    suspend fun editarEstablecimiento(
+        nombre: String? = null,
+        tipo: String? = null,
+        visibleDirectorio: Boolean? = null,
+    ): IdentityEstablecimiento? = withContext(Dispatchers.IO) {
         val id = establecimientoUuid ?: return@withContext null
         val body = LanJson.encodeToString(
             EstablecimientoUpdateRequest(
                 nombre = nombre?.takeIf { it.isNotBlank() },
                 tipoEstablecimiento = tipo?.takeIf { it.isNotBlank() },
+                visibleDirectorio = visibleDirectorio,
             )
         )
         val (code, text) = IdentityHttp.request(baseUrl, "PATCH", "/v1/establecimientos/$id", body = body, token = negocioToken)

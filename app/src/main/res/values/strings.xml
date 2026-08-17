@@ -220,6 +220,8 @@
     <string name="perfil_sin_ficha">Sin ficha web: créala en Enlaces</string>
     <string name="perfil_guardar_error">No se pudo guardar en Identity</string>
     <string name="perfil_logo_error">No se pudo actualizar el logo</string>
+    <string name="perfil_visible_directorio">Visible en el directorio</string>
+    <string name="perfil_visible_directorio_aviso">Sin email ni contacto: solo nombre, tipo y logo</string>
 
     <!-- Voz en colas -->
     <string name="voz_escuchar">Escuchar</string>

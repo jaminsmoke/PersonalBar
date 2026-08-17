@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -56,6 +57,7 @@ fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = view
     val sesion by viewModel.sesion.collectAsState()
     val logoBytes by viewModel.logoBytes.collectAsState()
     val fichaUrl by viewModel.fichaUrl.collectAsState()
+    val visibleDirectorio by viewModel.visibleDirectorio.collectAsState()
     val trabajando by viewModel.trabajando.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
     val uriHandler = LocalUriHandler.current
@@ -233,6 +235,40 @@ fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = view
                             enabled = !trabajando,
                         )
                     }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Visibilidad en el directorio (opt-in del dueño, sin PII)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.perfil_visible_directorio),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(R.string.perfil_visible_directorio_aviso),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Switch(
+                        checked = visibleDirectorio,
+                        onCheckedChange = { viewModel.editarVisibilidad(it) },
+                        enabled = !trabajando,
+                    )
                 }
             }
         }
