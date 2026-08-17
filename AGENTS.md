@@ -437,7 +437,7 @@ Cuando exista `app/`, alinear con Commander:
 - **State**: `StateFlow` in ViewModels, `collectAsState()` in UI
 - **Colors**: prefer `MaterialTheme.colorScheme.*` over hardcoded `Color(0xFF...)`. **Excepción espacial**: el plano del mapa (`PbBoardCanvas`, grid) y los fills de mesa (`MesaColors`) son tokens de espacio físico, no del tema dark. El viewport alrededor del plano sí usa `colorScheme`.
 - **Icons**: `Icons.Default.*` or `Icons.AutoMirrored.Filled.*`; always set `contentDescription` (never `null` for interactive icons)
-- **Strings**: all user-facing text in `res/values/strings.xml`
+- **Strings**: all user-facing text in `res/values/strings.xml`. **Multilenguaje**: espejo de Commander — `res/values/strings.xml` es el idioma por defecto (español) y `res/values-en/strings.xml` aporta el inglés. Ambos archivos deben mantener el **mismo set de claves 1:1** (misma cantidad y mismos nombres); si añades o renombras una clave en `values`, hazlo también en `values-en`. Android elige `values-en` automáticamente según el idioma del dispositivo, sin `resConfigs` ni config extra. Formato de moneda/fechas: usa `Locale.getDefault()` (ya aplicado en `precioTexto`).
 - **Room**: operations touching 2+ tables MUST use `@Transaction` or `db.withTransaction {}`
 - **Migrations**: schema exported to `app/schemas/`; migration tests in `androidTest`
 - **Test data**: toda entidad de prueba creada en tests (camareros, salas, productos, negocios) lleva sufijo `Test` en el nombre (p. ej. `carmenTest`, `cocacolaTest`, `salaTest`) para que sea identificable y borrable de un vistazo; nunca usar nombres que parezcan datos reales.

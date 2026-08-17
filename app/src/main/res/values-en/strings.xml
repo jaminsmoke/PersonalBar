@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">Personal Bar</string>
+
+    <!-- Sidebar -->
+    <string name="nav_colas">Queues</string>
+    <string name="nav_mapa">Map</string>
+    <string name="nav_gestion">Management</string>
+    <string name="nav_ajustes">Settings</string>
+
+    <!-- Management hub -->
+    <string name="gestion_titulo">Management</string>
+    <string name="gestion_volver">Back</string>
+    <string name="gestion_camareros">Waiters</string>
+    <string name="gestion_carta">Menu</string>
+    <string name="gestion_enlaces">Links</string>
+    <string name="gestion_perfil">Profile</string>
+
+    <!-- Venue -->
+    <string name="local_activo">Venue active</string>
+    <string name="local_inactivo">Venue inactive</string>
+    <string name="local_activo_sin_fgs">Node active without foreground service</string>
+
+    <!-- FGS "Venue active" -->
+    <string name="canal_local">Venue status</string>
+    <string name="local_activo_notif_titulo">Venue active</string>
+    <string name="local_activo_notif_texto">The room node is listening on the LAN</string>
+
+    <!-- Connectivity / Identity -->
+    <string name="conexion_online">Connected</string>
+    <string name="conexion_offline">Offline</string>
+    <string name="sin_conexion_aviso">Offline: this action requires internet</string>
+
+    <!-- Settings -->
+    <string name="ajustes_titulo_establecimiento">Venue</string>
+
+    <!-- Queues -->
+    <string name="cola_bebida">Drinks</string>
+    <string name="cola_comida">Food</string>
+    <string name="cola_id_bebida">Queue %1$d Drinks</string>
+    <string name="cola_id_comida">Queue %1$d Food</string>
+    <string name="cola_bebida_vacia_titulo">No pending drinks</string>
+    <string name="cola_bebida_vacia_subtitulo">When a round with drinks arrives, the ticket will appear here.</string>
+    <string name="cola_comida_vacia_titulo">No pending food</string>
+    <string name="cola_comida_vacia_subtitulo">When a round with food arrives, the ticket will appear here.</string>
+
+    <!-- Ticket -->
+    <string name="ticket_ronda">Round %1$d</string>
+    <string name="ticket_camarero">Waiter: %1$s</string>
+    <string name="ticket_preparado_por">Prepared by: %1$s</string>
+    <string name="ticket_estado_preparado">Ready</string>
+    <string name="accion_preparado">Prepare</string>
+    <string name="accion_recogido">Collect</string>
+    <string name="accion_sin_preparador">No preparer: choose &quot;Who am I&quot;</string>
+
+    <!-- Queues: preparer session -->
+    <string name="cola_quien_soy">Who am I:</string>
+    <string name="cola_sin_sesion">No session</string>
+    <string name="cola_quitar_sesion">End session</string>
+    <string name="sin_camareros_aviso">No waiters on file: add them in the Waiters section</string>
+    <string name="cola_de_servicio_corto">on duty</string>
+    <string name="cola_en_mano">Preparing: %1$s</string>
+
+
+    <!-- Map -->
+    <string name="mapa_todas_salas">All</string>
+    <string name="mapa_nueva_sala">New room</string>
+    <string name="mapa_renombrar_sala">Rename room</string>
+    <string name="mapa_eliminar_sala">Delete room</string>
+    <string name="mapa_nueva_mesa">New table</string>
+    <string name="mapa_crear_mesa">Create table</string>
+    <string name="mapa_editar_mesa">Edit table</string>
+    <string name="mapa_borrar_mesa_titulo">Delete table?</string>
+    <string name="mapa_alias">Alias</string>
+    <string name="mapa_capacidad">Capacity</string>
+    <string name="mapa_forma">Shape</string>
+    <string name="mapa_reservar_titulo">Reserve table</string>
+    <string name="mapa_nombre_reserva">Reservation name</string>
+    <string name="mapa_reservar">Reserve</string>
+    <string name="mapa_menu_editar">Edit</string>
+    <string name="mapa_menu_borrar">Delete</string>
+    <string name="mapa_menu_girar">Rotate</string>
+    <string name="mapa_menu_reservar">Reserve</string>
+    <string name="mapa_menu_cancelar_reserva">Cancel reservation</string>
+    <string name="mapa_menu_bloquear">Block</string>
+    <string name="mapa_menu_desbloquear">Unblock</string>
+    <string name="mapa_estado_libre">Free</string>
+    <string name="mapa_estado_ocupada">Occupied</string>
+    <string name="mapa_estado_en_cocina">In kitchen</string>
+    <string name="mapa_estado_reservada">Reserved</string>
+    <string name="mapa_estado_bloqueada">Blocked</string>
+    <string name="mapa_sin_mesas_titulo">No tables</string>
+    <string name="mapa_sin_mesas_subtitulo">Create the first table in this room</string>
+    <string name="mapa_sin_salas_titulo">No rooms</string>
+    <string name="mapa_sin_salas_subtitulo">Create the first room of the venue</string>
+    <string name="mapa_crear_primera_sala">Create the first room</string>
+    <string name="mapa_zoom_in">Zoom in</string>
+    <string name="mapa_zoom_out">Zoom out</string>
+    <string name="mapa_encajar">Fit</string>
+    <string name="mapa_cancelar">Cancel</string>
+    <string name="mapa_comanda_titulo">Order %1$s</string>
+    <string name="mapa_comanda_vacia">No open order</string>
+    <string name="mapa_comanda_solo_vista">View only. Orders are taken in Commander.</string>
+    <string name="mapa_ticket_destino_barra">Drinks</string>
+    <string name="mapa_ticket_destino_cocina">Food</string>
+
+    <!-- Waiters (whitelist) -->
+    <string name="camareros_titulo">Waiters</string>
+    <string name="camareros_subtitulo">Venue whitelist</string>
+    <string name="camareros_seccion_miembros">Venue waiters</string>
+    <string name="camareros_qr_titulo">Waiter QR (identify / offline sign-up)</string>
+    <string name="camareros_ficha_titulo">Waiter profile</string>
+    <string name="camareros_ficha_cerrar">Close</string>
+    <string name="camareros_pegar_qr" tools:ignore="Typos">Waiter QR (phid1)</string>
+    <string name="camareros_alta">Add</string>
+    <string name="camareros_qr_usar_invitacion">With Identity, sign-up is by invitation; the QR is the offline fallback and identifies the waiter</string>
+    <string name="camareros_qr_invalido" tools:ignore="Typos">Invalid QR: not a valid phid1</string>
+    <string name="camareros_ya_existe">That waiter is already added</string>
+    <string name="camareros_revocar">Revoke</string>
+    <string name="camareros_vacia">No waiters</string>
+    <string name="camareros_rol_dueno">Owner</string>
+    <string name="camareros_rol_staff">Staff</string>
+    <string name="camareros_estado_activa">Active</string>
+    <string name="camareros_estado_revocada">Revoked</string>
+    <string name="camareros_identidad">ID: %1$s</string>
+
+    <!-- Menu (catalog) -->
+    <string name="carta_titulo">Menu</string>
+    <string name="carta_subtitulo">Bar product catalog</string>
+    <string name="carta_nuevo_producto">New product</string>
+    <string name="carta_campo_nombre">Name</string>
+    <string name="carta_campo_categoria">Category</string>
+    <string name="carta_campo_precio">Price</string>
+    <string name="carta_campo_disponible">Available</string>
+    <string name="carta_guardar">Save</string>
+    <string name="carta_editar">Edit</string>
+    <string name="carta_borrar_titulo">Delete product?</string>
+    <string name="carta_borrar_mensaje">&quot;%1$s&quot; will be removed from the catalog.</string>
+    <string name="carta_vacia">Empty catalog</string>
+    <string name="carta_vacia_subtitulo">Create the first product of the menu</string>
+    <string name="carta_error_nombre_categoria">Name and category are required</string>
+    <string name="carta_categoria_bebida">Drinks</string>
+    <string name="carta_categoria_comida">Food</string>
+    <string name="carta_no_disponible">Unavailable</string>
+
+    <!-- Venue links (public QR) -->
+    <string name="enlaces_titulo">Venue links</string>
+    <string name="enlaces_subtitulo">Public QR codes for the profile and menu to share with customers</string>
+    <string name="enlaces_tipo_ficha">Venue profile</string>
+    <string name="enlaces_tipo_carta">Menu</string>
+    <string name="enlaces_sin_identity">Connect to Identity to manage links</string>
+    <string name="enlaces_sin_enlace">No link of this type yet</string>
+    <string name="enlaces_crear">Create QR</string>
+    <string name="enlaces_rotar">Rotate</string>
+    <string name="enlaces_revocar">Revoke</string>
+    <string name="enlaces_revocar_titulo">Revoke link?</string>
+    <string name="enlaces_revocar_mensaje">The link will stop working and printed QR codes will become invalid.</string>
+    <string name="enlaces_estado_activo">Active</string>
+    <string name="enlaces_qr_desc">QR for %1$s</string>
+
+
+    <!-- Identity (email invitations) -->
+    <string name="camareros_qr_rechazado">QR rejected: the signature is not valid in Identity</string>
+    <string name="camareros_qr_sin_clave">No verification key: connect to the internet once to enable offline sign-up</string>
+    <string name="camareros_invitar_titulo">Invite by email</string>
+    <string name="camareros_invitar_email">Waiter email</string>
+    <string name="camareros_invitar">Invite</string>
+    <string name="camareros_email_vacio">Enter an email</string>
+    <string name="camareros_email_no_encontrado">No waiter registered with that email</string>
+    <string name="camareros_invitacion_error">Could not create the invitation</string>
+    <string name="camareros_invitacion_enviada">Invitation sent by email</string>
+    <string name="camareros_invitaciones_vacia">No pending invitations</string>
+    <string name="camareros_invitacion_estado_pendiente">Pending</string>
+    <string name="camareros_invitacion_estado_aceptada">Accepted</string>
+    <string name="camareros_invitacion_estado_revocada">Revoked</string>
+    <string name="camareros_invitacion_estado_expirada">Expired</string>
+    <string name="camareros_invitar_revocar">Revoke invitation</string>
+    <string name="camareros_sincronizar">Sync from Identity</string>
+    <string name="camareros_sincronizados">List synced with Identity</string>
+    <string name="camareros_sin_identity">Sign in with the venue account (header icon) to invite by email and verify the QR signature</string>
+
+    <!-- Venue account session (header) -->
+    <string name="sesion_iniciar_sesion">Sign in</string>
+    <string name="sesion_crear_cuenta">Create account</string>
+    <string name="sesion_cuenta_negocio">Venue account</string>
+    <string name="sesion_nombre">Venue name</string>
+    <string name="sesion_email">Email</string>
+    <string name="sesion_password">Password</string>
+    <string name="sesion_logo">Venue logo</string>
+    <string name="sesion_elegir_logo">Choose logo</string>
+    <string name="sesion_logo_opcional">No logo (optional)</string>
+    <string name="sesion_logo_seleccionado">Logo selected</string>
+    <string name="sesion_recordar">Remember me</string>
+    <string name="sesion_entrar">Sign in</string>
+    <string name="sesion_registrarse">Register</string>
+    <string name="sesion_cerrar">Sign out</string>
+    <string name="sesion_campos_incompletos">Fill in the required fields</string>
+    <string name="sesion_login_fallido">Incorrect email or password</string>
+    <string name="sesion_registro_fallido">Could not create the account (email already registered?)</string>
+    <string name="sesion_vincular_fallido">Could not link the venue</string>
+    <string name="sesion_tipo_bar">Bar</string>
+    <string name="sesion_tipo_restaurante">Restaurant</string>
+    <string name="sesion_tipo_cafeteria">Café</string>
+    <string name="sesion_tipo_pub">Pub</string>
+    <string name="sesion_tipo_copas">Cocktail bar</string>
+
+    <!-- Venue profile -->
+    <string name="perfil_titulo">Venue profile</string>
+    <string name="perfil_subtitulo">Venue name, type and logo. Identity is the source of truth</string>
+    <string name="perfil_logo">Logo</string>
+    <string name="perfil_cambiar_logo">Change logo</string>
+    <string name="perfil_borrar_logo">Remove logo</string>
+    <string name="perfil_nombre">Name</string>
+    <string name="perfil_nombre_vacio">Name cannot be empty</string>
+    <string name="perfil_guardar">Save</string>
+    <string name="perfil_cancelar">Cancel</string>
+    <string name="perfil_editar">Edit</string>
+    <string name="perfil_tipo">Type</string>
+    <string name="perfil_email">Email</string>
+    <string name="perfil_uuid">Venue ID</string>
+    <string name="perfil_abrir_ficha">Open web profile</string>
+    <string name="perfil_sin_ficha">No web profile: create it in Links</string>
+    <string name="perfil_guardar_error">Could not save to Identity</string>
+    <string name="perfil_logo_error">Could not update the logo</string>
+
+    <!-- Voice in queues -->
+    <string name="voz_escuchar">Listen</string>
+    <string name="voz_escuchando">Listening…</string>
+    <string name="voz_pista">Say &quot;Queue 1 Drinks ready&quot; or &quot;Queue 2 Food collected&quot;</string>
+    <string name="voz_no_entendido">I didn\'t understand. Try &quot;Queue 1 Drinks ready&quot;</string>
+    <string name="voz_ticket_no_encontrado">No queued order with that number</string>
+    <string name="voz_estado_ilegal">That order is not in the right state for that action</string>
+    <string name="voz_preparador_no_reconocido">Preparer not recognized: not in the whitelist</string>
+    <string name="voz_sin_sesion">Choose a waiter in &quot;Who am I&quot; before preparing</string>
+    <string name="voz_ok_preparado">Ready</string>
+    <string name="voz_ok_recogido">Collected</string>
+    <string name="voz_permiso_denegado">Without microphone permission I can\'t listen</string>
+    <string name="voice_error_audio">No audio captured, try again</string>
+    <string name="voice_error_network">Network error with voice recognition</string>
+    <string name="voice_error_network_timeout">Network timeout</string>
+    <string name="voice_error_no_match">I couldn\'t hear you clearly, try again</string>
+    <string name="voice_error_permissions">Microphone permission missing</string>
+    <string name="voice_error_unavailable">Voice recognition is not available on this device</string>
+    <string name="voice_error_generic">Voice error (%d), try again</string>
+</resources>

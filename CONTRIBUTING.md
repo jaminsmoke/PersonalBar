@@ -51,6 +51,15 @@ python scripts/check_docs_links.py   # enlaces locales de README y docs
 mkdocs build --strict                # build del sitio
 ```
 
+## Multilenguaje (español / inglés)
+
+El texto de usuario vive en recursos de Android, nunca hardcodeado en Kotlin:
+
+- `res/values/strings.xml` — idioma por defecto (español).
+- `res/values-en/strings.xml` — traducción al inglés.
+
+Ambos archivos deben mantener el **mismo set de claves 1:1** (misma cantidad y mismos nombres). Si añades o renombras una clave en `values`, hazlo también en `values-en`. Android selecciona `values-en` automáticamente según el idioma del dispositivo. Para formato de moneda/fechas usa `Locale.getDefault()`.
+
 ## Documentación
 
 - El **README** es la landing del producto; la **wiki** es el manual técnico (nodo LAN, colas, lista blanca, contrato).
