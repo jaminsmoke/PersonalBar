@@ -3,10 +3,13 @@ package com.jaminsmoke.personalbar.lan
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.Sala
+import com.jaminsmoke.personalbar.ui.validarNuevaPassword
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -137,5 +140,35 @@ class IdentityClientsTest {
         val mesasJson = LanJson.encodeToString(mesas)
         assertEquals(salas, LanJson.decodeFromString<List<Sala>>(salasJson))
         assertEquals(mesas, LanJson.decodeFromString<List<Mesa>>(mesasJson))
+    }
+
+    @Test
+    fun cambioPasswordRequestSerializa() {
+        val json = LanJson.encodeToString(
+            CambioPasswordRequest(passwordActual = "actual-123", passwordNueva = "nueva-12345")
+        )
+        assertEquals("""{"password_actual":"actual-123","password_nueva":"nueva-12345"}""", json)
+    }
+
+    @Test
+    fun cambioPasswordResponseDecodifica() {
+        val json = """{"status":"cambiada"}"""
+        val resp = LanJson.decodeFromString<CambioPasswordResponse>(json)
+        assertEquals("cambiada", resp.status)
+    }
+
+    @Test
+    fun validarNuevaPasswordRechazaCorta() {
+        assertNotNull(validarNuevaPassword("abc", "abc"))
+    }
+
+    @Test
+    fun validarNuevaPasswordRechazaNoCoincide() {
+        assertNotNull(validarNuevaPassword("abcdefgh", "abcdefgi"))
+    }
+
+    @Test
+    fun validarNuevaPasswordAceptaValida() {
+        assertNull(validarNuevaPassword("abcdefgh", "abcdefgh"))
     }
 }

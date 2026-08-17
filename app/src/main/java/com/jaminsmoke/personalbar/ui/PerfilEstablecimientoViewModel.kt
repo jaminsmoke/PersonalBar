@@ -10,6 +10,7 @@ import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.SesionNegocio
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
 import com.jaminsmoke.personalbar.data.apiValor
+import com.jaminsmoke.personalbar.lan.CambioPasswordResult
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,6 +80,26 @@ class PerfilEstablecimientoViewModel : ViewModel() {
                 _visibleDirectorio.value = actualizado.visibleDirectorio ?: visible
             } else {
                 _mensaje.value = R.string.perfil_guardar_error
+            }
+            _trabajando.value = false
+        }
+    }
+
+    /** Cambia la contraseña de la cuenta de negocio contra Identity (mantiene la sesión). */
+    fun cambiarPassword(actual: String, nueva: String, confirmacion: String) {
+        val error = validarNuevaPassword(nueva, confirmacion)
+        if (error != null) {
+            _mensaje.value = error
+            return
+        }
+        _mensaje.value = null
+        _trabajando.value = true
+        viewModelScope.launch {
+            val resultado = IdentityNegocioClient.cambiarPassword(actual, nueva)
+            _mensaje.value = when (resultado) {
+                CambioPasswordResult.OK -> R.string.perfil_password_ok
+                CambioPasswordResult.ACTUAL_INCORRECTA -> R.string.perfil_password_actual_incorrecta
+                CambioPasswordResult.ERROR -> R.string.perfil_password_error
             }
             _trabajando.value = false
         }
@@ -162,4 +183,14 @@ class PerfilEstablecimientoViewModel : ViewModel() {
         val mimetype = resolver.getType(uri) ?: "image/webp"
         bytes to mimetype
     }
+}
+
+/**
+ * Valida la nueva contraseña de negocio: mín 8 caracteres y coincidencia con la
+ * confirmación. Devuelve el id de recurso del error, o null si es válida.
+ */
+fun validarNuevaPassword(nueva: String, confirmacion: String): Int? = when {
+    nueva.length < 8 -> R.string.perfil_password_corta
+    nueva != confirmacion -> R.string.perfil_password_no_coincide
+    else -> null
 }

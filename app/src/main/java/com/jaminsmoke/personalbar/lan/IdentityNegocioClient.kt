@@ -36,6 +36,13 @@ enum class DataOrigin(val apiValor: String) {
     }
 }
 
+/** Resultado de `POST /v1/auth/negocio/me/password`. */
+enum class CambioPasswordResult {
+    OK,
+    ACTUAL_INCORRECTA,
+    ERROR,
+}
+
 @Serializable
 data class IdentityLoginResponse(val token: String, val cuenta: IdentityCuentaNegocio = IdentityCuentaNegocio())
 
@@ -58,6 +65,18 @@ data class IdentityRegistroResponse(
 
 @Serializable
 data class LoginRequest(val email: String, val password: String)
+
+/** Cuerpo de `POST /v1/auth/negocio/me/password` (rotación de la contraseña de negocio). */
+@Serializable
+data class CambioPasswordRequest(
+    @SerialName("password_actual") val passwordActual: String,
+    @SerialName("password_nueva") val passwordNueva: String,
+)
+
+@Serializable
+data class CambioPasswordResponse(
+    val status: String,
+)
 
 @Serializable
 data class RegistroNegocioRequest(
@@ -257,6 +276,21 @@ object IdentityNegocioClient {
     suspend fun obtenerLogo(): ByteArray? = withContext(Dispatchers.IO) {
         val (code, bytes) = IdentityHttp.requestBytes(baseUrl, "GET", LOGO_PATH, negocioToken)
         if (code in 200..299) bytes else null
+    }
+
+    /** `POST /v1/auth/negocio/me/password` → rota la contraseña de la cuenta de negocio.
+     *  Devuelve [CambioPasswordResult.OK] (2xx), [CambioPasswordResult.ACTUAL_INCORRECTA]
+     *  (401) o [CambioPasswordResult.ERROR] (red/inesperado). Mantiene la sesión. */
+    suspend fun cambiarPassword(actual: String, nueva: String): CambioPasswordResult = withContext(Dispatchers.IO) {
+        val body = LanJson.encodeToString(
+            CambioPasswordRequest(passwordActual = actual, passwordNueva = nueva)
+        )
+        val (code, _) = IdentityHttp.request(baseUrl, "POST", "/v1/auth/negocio/me/password", body = body, token = negocioToken)
+        when (code) {
+            in 200..299 -> CambioPasswordResult.OK
+            401 -> CambioPasswordResult.ACTUAL_INCORRECTA
+            else -> CambioPasswordResult.ERROR
+        }
     }
 
     /**

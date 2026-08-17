@@ -224,6 +224,16 @@
     <string name="perfil_logo_error">Could not update the logo</string>
     <string name="perfil_visible_directorio">Visible in the directory</string>
     <string name="perfil_visible_directorio_aviso">No email or contact details: only name, type and logo</string>
+    <string name="perfil_password_titulo">Password</string>
+    <string name="perfil_password_actual">Current password</string>
+    <string name="perfil_password_nueva">New password</string>
+    <string name="perfil_password_confirmacion">Confirm password</string>
+    <string name="perfil_password_cambiar">Change password</string>
+    <string name="perfil_password_ok">Password changed</string>
+    <string name="perfil_password_actual_incorrecta">The current password is incorrect</string>
+    <string name="perfil_password_corta">The password must be at least 8 characters</string>
+    <string name="perfil_password_no_coincide">Passwords do not match</string>
+    <string name="perfil_password_error">Could not change the password</string>
 
     <!-- Voice in queues -->
     <string name="voz_escuchar">Listen</string>

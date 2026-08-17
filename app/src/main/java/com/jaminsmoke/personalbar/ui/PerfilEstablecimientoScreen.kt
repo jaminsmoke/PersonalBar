@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -73,6 +74,9 @@ fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = view
 
     var editandoNombre by remember { mutableStateOf(false) }
     var nombreDraft by remember { mutableStateOf("") }
+    var passwordActual by remember { mutableStateOf("") }
+    var passwordNueva by remember { mutableStateOf("") }
+    var passwordConfirmacion by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -319,6 +323,57 @@ fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = view
                     if (fichaUrl != null) R.string.perfil_abrir_ficha else R.string.perfil_sin_ficha
                 )
             )
+        }
+        Spacer(Modifier.height(12.dp))
+
+        // Contraseña de la cuenta de negocio
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = stringResource(R.string.perfil_password_titulo),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = passwordActual,
+                    onValueChange = { passwordActual = it },
+                    label = { Text(stringResource(R.string.perfil_password_actual)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = passwordNueva,
+                    onValueChange = { passwordNueva = it },
+                    label = { Text(stringResource(R.string.perfil_password_nueva)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = passwordConfirmacion,
+                    onValueChange = { passwordConfirmacion = it },
+                    label = { Text(stringResource(R.string.perfil_password_confirmacion)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = { viewModel.cambiarPassword(passwordActual, passwordNueva, passwordConfirmacion) },
+                    enabled = !trabajando,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(R.string.perfil_password_cambiar))
+                }
+            }
         }
         Spacer(Modifier.height(24.dp))
     }
