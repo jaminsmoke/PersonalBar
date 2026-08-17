@@ -13,6 +13,7 @@
     <string name="gestion_volver">Volver</string>
     <string name="gestion_camareros">Camareros</string>
     <string name="gestion_carta">Carta</string>
+    <string name="gestion_enlaces">Enlaces</string>
 
     <!-- Local -->
     <string name="local_activo">Local activo</string>
@@ -139,6 +140,21 @@
     <string name="carta_categoria_bebida">Bebida</string>
     <string name="carta_categoria_comida">Comida</string>
     <string name="carta_no_disponible">No disponible</string>
+
+    <!-- Enlaces del negocio (QR públicos) -->
+    <string name="enlaces_titulo">Enlaces del negocio</string>
+    <string name="enlaces_subtitulo">QR públicos de la ficha y la carta para distribuir a clientes</string>
+    <string name="enlaces_tipo_ficha">Ficha del negocio</string>
+    <string name="enlaces_tipo_carta">Carta</string>
+    <string name="enlaces_sin_identity">Conecta con Identity para gestionar los enlaces</string>
+    <string name="enlaces_sin_enlace">Aún no hay enlace de este tipo</string>
+    <string name="enlaces_crear">Crear QR</string>
+    <string name="enlaces_rotar">Rotar</string>
+    <string name="enlaces_revocar">Revocar</string>
+    <string name="enlaces_revocar_titulo">¿Revocar enlace?</string>
+    <string name="enlaces_revocar_mensaje">El enlace dejará de funcionar y los QR impresos dejarán de ser válidos.</string>
+    <string name="enlaces_estado_activo">Activo</string>
+    <string name="enlaces_qr_desc">QR de %1$s</string>
 
     <!-- Identity (invitaciones por email) -->
     <string name="camareros_qr_rechazado">QR rechazado: la firma no es válida en Identity</string>

@@ -121,6 +121,22 @@ data class IdentityLayout(
 )
 
 /**
+ * Enlace público del establecimiento (ficha o carta). `url_publica` la construye
+ * Identity con sus envs (FICHA_NEGOCIO_URL_BASE / CARTA_URL_BASE); Bar solo la
+ * consume y muestra, nunca concatena dominios ni rutas.
+ */
+@Serializable
+data class IdentityEnlacePublico(
+    val id: String,
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    val tipo: String = "",
+    val slug: String? = null,
+    val estado: String = "activo",
+    @SerialName("expira_en") val expiraEn: String? = null,
+    @SerialName("url_publica") val urlPublica: String? = null,
+)
+
+/**
  * Cliente HTTP del servicio Identity **negocio/establecimientos** (v0.2). Config
  * (URL + token + UUID del establecimiento) en memoria (v0.1): se pierde al reiniciar
  * la app. Si no está configurado, los métodos devuelven null/false y Bar sigue con su
@@ -333,5 +349,41 @@ object IdentityNegocioClient {
         if (code !in 200..299) return@withContext null
         runCatching { LanJson.decodeFromString<IdentityLayout>(text) }
             .getOrNull()?.let { it.salas to it.mesas }
+    }
+
+    // ── Enlaces públicos del establecimiento (ficha_negocio | carta) ─────────
+
+    /** `POST /v1/establecimientos/{id}/enlaces` — crea el enlace; idempotente: si ya
+     *  existe uno activo del mismo tipo devuelve 200 con el existente (y 201 al crear). */
+    suspend fun crearEnlacePublico(tipo: String): IdentityEnlacePublico? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val body = """{"tipo":"$tipo"}"""
+        val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/enlaces", body = body, token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityEnlacePublico>(text) }.getOrNull() else null
+    }
+
+    /** `GET /v1/establecimientos/{id}/enlaces` — lista los enlaces del establecimiento. */
+    suspend fun listarEnlacesPublicos(): List<IdentityEnlacePublico> = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext emptyList()
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/enlaces", token = negocioToken)
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<List<IdentityEnlacePublico>>(text) }.getOrNull().orEmpty()
+        } else {
+            emptyList()
+        }
+    }
+
+    /** `POST /v1/establecimientos/{id}/enlaces/{enlaceId}/revocar` */
+    suspend fun revocarEnlacePublico(enlaceId: String): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/enlaces/$enlaceId/revocar", token = negocioToken).first in 200..299
+    }
+
+    /** `POST /v1/establecimientos/{id}/enlaces/{enlaceId}/rotar` — sustituye el enlace;
+     *  el slug anterior pasa a responder 410. Devuelve el enlace nuevo (o null si falla). */
+    suspend fun rotarEnlacePublico(enlaceId: String): IdentityEnlacePublico? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/enlaces/$enlaceId/rotar", token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityEnlacePublico>(text) }.getOrNull() else null
     }
 }

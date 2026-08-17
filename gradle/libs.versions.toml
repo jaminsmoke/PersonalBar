@@ -16,6 +16,7 @@ desugarJdkLibs = "2.1.5"
 ktor = "3.5.2"
 kotlinxSerialization = "1.11.0"
 tink = "1.15.0"
+zxing = "3.5.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,6 +49,7 @@ ktor-server-sse = { group = "io.ktor", name = "ktor-server-sse", version.ref = "
 ktor-server-test-host = { group = "io.ktor", name = "ktor-server-test-host", version.ref = "ktor" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 tink-android = { group = "com.google.crypto.tink", name = "tink-android", version.ref = "tink" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
