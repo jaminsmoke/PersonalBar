@@ -33,6 +33,15 @@ class QrVerificadorTest {
     }
 
     @Test
+    fun firmaValidaEnUrlSeVerifica() {
+        val qr = qrValido()
+        // El QR viaja URL-encoded en la ficha pública (?qr=phid1%3A...).
+        val encoded = qr.payload.replace(":", "%3A")
+        val url = "https://ficha.example/ficha?qr=$encoded"
+        assertTrue(QrVerificador.verificar(url, qr.publicKeyB64))
+    }
+
+    @Test
     fun firmaManipuladaSeRechaza() {
         val qr = qrValido()
         // Alterar el id dentro del payload (la firma ya no casa con el mensaje).

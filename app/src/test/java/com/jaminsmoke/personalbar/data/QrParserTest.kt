@@ -40,4 +40,37 @@ class QrParserTest {
     fun rechazaFirmaVacia() {
         assertNull(QrParser.parsear("phid1:$camareroId:$credencialId:"))
     }
+
+    // ── Forma URL (https://...?qr=phid1:...) ─────────────────────────────────
+
+    @Test
+    fun parseaUrlConQrEncoded() {
+        // Formato que genera Identity: ?qr=phid1%3A... (quote URL-encoded)
+        val encoded = "phid1%3A$camareroId%3A$credencialId%3Aabc123"
+        val phid = QrParser.parsear("https://ficha.example/ficha?qr=$encoded")
+        assertNotNull(phid)
+        assertEquals(camareroId, phid!!.camareroId)
+        assertEquals(credencialId, phid.credencialId)
+        assertEquals("abc123", phid.firma)
+    }
+
+    @Test
+    fun parseaUrlConQrCrudo() {
+        // Algunos lectores podrían pasar el payload sin URL-encodear.
+        val phid = QrParser.parsear("https://ficha.example/ficha?qr=phid1:$camareroId:$credencialId:abc123")
+        assertNotNull(phid)
+        assertEquals(camareroId, phid!!.camareroId)
+    }
+
+    @Test
+    fun rechazaUrlSinParametroQr() {
+        assertNull(QrParser.parsear("https://ficha.example/ficha?token=abc"))
+        assertNull(QrParser.parsear("https://ficha.example/ficha"))
+    }
+
+    @Test
+    fun rechazaUrlConQrNoPhid1() {
+        assertNull(QrParser.parsear("https://ficha.example/ficha?qr=otro:1:2:3"))
+        assertNull(QrParser.parsear("https://ficha.example/ficha?qr=phid1:no-uuid:$credencialId:abc123"))
+    }
 }
