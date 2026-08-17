@@ -7,6 +7,7 @@ import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Establecimiento
+import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.SesionNegocio
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
 import com.jaminsmoke.personalbar.data.apiValor
@@ -31,6 +32,9 @@ class PerfilEstablecimientoViewModel : ViewModel() {
 
     /** Nombre canónico del establecimiento (mirror local del nodo). */
     val establecimiento: StateFlow<Establecimiento> = repository.establecimiento
+
+    /** Conexión activa con Identity (cuenta de negocio logueada en el header). */
+    val identityConfig: StateFlow<IdentityConfig> = repository.identityConfig
 
     private val _sesion = MutableStateFlow<SesionNegocio?>(null)
     val sesion: StateFlow<SesionNegocio?> = _sesion.asStateFlow()

@@ -207,6 +207,7 @@
     <!-- Venue profile -->
     <string name="perfil_titulo">Venue profile</string>
     <string name="perfil_subtitulo">Venue name, type and logo. Identity is the source of truth</string>
+    <string name="perfil_sin_identity">Sign in or create the venue account (header icon) to view and edit the profile</string>
     <string name="perfil_logo">Logo</string>
     <string name="perfil_cambiar_logo">Change logo</string>
     <string name="perfil_borrar_logo">Remove logo</string>

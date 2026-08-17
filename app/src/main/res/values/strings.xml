@@ -205,6 +205,7 @@
     <!-- Perfil del establecimiento (local) -->
     <string name="perfil_titulo">Perfil del establecimiento</string>
     <string name="perfil_subtitulo">Nombre, tipo y logo del local. La fuente de verdad es Identity</string>
+    <string name="perfil_sin_identity">Inicia sesión o crea la cuenta del establecimiento (icono del header) para ver y editar el perfil</string>
     <string name="perfil_logo">Logo</string>
     <string name="perfil_cambiar_logo">Cambiar logo</string>
     <string name="perfil_borrar_logo">Quitar logo</string>

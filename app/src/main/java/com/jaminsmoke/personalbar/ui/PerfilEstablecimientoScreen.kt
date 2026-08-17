@@ -61,6 +61,7 @@ fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = view
     val visibleDirectorio by viewModel.visibleDirectorio.collectAsState()
     val trabajando by viewModel.trabajando.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
+    val identityConfig by viewModel.identityConfig.collectAsState()
     val uriHandler = LocalUriHandler.current
 
     val logoBitmap = remember(logoBytes) {
@@ -77,6 +78,33 @@ fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = view
     var passwordActual by remember { mutableStateOf("") }
     var passwordNueva by remember { mutableStateOf("") }
     var passwordConfirmacion by remember { mutableStateOf("") }
+
+    // Sin cuenta de negocio conectada (header): el perfil vive en Identity.
+    if (!identityConfig.conectado) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+        ) {
+            Text(
+                text = stringResource(R.string.perfil_titulo),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.perfil_subtitulo),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.perfil_sin_identity),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
