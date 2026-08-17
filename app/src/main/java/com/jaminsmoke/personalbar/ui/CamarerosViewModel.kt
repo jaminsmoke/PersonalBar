@@ -10,6 +10,7 @@ import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.Invitacion
 import com.jaminsmoke.personalbar.data.InvitacionEstado
+import com.jaminsmoke.personalbar.data.invitacionEstadoDesdeApi
 import com.jaminsmoke.personalbar.data.Phid1
 import com.jaminsmoke.personalbar.data.QrKey
 import com.jaminsmoke.personalbar.data.QrParser
@@ -188,6 +189,17 @@ class CamarerosViewModel : ViewModel() {
                 .filter { it.estado.equals("activa", ignoreCase = true) }
                 .map { it.camareroId }
             repository.sincronizarMiembros(miembros)
+            // Espejo de invitaciones: el estado (incluida `expirada`) lo deriva Identity.
+            val invitaciones = IdentityNegocioClient.listarInvitaciones().map { inv ->
+                Invitacion(
+                    id = inv.id,
+                    email = inv.email,
+                    rol = inv.rol,
+                    estado = invitacionEstadoDesdeApi(inv.estado) ?: InvitacionEstado.PENDIENTE,
+                    expiraEn = inv.expiraEn,
+                )
+            }
+            repository.sincronizarInvitaciones(invitaciones)
             sincronizarAltasPendientes()
             _trabajando.value = false
             _mensaje.value = R.string.camareros_sincronizados

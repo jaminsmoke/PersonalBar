@@ -461,6 +461,10 @@ class InMemoryBarRepository(
         return true
     }
 
+    override fun sincronizarInvitaciones(invitaciones: List<Invitacion>) {
+        _invitaciones.value = invitaciones
+    }
+
     override fun sincronizarMiembros(camareroIds: List<String>) {
         camareroIds.forEach { id -> altaCamarero(id, null) }
         refrescarDeServicio()

@@ -38,6 +38,22 @@ class IdentityClientsTest {
     }
 
     @Test
+    fun invitacionesListaDecodificaConExpiradaYCamposNuevos() {
+        val json = """
+            [
+              {"id":"i-1","email":"a@test.com","rol":"staff","estado":"expirada","establecimiento_id":"e-1","expira_en":"2026-01-01T00:00:00Z","creada_en":"2026-01-01T00:00:00Z"},
+              {"id":"i-2","email":"b@test.com","rol":"staff","estado":"pendiente","expira_en":"2026-12-31T00:00:00Z"}
+            ]
+        """.trimIndent()
+        val lista = LanJson.decodeFromString<List<IdentityInvitacion>>(json)
+        assertEquals(2, lista.size)
+        assertEquals("expirada", lista[0].estado)
+        assertEquals("e-1", lista[0].establecimientoId)
+        assertEquals("2026-01-01T00:00:00Z", lista[0].creadaEn)
+        assertEquals("pendiente", lista[1].estado)
+    }
+
+    @Test
     fun layoutEntitiesRoundTrip() {
         val salas = listOf(Sala("sala-barra", "Barra", 1))
         val mesas = listOf(

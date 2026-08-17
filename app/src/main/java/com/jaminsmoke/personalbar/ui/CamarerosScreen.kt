@@ -285,6 +285,7 @@ private fun invitacionEstadoText(estado: InvitacionEstado): String = when (estad
     InvitacionEstado.PENDIENTE -> stringResource(R.string.camareros_invitacion_estado_pendiente)
     InvitacionEstado.ACEPTADA -> stringResource(R.string.camareros_invitacion_estado_aceptada)
     InvitacionEstado.REVOCADA -> stringResource(R.string.camareros_invitacion_estado_revocada)
+    InvitacionEstado.EXPIRADA -> stringResource(R.string.camareros_invitacion_estado_expirada)
 }
 
 @Composable

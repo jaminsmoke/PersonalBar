@@ -135,6 +135,9 @@ interface BarRepository {
     /** @return true si la invitación local existe y se marcó revocada. */
     fun revocarInvitacionLocal(invitacionId: String): Boolean
 
+    /** Espejo: reemplaza el mirror local de invitaciones por el listado de Identity (la verdad vive allí). */
+    fun sincronizarInvitaciones(invitaciones: List<Invitacion>)
+
     /** Espejo: asegura que cada id (miembros ACTIVA de Identity) esté en la lista blanca local. */
     fun sincronizarMiembros(camareroIds: List<String>)
 

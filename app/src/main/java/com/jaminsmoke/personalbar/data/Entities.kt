@@ -126,7 +126,19 @@ data class Reserva(
 
 /** Estado de una invitación por email (mirror local; la aceptación vive en Identity Web). */
 @Serializable
-enum class InvitacionEstado { PENDIENTE, ACEPTADA, REVOCADA }
+enum class InvitacionEstado { PENDIENTE, ACEPTADA, REVOCADA, EXPIRADA }
+
+/**
+ * Estado desde el catálogo de Identity (`pendiente|aceptada|revocada|expirada`);
+ * null si el valor es desconocido (respuestas de versiones futuras).
+ */
+fun invitacionEstadoDesdeApi(valor: String?): InvitacionEstado? = when (valor) {
+    "pendiente" -> InvitacionEstado.PENDIENTE
+    "aceptada" -> InvitacionEstado.ACEPTADA
+    "revocada" -> InvitacionEstado.REVOCADA
+    "expirada" -> InvitacionEstado.EXPIRADA
+    else -> null
+}
 
 /**
  * Invitación por email creada desde Bar (registro local; la verdad vive en Identity).

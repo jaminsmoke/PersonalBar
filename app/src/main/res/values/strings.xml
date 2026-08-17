@@ -154,6 +154,7 @@
     <string name="camareros_invitacion_estado_pendiente">Pendiente</string>
     <string name="camareros_invitacion_estado_aceptada">Aceptada</string>
     <string name="camareros_invitacion_estado_revocada">Revocada</string>
+    <string name="camareros_invitacion_estado_expirada">Expirada</string>
     <string name="camareros_invitar_revocar">Revocar invitación</string>
     <string name="camareros_sincronizar">Sincronizar desde Identity</string>
     <string name="camareros_sincronizados">Lista sincronizada con Identity</string>

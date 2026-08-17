@@ -297,6 +297,11 @@ class RoomBarRepository(
         return ok
     }
 
+    override fun sincronizarInvitaciones(invitaciones: List<Invitacion>) {
+        inner.sincronizarInvitaciones(invitaciones)
+        persist { dao.replaceInvitaciones(inner.invitaciones.value) }
+    }
+
     override fun sincronizarMiembros(camareroIds: List<String>) {
         inner.sincronizarMiembros(camareroIds)
         persist { dao.replaceCamareros(inner.camareros.value) }

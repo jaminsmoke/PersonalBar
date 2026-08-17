@@ -92,7 +92,9 @@ data class IdentityInvitacion(
     val email: String,
     val rol: String = "staff",
     val estado: String = "pendiente",
+    @SerialName("establecimiento_id") val establecimientoId: String? = null,
     @SerialName("expira_en") val expiraEn: String? = null,
+    @SerialName("creada_en") val creadaEn: String? = null,
 )
 
 @Serializable
@@ -279,6 +281,19 @@ object IdentityNegocioClient {
         val body = """{"email":"$email","rol":"$rol"}"""
         val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/invitaciones", body = body, token = negocioToken)
         if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityInvitacion>(text) }.getOrNull() else null
+    }
+
+    /** `GET /v1/establecimientos/{id}/invitaciones` — lista las invitaciones del establecimiento
+     *  (filtro opcional `?estado=`). El server deriva `expirada` para pendientes vencidas. */
+    suspend fun listarInvitaciones(estado: String? = null): List<IdentityInvitacion> = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext emptyList()
+        val q = estado?.takeIf { it.isNotBlank() }?.let { "?estado=${URLEncoder.encode(it, "UTF-8")}" } ?: ""
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/invitaciones$q", token = negocioToken)
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<List<IdentityInvitacion>>(text) }.getOrNull().orEmpty()
+        } else {
+            emptyList()
+        }
     }
 
     /** `POST /v1/establecimientos/{id}/invitaciones/{invitacionId}/revocar` */
