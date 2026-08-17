@@ -54,6 +54,12 @@ Una ronda llega del Commander → Bar la parte en **BARRA** (bebida) y **COCINA*
 - Android SDK con `platforms;android-37`
 - Emulador o dispositivo Android 7.0+ (API 24+); **tablet apaisado** recomendada (AVD `Tablet-PixelTablet`)
 
+Lanzar el tablet con la UI en español y hora de Madrid (Windows): `emulador.bat` en la raíz (oculta la consola de `emulator.exe`, puerto **5558** para no chocar con el móvil). Equivalente manual:
+
+```bash
+emulator -avd Tablet-PixelTablet -port 5558 -timezone Europe/Madrid -change-locale es-ES
+```
+
 ### Build y ejecución
 
 ```bash

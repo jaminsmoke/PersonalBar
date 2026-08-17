@@ -459,7 +459,8 @@ tools/kanban-cli/          # bun install; CLI = bun run tools/kanban-cli/cli.ts
 tools/agent-skills/        # jarvis-github-kanban + jarvis-github-agentuse
 .kanbanrc.json             # local Project IDs (gitignored)
 .kanbanrc.json.template    # versioned reproducible reference
-emulador.bat               # launches Tablet-PixelTablet AVD (gitignored)
+emulador.bat               # lanza Tablet-PixelTablet (es-ES, Europe/Madrid, puerto 5558)
+emulador-hide.vbs          # arranque + locale sin consola de emulator.exe / Windows Terminal
 ```
 
-Lanzar el emulador: `emulador.bat` en Windows, o `emulator -avd Tablet-PixelTablet`.
+Lanzar el emulador: `emulador.bat` en Windows (un clic; oculta la consola de `emulator.exe` y aplica `es-ES` tras el boot). Puerto fijo **5558** para no chocar con el móvil de Commander (5554). Equivalente manual: `emulator -avd Tablet-PixelTablet -port 5558 -timezone Europe/Madrid -change-locale es-ES`.
