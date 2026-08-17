@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Storefront
@@ -51,9 +51,9 @@ enum class GestionAcceso(
     val labelRes: Int,
     val icon: ImageVector,
 ) {
-    CAMAREROS(R.string.gestion_camareros, Icons.Default.QrCode),
+    CAMAREROS(R.string.gestion_camareros, Icons.Default.People),
     CARTA(R.string.gestion_carta, Icons.Default.RestaurantMenu),
-    ENLACES(R.string.gestion_enlaces, Icons.Default.Link),
+    ENLACES(R.string.gestion_enlaces, Icons.Default.QrCode),
     PERFIL(R.string.gestion_perfil, Icons.Default.Storefront),
 }
 
