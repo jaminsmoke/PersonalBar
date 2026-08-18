@@ -6,13 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.IdentityConfig
+import com.jaminsmoke.personalbar.data.SesionEstado
 import com.jaminsmoke.personalbar.data.SesionNegocio
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
 import com.jaminsmoke.personalbar.data.apiValor
 import com.jaminsmoke.personalbar.data.tipoDesdeApi
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
-import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
-import com.jaminsmoke.personalbar.lan.toInvitacion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,16 +23,24 @@ import kotlinx.coroutines.withContext
  * Sesión de la cuenta de negocio en el puesto de Bar. El usuario no ve la URL del
  * server Identity (config de entorno/dev); solo hace login/registro. El tipo y el
  * logo del establecimiento se sincronizan contra Identity.
+ *
+ * El **estado de sesión vive en [PersonalBarApp]** (proceso): restauración,
+ * validez local (`validaHasta`, 7 días) y revalidación contra el VPS funcionan
+ * también con la app en segundo plano (FGS «Local activo»). Este ViewModel es la
+ * fachada de UI: expone `sesion`/`logoBytes` delegados a la app, y el feedback
+ * (`trabajando`/`mensaje`) del flujo de login/registro.
  */
 class SesionViewModel : ViewModel() {
     private val app = PersonalBarApp.get()
 
-    private val _sesion = MutableStateFlow<SesionNegocio?>(null)
-    val sesion: StateFlow<SesionNegocio?> = _sesion.asStateFlow()
+    /** Sesión de negocio actual (fuente: [PersonalBarApp.sesion]). */
+    val sesion: StateFlow<SesionNegocio?> = app.sesion
 
-    /** Bytes del logo descargado de Identity (null = sin logo o aún no cargado). */
-    private val _logoBytes = MutableStateFlow<ByteArray?>(null)
-    val logoBytes: StateFlow<ByteArray?> = _logoBytes.asStateFlow()
+    /** Estado derivado de la sesión: solo [SesionEstado.VALIDA] abre el gate del puesto. */
+    val sesionEstado: StateFlow<SesionEstado> = app.sesionEstado
+
+    /** Bytes del logo descargado de Identity (fuente: [PersonalBarApp.logoBytes]). */
+    val logoBytes: StateFlow<ByteArray?> = app.logoBytes
 
     private val _trabajando = MutableStateFlow(false)
     val trabajando: StateFlow<Boolean> = _trabajando.asStateFlow()
@@ -43,16 +50,10 @@ class SesionViewModel : ViewModel() {
     val mensaje: StateFlow<Int?> = _mensaje.asStateFlow()
 
     init {
-        // Al arrancar, restaurar la sesión persistida (solo si se marcó «Recuérdame»).
-        viewModelScope.launch {
-            val guardada = app.db.barDao().getSesionNegocio()
-            if (guardada?.token != null) {
-                hidratarIdentity(guardada)
-                _sesion.value = guardada
-                cargarLogo()
-                sincronizarDesdeIdentity()
-            }
-        }
+        // La restauración de la sesión persistida («Recuérdame») la hace la app en
+        // onCreate (proceso); aquí solo nos aseguramos de que se dispare si el
+        // proceso ya estaba vivo cuando se creó el ViewModel.
+        app.restaurarSesion()
     }
 
     /** Login de cuenta de negocio existente. Si [recordar], la sesión se persiste. */
@@ -88,12 +89,10 @@ class SesionViewModel : ViewModel() {
                 tipo = tipoDesdeApi(perfil?.tipoEstablecimiento),
                 logoUrl = perfil?.logoUrl,
                 dataOrigin = perfil?.dataOrigin ?: IdentityNegocioClient.establecimientoDataOrigin,
+                validaHasta = System.currentTimeMillis() + PersonalBarApp.SESION_VALIDEZ_MS,
             )
-            _sesion.value = sesion
+            app.setSesion(sesion, recordar)
             marcarConectado(uuid)
-            persistirSesion(sesion, recordar)
-            cargarLogo()
-            sincronizarDesdeIdentity()
             _trabajando.value = false
         }
     }
@@ -153,22 +152,16 @@ class SesionViewModel : ViewModel() {
                 logoUrl = logoUrl,
                 dataOrigin = IdentityNegocioClient.cuentaNegocio?.dataOrigin
                     ?: IdentityNegocioClient.establecimientoDataOrigin,
+                validaHasta = System.currentTimeMillis() + PersonalBarApp.SESION_VALIDEZ_MS,
             )
-            _sesion.value = sesion
+            app.setSesion(sesion, recordar)
             marcarConectado(uuid)
-            persistirSesion(sesion, recordar)
-            cargarLogo()
-            sincronizarDesdeIdentity()
             _trabajando.value = false
         }
     }
 
     fun logout() {
-        IdentityNegocioClient.desconectar()
-        _sesion.value = null
-        _logoBytes.value = null
-        app.repository.setIdentityConfig(IdentityConfig())
-        viewModelScope.launch { app.db.barDao().clearSesionNegocio() }
+        app.cerrarSesion()
     }
 
     /** Refleja en el repo que hay una cuenta de negocio vinculada (lo usa Camareros). */
@@ -176,43 +169,6 @@ class SesionViewModel : ViewModel() {
         app.repository.setIdentityConfig(
             IdentityConfig(conectado = true, establecimientoUuid = uuid)
         )
-    }
-
-    /** Persiste la sesión en Room solo si «Recuérdame»; si no, la deja en memoria. */
-    private fun persistirSesion(sesion: SesionNegocio, recordar: Boolean) {
-        viewModelScope.launch {
-            if (recordar) app.db.barDao().upsertSesionNegocio(sesion)
-            else app.db.barDao().clearSesionNegocio()
-        }
-    }
-
-    /** Descarga el logo de Identity y lo expone para el header. */
-    private fun cargarLogo() {
-        viewModelScope.launch {
-            _logoBytes.value = IdentityNegocioClient.obtenerLogo()
-        }
-    }
-
-    /**
-     * Re-pulla desde Identity (fuente de verdad) el layout y los camareros al iniciar
-     * o restaurar sesión: SQLite hace mirror. El layout reemplaza el local; los
-     * camareros ACTIVA se sincronizan a la lista blanca.
-     */
-    private fun sincronizarDesdeIdentity() {
-        viewModelScope.launch {
-            IdentityNegocioClient.obtenerLayout()?.let { (salas, mesas) ->
-                if (salas.isNotEmpty() || mesas.isNotEmpty()) {
-                    app.repository.reemplazarLayout(salas, mesas)
-                }
-            }
-            val miembros = IdentityNegocioClient.listarMiembros()
-                .filter { it.estado.equals("activa", ignoreCase = true) }
-                .map { it.camareroId }
-            app.repository.sincronizarMiembros(miembros)
-            // Espejo de invitaciones: el estado (incluida `expirada`) lo deriva Identity.
-            val invitaciones = IdentityNegocioClient.listarInvitaciones().map { it.toInvitacion() }
-            app.repository.sincronizarInvitaciones(invitaciones)
-        }
     }
 
     /** Lee los bytes y el mimetype de una imagen elegida (galería). */
@@ -223,22 +179,5 @@ class SesionViewModel : ViewModel() {
         }.getOrNull()
         val mimetype = resolver.getType(uri) ?: "image/webp"
         bytes to mimetype
-    }
-
-    /** Rehidrata el [IdentityNegocioClient] con la sesión guardada en Room. */
-    private fun hidratarIdentity(sesion: SesionNegocio) {
-        // La URL del server no se guarda por sesión: IdentityNegocioClient usa la config de
-        // entorno por defecto (dev). Se completa cuando haya server fijo.
-        IdentityNegocioClient.negocioToken = sesion.token
-        IdentityNegocioClient.establecimientoUuid = sesion.establecimientoUuid
-        IdentityNegocioClient.cuentaNegocio = sesion.nombreMostrar?.let { nombre ->
-            IdentityCuentaNegocio(
-                email = sesion.email.orEmpty(),
-                nombreMostrar = nombre,
-                tipoEstablecimiento = sesion.tipo?.apiValor(),
-                logoUrl = sesion.logoUrl,
-                dataOrigin = sesion.dataOrigin,
-            )
-        }
     }
 }

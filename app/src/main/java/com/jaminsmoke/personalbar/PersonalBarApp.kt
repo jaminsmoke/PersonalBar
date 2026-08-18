@@ -4,14 +4,21 @@ import android.app.Application
 import androidx.room.Room
 import com.jaminsmoke.personalbar.data.AppDatabase
 import com.jaminsmoke.personalbar.data.BarRepository
+import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.RoomBarRepository
 import com.jaminsmoke.personalbar.data.Sala
+import com.jaminsmoke.personalbar.data.SesionEstado
+import com.jaminsmoke.personalbar.data.SesionNegocio
+import com.jaminsmoke.personalbar.data.apiValor
+import com.jaminsmoke.personalbar.data.sesionEstadoDe
 import com.jaminsmoke.personalbar.lan.BarLanServer
 import com.jaminsmoke.personalbar.lan.Conectividad
+import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
+import com.jaminsmoke.personalbar.lan.toInvitacion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,7 +49,7 @@ class PersonalBarApp : Application() {
             AppDatabase::class.java,
             "personalbar.db",
         )
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9, AppDatabase.MIGRATION_9_10)
             .build()
     }
 
@@ -64,6 +71,22 @@ class PersonalBarApp : Application() {
     private val _roomActive = MutableStateFlow(false)
     val roomActive: StateFlow<Boolean> = _roomActive.asStateFlow()
 
+    // ── Sesión de negocio (modelo de sesión) ─────────────────────────────────
+    // Vive en el proceso (no en un ViewModel) para que la revalidación funcione
+    // también con la app en segundo plano (FGS «Local activo» mantiene el proceso).
+    // [SesionViewModel] es la fachada de UI sobre estos flujos.
+
+    private val _sesion = MutableStateFlow<SesionNegocio?>(null)
+    val sesion: StateFlow<SesionNegocio?> = _sesion.asStateFlow()
+
+    /** Bytes del logo descargado de Identity (null = sin logo o aún no cargado). */
+    private val _logoBytes = MutableStateFlow<ByteArray?>(null)
+    val logoBytes: StateFlow<ByteArray?> = _logoBytes.asStateFlow()
+
+    /** Estado derivado de la sesión (consume el gate de la raíz y el header). */
+    private val _sesionEstado = MutableStateFlow(SesionEstado.SIN_SESION)
+    val sesionEstado: StateFlow<SesionEstado> = _sesionEstado.asStateFlow()
+
     /** FGS «Local activo» arrancado correctamente (false = nodo degradado sin FGS). */
     private val _fgsOk = MutableStateFlow(true)
     val fgsOk: StateFlow<Boolean> = _fgsOk.asStateFlow()
@@ -76,6 +99,12 @@ class PersonalBarApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // Observar la sesión y derivar su estado (SIN_SESION → VALIDA/CADUCADA/INVALIDA).
+        sessionScope.launch {
+            _sesion.collect { _sesionEstado.value = sesionEstadoDe(it, System.currentTimeMillis()) }
+        }
+        // Restaurar la sesión persistida («Recuérdame») con su validez local.
+        restaurarSesion()
         // El nodo ya no arranca aquí: lo arranca/para BarLanService (FGS «Local activo»).
     }
 
@@ -86,6 +115,17 @@ class PersonalBarApp : Application() {
      */
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var sessionJob: Job? = null
+
+    private fun actualizarSesionEstado() {
+        _sesionEstado.value = sesionEstadoDe(_sesion.value, System.currentTimeMillis())
+    }
+
+    /** Scope del timer de revalidación de la sesión (24 h). Vive ligado al proceso;
+     *  se arranca/para con el ciclo del nodo ([startLocal]/[stopLocal]), igual que
+     *  el timeout de sesiones: con el FGS activo el proceso sigue vivo en segundo
+     *  plano y la revalidación continúa. */
+    private val revalidacionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var revalidacionJob: Job? = null
 
     /** Scope del proyector de oficio (libro de oficio → Identity). Vive ligado al
      *  proceso; se arranca/para con el ciclo del nodo ([startLocal]/[stopLocal]). */
@@ -98,12 +138,14 @@ class PersonalBarApp : Application() {
         _roomActive.value = lanServer.isRunning
         startSessionTimeout()
         startProyeccionOficio()
+        startRevalidacionSesion()
         return ok
     }
 
     /** Para el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
     fun stopLocal() {
         stopProyeccionOficio()
+        stopRevalidacionSesion()
         stopSessionTimeout()
         lanServer.stopServer()
         _roomActive.value = false
@@ -159,6 +201,128 @@ class PersonalBarApp : Application() {
         proyeccionJob = null
     }
 
+    // ── Sesión de negocio: restauración, alta y validez ─────────────────────
+
+    /** Restaura la sesión persistida («Recuérdame») y su validez local. No revalida
+     *  aquí: el timer ([startRevalidacionSesion]) lo hace al arrancar el nodo. */
+    fun restaurarSesion() {
+        sessionScope.launch {
+            val guardada = db.barDao().getSesionNegocio()
+            if (guardada?.token != null) {
+                hidratarIdentity(guardada)
+                _sesion.value = guardada
+                _sesionEstado.value = sesionEstadoDe(guardada, System.currentTimeMillis())
+                sessionScope.launch { _logoBytes.value = IdentityNegocioClient.obtenerLogo() }
+                sincronizarDesdeIdentity()
+            }
+        }
+    }
+
+    /** Sesión tras login/registro exitoso: hidrata Identity, la persiste (solo con
+     *  «Recuérdame») y dispara logo + mirror. [SesionViewModel] construye la sesión
+     *  con `validaHasta = now + 7d`. */
+    fun setSesion(sesion: SesionNegocio, recordar: Boolean) {
+        hidratarIdentity(sesion)
+        _sesion.value = sesion
+        _sesionEstado.value = sesionEstadoDe(sesion, System.currentTimeMillis())
+        sessionScope.launch {
+            if (recordar) db.barDao().upsertSesionNegocio(sesion)
+            else db.barDao().clearSesionNegocio()
+        }
+        sessionScope.launch { _logoBytes.value = IdentityNegocioClient.obtenerLogo() }
+        sincronizarDesdeIdentity()
+    }
+
+    /** Cierra la sesión (logout): desconecta Identity y limpia sesión + flag local. */
+    fun cerrarSesion() {
+        IdentityNegocioClient.desconectar()
+        _sesion.value = null
+        _sesionEstado.value = SesionEstado.SIN_SESION
+        _logoBytes.value = null
+        repository.setIdentityConfig(IdentityConfig())
+        sessionScope.launch { db.barDao().clearSesionNegocio() }
+    }
+
+    /**
+     * Revalida la sesión contra el VPS (`GET /v1/auth/negocio/me`): 200 → renueva
+     * `validaHasta = now + 7d`; 401 → invalida (`validaHasta = 0`, conserva los datos
+     * para diagnóstico); red caída → no toca nada (la sesión caduca sola a los 7 días).
+     */
+    fun revalidar() {
+        val sesion = _sesion.value ?: return
+        if (sesion.token == null) return
+        sessionScope.launch {
+            when (IdentityNegocioClient.revalidarToken()) {
+                IdentityNegocioClient.RevalidacionResultado.OK -> {
+                    val renovada = sesion.copy(validaHasta = System.currentTimeMillis() + SESION_VALIDEZ_MS)
+                    _sesion.value = renovada
+                    _sesionEstado.value = sesionEstadoDe(renovada, System.currentTimeMillis())
+                    db.barDao().upsertSesionNegocio(renovada)
+                }
+                IdentityNegocioClient.RevalidacionResultado.REVOCADA -> {
+                    val invalida = sesion.copy(validaHasta = 0L)
+                    _sesion.value = invalida
+                    _sesionEstado.value = SesionEstado.INVALIDA
+                    db.barDao().upsertSesionNegocio(invalida)
+                }
+                IdentityNegocioClient.RevalidacionResultado.SIN_RED -> Unit // caduca sola
+            }
+        }
+    }
+
+    /** Timer de revalidación: al arrancar el nodo y cada 24 h, si hay sesión con token. */
+    private fun startRevalidacionSesion() {
+        revalidacionJob?.cancel()
+        revalidacionJob = revalidacionScope.launch {
+            while (isActive) {
+                revalidar()
+                delay(SESION_REVALIDACION_INTERVALO_MS)
+            }
+        }
+    }
+
+    private fun stopRevalidacionSesion() {
+        revalidacionJob?.cancel()
+        revalidacionJob = null
+    }
+
+    /** Rehidrata el [IdentityNegocioClient] con la sesión guardada en Room. */
+    private fun hidratarIdentity(sesion: SesionNegocio) {
+        IdentityNegocioClient.negocioToken = sesion.token
+        IdentityNegocioClient.establecimientoUuid = sesion.establecimientoUuid
+        IdentityNegocioClient.cuentaNegocio = sesion.nombreMostrar?.let { nombre ->
+            IdentityCuentaNegocio(
+                email = sesion.email.orEmpty(),
+                nombreMostrar = nombre,
+                tipoEstablecimiento = sesion.tipo?.apiValor(),
+                logoUrl = sesion.logoUrl,
+                dataOrigin = sesion.dataOrigin,
+            )
+        }
+    }
+
+    /**
+     * Re-pulla desde Identity (fuente de verdad) el layout y los camareros al iniciar
+     * o restaurar sesión: SQLite hace mirror. El layout reemplaza el local; los
+     * camareros ACTIVA se sincronizan a la lista blanca.
+     */
+    private fun sincronizarDesdeIdentity() {
+        sessionScope.launch {
+            IdentityNegocioClient.obtenerLayout()?.let { (salas, mesas) ->
+                if (salas.isNotEmpty() || mesas.isNotEmpty()) {
+                    repository.reemplazarLayout(salas, mesas)
+                }
+            }
+            val miembros = IdentityNegocioClient.listarMiembros()
+                .filter { it.estado.equals("activa", ignoreCase = true) }
+                .map { it.camareroId }
+            repository.sincronizarMiembros(miembros)
+            // Espejo de invitaciones: el estado (incluida `expirada`) lo deriva Identity.
+            val invitaciones = IdentityNegocioClient.listarInvitaciones().map { it.toInvitacion() }
+            repository.sincronizarInvitaciones(invitaciones)
+        }
+    }
+
     override fun onTerminate() {
         stopLocal()
         sessionScope.cancel()
@@ -173,6 +337,12 @@ class PersonalBarApp : Application() {
 
         /** Cada cuánto intenta drenar la cola de oficio (10 s). */
         const val OFICIO_PROYECCION_INTERVALO_MS: Long = 10_000L
+
+        /** Cada cuánto se revalida la sesión contra el VPS (24 h). */
+        const val SESION_REVALIDACION_INTERVALO_MS: Long = 24 * 60 * 60 * 1000L
+
+        /** Validez de la sesión local tras un contacto exitoso con el VPS (7 días). */
+        const val SESION_VALIDEZ_MS: Long = 7 * 24 * 60 * 60 * 1000L
 
         @Volatile
         private var instance: PersonalBarApp? = null

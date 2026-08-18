@@ -211,6 +211,8 @@
     <string name="sesion_email">Email</string>
     <string name="sesion_password">Password</string>
     <string name="sesion_logo">Venue logo</string>
+    <string name="sesion_valida_hasta">Session valid until %1$s</string>
+    <string name="sesion_caduca_pronto">Expires in under 24 h</string>
     <string name="sesion_elegir_logo">Choose logo</string>
     <string name="sesion_logo_opcional">No logo (optional)</string>
     <string name="sesion_logo_seleccionado">Logo selected</string>

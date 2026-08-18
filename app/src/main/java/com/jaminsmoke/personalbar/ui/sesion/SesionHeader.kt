@@ -1,6 +1,8 @@
 package com.jaminsmoke.personalbar.ui.sesion
 
 import android.graphics.BitmapFactory
+import java.text.DateFormat
+import java.util.Date
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -69,6 +72,8 @@ fun SesionHeader(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.width(8.dp))
+            sesion?.let { PbSesionValidez(it) }
             Spacer(Modifier.width(4.dp))
         }
         IconButton(onClick = { modalVisible = true }) {
@@ -87,6 +92,35 @@ fun SesionHeader(
             onAbrirPerfil = onAbrirPerfil,
         )
     }
+}
+
+/**
+ * Badge de validez de la sesión local: «Sesión válida hasta el <fecha>» (formato
+ * del dispositivo). Si quedan menos de 24 h, muestra el aviso en color de warning.
+ * Sin `validaHasta` (o 0 = inválida) no se muestra nada.
+ */
+@Composable
+private fun PbSesionValidez(sesion: SesionNegocio) {
+    val validaHasta = sesion.validaHasta ?: return
+    if (validaHasta <= 0L) return
+    val ahora = System.currentTimeMillis()
+    val caducaPronto = validaHasta - ahora <= 24 * 60 * 60 * 1000L
+    val config = LocalConfiguration.current
+    val fecha = DateFormat.getDateInstance(DateFormat.MEDIUM, config.locales[0])
+        .format(Date(validaHasta))
+    Text(
+        text = if (caducaPronto) {
+            stringResource(R.string.sesion_caduca_pronto)
+        } else {
+            stringResource(R.string.sesion_valida_hasta, fecha)
+        },
+        style = MaterialTheme.typography.labelSmall,
+        color = if (caducaPronto) {
+            MaterialTheme.colorScheme.tertiary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+    )
 }
 
 /** Modal de sesión: registro y login como flujos separados, o sesión activa con logout. */

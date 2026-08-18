@@ -326,6 +326,26 @@ object IdentityNegocioClient {
         if (code in 200..299) bytes else null
     }
 
+    /**
+     * Resultado de revalidar el token guardado contra el VPS:
+     * - [OK] → el server acepta el token (200): la cuenta sigue válida, se renueva +7 días.
+     * - [REVOCADA] → 401: token no válido (revocada/borrada/ban). La sesión local se invalida.
+     * - [SIN_RED] → fallo de red/indeterminado: no se puede decidir; se deja caducar sola.
+     */
+    enum class RevalidacionResultado { OK, REVOCADA, SIN_RED }
+
+    /** `GET /v1/auth/negocio/me` → comprueba que el token guardado sigue siendo válido
+     *  contra Identity. 2xx → [RevalidacionResultado.OK]; 401 → [RevalidacionResultado.REVOCADA];
+     *  fallo de red (-1) → [RevalidacionResultado.SIN_RED]. No cambia el perfil en memoria. */
+    suspend fun revalidarToken(): RevalidacionResultado = withContext(Dispatchers.IO) {
+        val (code, _) = IdentityHttp.request(baseUrl, "GET", "/v1/auth/negocio/me", token = negocioToken)
+        when {
+            code in 200..299 -> RevalidacionResultado.OK
+            code == 401 -> RevalidacionResultado.REVOCADA
+            else -> RevalidacionResultado.SIN_RED
+        }
+    }
+
     /** `POST /v1/auth/negocio/me/password` → rota la contraseña de la cuenta de negocio.
      *  Devuelve [CambioPasswordResult.OK] (2xx), [CambioPasswordResult.ACTUAL_INCORRECTA]
      *  (401) o [CambioPasswordResult.ERROR] (red/inesperado). Mantiene la sesión. */

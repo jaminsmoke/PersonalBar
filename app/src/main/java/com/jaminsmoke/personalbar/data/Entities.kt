@@ -206,6 +206,14 @@ data class SesionNegocio(
     val logoUrl: String? = null,
     /** Procedencia canónica de Identity (`real|test|demo`) para diagnóstico offline. */
     val dataOrigin: String? = null,
+    /**
+     * Hasta cuándo es válida la sesión local (epoch ms) para operar offline.
+     * Se renueva (+7 días) en cada contacto exitoso con el VPS (login o
+     * revalidación). `null` = sin validez conocida (sesiones previas a v10:
+     * no operan offline hasta el primer contacto); `0` = inválida (401 del
+     * server: revocada/borrada). Migración Room v10.
+     */
+    val validaHasta: Long? = null,
 )
 
 /**
