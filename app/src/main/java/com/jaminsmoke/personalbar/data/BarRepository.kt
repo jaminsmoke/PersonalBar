@@ -166,6 +166,20 @@ interface BarRepository {
     /** Elimina un alta pendiente (tras subirla a Identity). */
     fun eliminarAltaPendiente(camareroId: String)
 
+    // ── Libro de oficio (historial de jornada + proyección a Identity) ───────
+
+    /** Intervalos de jornada local (abiertos/cerrados), por camarero. */
+    val jornadas: StateFlow<List<JornadaLocal>>
+
+    /** Eventos de servicio pendientes de subir a Identity (cola persistente). */
+    val serviciosPendientes: StateFlow<List<ServicioPendiente>>
+
+    /** Encola un evento de servicio (idempotente por `eventoId`; PK de la cola). */
+    fun registrarServicioPendiente(servicio: ServicioPendiente)
+
+    /** Elimina un evento de la cola (tras subirlo a Identity). */
+    fun eliminarServicioPendiente(eventoId: String)
+
     // ── Sesión de trabajo (jornada concedida por Bar) ────────────────────────
 
     /** @return true si el camarero ACTIVA pasa a sesión activa (Bar concede la jornada). */

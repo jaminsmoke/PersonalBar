@@ -13,8 +13,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * (sesión de la cuenta de negocio con «Recuérdame»); v5 sustituye `logoClave`
  * por `logoUrl` (logo sincronizado contra Identity); v7 añade
  * `sesion_negocio.dataOrigin` (procedencia canónica de Identity); v8 añade
- * `camareros.sesionActiva` (sesión de trabajo concedida por Bar). Schema exportado
- * a `app/schemas/` para versionar migraciones futuras igual que Commander.
+ * `camareros.sesionActiva` (sesión de trabajo concedida por Bar); v9 añade
+ * `jornadas` (intervalos locales del libro de oficio) y `servicios_pendientes`
+ * (cola persistente de eventos por emitir a Identity). Schema exportado a
+ * `app/schemas/` para versionar migraciones futuras igual que Commander.
  */
 @Database(
     entities = [
@@ -31,8 +33,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SesionNegocio::class,
         QrKey::class,
         AltaPendiente::class,
+        JornadaLocal::class,
+        ServicioPendiente::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -148,6 +152,31 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE camareros ADD COLUMN sesionActiva INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v8→v9: `jornadas` (intervalos del libro de oficio) y `servicios_pendientes`
+         * (cola persistente de eventos por emitir a Identity). Tablas nuevas;
+         * sin datos previos que migrar.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS jornadas (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "camareroId TEXT NOT NULL, " +
+                        "inicio INTEGER NOT NULL, " +
+                        "fin INTEGER)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS servicios_pendientes (" +
+                        "eventoId TEXT NOT NULL PRIMARY KEY, " +
+                        "camareroId TEXT NOT NULL, " +
+                        "tipo TEXT NOT NULL, " +
+                        "cantidad INTEGER NOT NULL, " +
+                        "creadaEn INTEGER NOT NULL)"
+                )
             }
         }
     }

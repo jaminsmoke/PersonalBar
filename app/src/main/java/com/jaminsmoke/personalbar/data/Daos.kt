@@ -196,4 +196,41 @@ interface BarDao {
 
     @Query("DELETE FROM altas_pendientes WHERE camareroId = :camareroId")
     suspend fun deleteAltaPendiente(camareroId: String)
+
+    // ── Jornadas (libro de oficio, lado Bar) ────────────────────────────────
+
+    @Query("SELECT * FROM jornadas ORDER BY inicio")
+    suspend fun getJornadas(): List<JornadaLocal>
+
+    @Transaction
+    suspend fun replaceJornadas(jornadas: List<JornadaLocal>) {
+        deleteJornadas()
+        insertJornadas(jornadas)
+    }
+
+    @Query("DELETE FROM jornadas")
+    suspend fun deleteJornadas()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertJornadas(jornadas: List<JornadaLocal>)
+
+    // ── Servicios pendientes (cola persistente del libro de oficio) ────────
+
+    @Query("SELECT * FROM servicios_pendientes ORDER BY creadaEn")
+    suspend fun getServiciosPendientes(): List<ServicioPendiente>
+
+    @Transaction
+    suspend fun replaceServiciosPendientes(servicios: List<ServicioPendiente>) {
+        deleteServiciosPendientes()
+        insertServiciosPendientes(servicios)
+    }
+
+    @Query("DELETE FROM servicios_pendientes")
+    suspend fun deleteServiciosPendientes()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertServiciosPendientes(servicios: List<ServicioPendiente>)
+
+    @Query("DELETE FROM servicios_pendientes WHERE eventoId = :eventoId")
+    suspend fun deleteServicioPendiente(eventoId: String)
 }
