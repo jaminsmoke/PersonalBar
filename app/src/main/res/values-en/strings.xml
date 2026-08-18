@@ -199,6 +199,10 @@
     <string name="camareros_directorio_nick">Nick: %1$s</string>
     <string name="camareros_directorio_invitacion_enviada">Invitation sent</string>
 
+    <!-- Session required (gate for management screens) -->
+    <string name="sesion_requerida_titulo">Sign in or create the venue account</string>
+    <string name="sesion_requerida_aviso">Without the venue account this section can\'t be viewed or managed. Use the account icon in the header (top right) to sign in or create the account.</string>
+
     <!-- Venue account session (header) -->
     <string name="sesion_iniciar_sesion">Sign in</string>
     <string name="sesion_crear_cuenta">Create account</string>
@@ -228,7 +232,6 @@
     <!-- Venue profile -->
     <string name="perfil_titulo">Venue profile</string>
     <string name="perfil_subtitulo">Venue name, type and logo. Identity is the source of truth</string>
-    <string name="perfil_sin_identity">Sign in or create the venue account (header icon) to view and edit the profile</string>
     <string name="perfil_logo">Logo</string>
     <string name="perfil_cambiar_logo">Change logo</string>
     <string name="perfil_borrar_logo">Remove logo</string>

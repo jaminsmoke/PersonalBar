@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.lan.IdentityEnlacePublico
+import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 
 /**
  * Panel «Enlaces del negocio»: QR públicos de la ficha y la carta. Muestra una
@@ -50,6 +51,7 @@ import com.jaminsmoke.personalbar.lan.IdentityEnlacePublico
 @Composable
 fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
     val enlaces by viewModel.enlaces.collectAsState()
+    val identityConfig by viewModel.identityConfig.collectAsState()
     val trabajando by viewModel.trabajando.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
 
@@ -66,6 +68,15 @@ fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        // Sin cuenta del establecimiento conectada (header): los enlaces viven en Identity.
+        if (!identityConfig.conectado) {
+            PbSesionRequerida(
+                titulo = stringResource(R.string.enlaces_titulo),
+                modifier = Modifier.padding(top = 24.dp),
+            )
+            return
+        }
         mensaje?.let { res ->
             Text(
                 text = stringResource(res),

@@ -197,6 +197,10 @@
     <string name="camareros_directorio_nick">Nick: %1$s</string>
     <string name="camareros_directorio_invitacion_enviada">Invitación enviada</string>
 
+    <!-- Sesión requerida (gate de pantallas de gestión) -->
+    <string name="sesion_requerida_titulo">Inicia sesión o crea la cuenta del establecimiento</string>
+    <string name="sesion_requerida_aviso">Sin la cuenta del establecimiento no se puede ver ni gestionar esta sección. Usa el icono de cuenta del header (arriba a la derecha) para iniciar sesión o crear la cuenta.</string>
+
     <!-- Sesión de la cuenta de negocio (header) -->
     <string name="sesion_iniciar_sesion">Iniciar sesión</string>
     <string name="sesion_crear_cuenta">Crear cuenta</string>
@@ -226,7 +230,6 @@
     <!-- Perfil del establecimiento (local) -->
     <string name="perfil_titulo">Perfil del establecimiento</string>
     <string name="perfil_subtitulo">Nombre, tipo y logo del local. La fuente de verdad es Identity</string>
-    <string name="perfil_sin_identity">Inicia sesión o crea la cuenta del establecimiento (icono del header) para ver y editar el perfil</string>
     <string name="perfil_logo">Logo</string>
     <string name="perfil_cambiar_logo">Cambiar logo</string>
     <string name="perfil_borrar_logo">Quitar logo</string>

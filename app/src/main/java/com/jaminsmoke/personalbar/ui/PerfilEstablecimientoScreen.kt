@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
+import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 
 /**
  * Perfil del establecimiento (local): nombre, tipo y logo editables contra Identity
@@ -96,11 +97,9 @@ fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = view
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                text = stringResource(R.string.perfil_sin_identity),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 16.dp),
+            PbSesionRequerida(
+                titulo = stringResource(R.string.perfil_titulo),
+                modifier = Modifier.padding(top = 24.dp),
             )
         }
         return

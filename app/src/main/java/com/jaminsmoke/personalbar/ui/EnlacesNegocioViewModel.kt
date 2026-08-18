@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.BarRepository
+import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.lan.IdentityEnlacePublico
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,9 @@ enum class TipoEnlacePublico(val apiValor: String, val labelRes: Int) {
  */
 class EnlacesNegocioViewModel : ViewModel() {
     private val repository: BarRepository = PersonalBarApp.get().repository
+
+    /** Cuenta del establecimiento conectada (gate de la pantalla). */
+    val identityConfig: StateFlow<IdentityConfig> = repository.identityConfig
 
     /** Conectividad de red (para avisar si una acción online no puede completarse). */
     val isOnline: StateFlow<Boolean> = PersonalBarApp.get().conectividad.isOnline

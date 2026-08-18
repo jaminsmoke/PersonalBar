@@ -43,6 +43,7 @@ import com.jaminsmoke.personalbar.data.Invitacion
 import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.RolCamarero
 import com.jaminsmoke.personalbar.lan.IdentityCamareroDirectorio
+import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 
 @Composable
 fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
@@ -76,6 +77,15 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(12.dp))
+
+        // Sin cuenta del establecimiento conectada (header): el equipo vive en Identity.
+        if (!identityConfig.conectado) {
+            PbSesionRequerida(
+                titulo = stringResource(R.string.camareros_titulo),
+                modifier = Modifier.padding(top = 24.dp),
+            )
+            return
+        }
 
         // Dos columnas (tablet apaisada): izquierda = lista blanca + QR; derecha = directorio + email.
         Row(modifier = Modifier.fillMaxWidth()) {
