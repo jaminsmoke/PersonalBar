@@ -6,15 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.IdentityConfig
-import com.jaminsmoke.personalbar.data.Invitacion
-import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.SesionNegocio
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
 import com.jaminsmoke.personalbar.data.apiValor
-import com.jaminsmoke.personalbar.data.invitacionEstadoDesdeApi
 import com.jaminsmoke.personalbar.data.tipoDesdeApi
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
+import com.jaminsmoke.personalbar.lan.toInvitacion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -212,15 +210,7 @@ class SesionViewModel : ViewModel() {
                 .map { it.camareroId }
             app.repository.sincronizarMiembros(miembros)
             // Espejo de invitaciones: el estado (incluida `expirada`) lo deriva Identity.
-            val invitaciones = IdentityNegocioClient.listarInvitaciones().map { inv ->
-                Invitacion(
-                    id = inv.id,
-                    email = inv.email,
-                    rol = inv.rol,
-                    estado = invitacionEstadoDesdeApi(inv.estado) ?: InvitacionEstado.PENDIENTE,
-                    expiraEn = inv.expiraEn,
-                )
-            }
+            val invitaciones = IdentityNegocioClient.listarInvitaciones().map { it.toInvitacion() }
             app.repository.sincronizarInvitaciones(invitaciones)
         }
     }

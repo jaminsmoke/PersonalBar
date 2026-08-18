@@ -9,8 +9,6 @@ import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.Invitacion
-import com.jaminsmoke.personalbar.data.InvitacionEstado
-import com.jaminsmoke.personalbar.data.invitacionEstadoDesdeApi
 import com.jaminsmoke.personalbar.data.Phid1
 import com.jaminsmoke.personalbar.data.QrKey
 import com.jaminsmoke.personalbar.data.QrParser
@@ -18,6 +16,7 @@ import com.jaminsmoke.personalbar.data.QrVerificador
 import com.jaminsmoke.personalbar.lan.IdentityCamareroDirectorio
 import com.jaminsmoke.personalbar.lan.IdentityCamareroClient
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
+import com.jaminsmoke.personalbar.lan.toInvitacion
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -166,15 +165,7 @@ class CamarerosViewModel : ViewModel() {
             if (invitacion == null) {
                 _mensaje.value = R.string.camareros_invitacion_error
             } else {
-                repository.registrarInvitacion(
-                    Invitacion(
-                        id = invitacion.id,
-                        email = invitacion.email,
-                        rol = invitacion.rol,
-                        estado = InvitacionEstado.PENDIENTE,
-                        expiraEn = invitacion.expiraEn,
-                    )
-                )
+                repository.registrarInvitacion(invitacion.toInvitacion())
                 _mensaje.value = R.string.camareros_invitacion_enviada
             }
         }
@@ -198,15 +189,7 @@ class CamarerosViewModel : ViewModel() {
                 .map { it.camareroId }
             repository.sincronizarMiembros(miembros)
             // Espejo de invitaciones: el estado (incluida `expirada`) lo deriva Identity.
-            val invitaciones = IdentityNegocioClient.listarInvitaciones().map { inv ->
-                Invitacion(
-                    id = inv.id,
-                    email = inv.email,
-                    rol = inv.rol,
-                    estado = invitacionEstadoDesdeApi(inv.estado) ?: InvitacionEstado.PENDIENTE,
-                    expiraEn = inv.expiraEn,
-                )
-            }
+            val invitaciones = IdentityNegocioClient.listarInvitaciones().map { it.toInvitacion() }
             repository.sincronizarInvitaciones(invitaciones)
             sincronizarAltasPendientes()
             _trabajando.value = false
@@ -239,15 +222,7 @@ class CamarerosViewModel : ViewModel() {
             if (invitacion == null) {
                 _mensaje.value = R.string.camareros_invitacion_error
             } else {
-                repository.registrarInvitacion(
-                    Invitacion(
-                        id = invitacion.id,
-                        email = invitacion.email,
-                        rol = invitacion.rol,
-                        estado = InvitacionEstado.PENDIENTE,
-                        expiraEn = invitacion.expiraEn,
-                    )
-                )
+                repository.registrarInvitacion(invitacion.toInvitacion())
                 _mensaje.value = R.string.camareros_directorio_invitacion_enviada
             }
         }

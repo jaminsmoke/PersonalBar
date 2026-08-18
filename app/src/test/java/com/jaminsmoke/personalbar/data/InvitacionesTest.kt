@@ -10,10 +10,11 @@ class InvitacionesTest {
     // ── Mapeo estado desde Identity ──────────────────────────────────────────
 
     @Test
-    fun invitacionEstadoDesdeApi_mapeaLosCuatroEstados() {
+    fun invitacionEstadoDesdeApi_mapeaLosCincoEstados() {
         assertEquals(InvitacionEstado.PENDIENTE, invitacionEstadoDesdeApi("pendiente"))
         assertEquals(InvitacionEstado.ACEPTADA, invitacionEstadoDesdeApi("aceptada"))
         assertEquals(InvitacionEstado.REVOCADA, invitacionEstadoDesdeApi("revocada"))
+        assertEquals(InvitacionEstado.RECHAZADA, invitacionEstadoDesdeApi("rechazada"))
         assertEquals(InvitacionEstado.EXPIRADA, invitacionEstadoDesdeApi("expirada"))
     }
 

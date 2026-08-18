@@ -9,8 +9,11 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.net.URLEncoder
 import com.jaminsmoke.personalbar.BuildConfig
+import com.jaminsmoke.personalbar.data.Invitacion
+import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.Sala
+import com.jaminsmoke.personalbar.data.invitacionEstadoDesdeApi
 
 // ── Respuestas del servicio Identity negocio (v0.2) que consume Bar ───────────
 
@@ -154,6 +157,19 @@ data class IdentityInvitacion(
     @SerialName("establecimiento_id") val establecimientoId: String? = null,
     @SerialName("expira_en") val expiraEn: String? = null,
     @SerialName("creada_en") val creadaEn: String? = null,
+)
+
+/**
+ * Mapea la respuesta de Identity a la entidad local [Invitacion] (espejo). El
+ * estado lo convierte [invitacionEstadoDesdeApi]; un valor desconocido degrada a
+ * PENDIENTE (el estado canónico lo deriva Identity).
+ */
+fun IdentityInvitacion.toInvitacion(): Invitacion = Invitacion(
+    id = id,
+    email = email,
+    rol = rol,
+    estado = invitacionEstadoDesdeApi(estado) ?: InvitacionEstado.PENDIENTE,
+    expiraEn = expiraEn,
 )
 
 @Serializable

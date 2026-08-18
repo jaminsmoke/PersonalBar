@@ -180,6 +180,7 @@
     <string name="camareros_invitacion_estado_pendiente">Pending</string>
     <string name="camareros_invitacion_estado_aceptada">Accepted</string>
     <string name="camareros_invitacion_estado_revocada">Revoked</string>
+    <string name="camareros_invitacion_estado_rechazada">Rejected</string>
     <string name="camareros_invitacion_estado_expirada">Expired</string>
     <string name="camareros_invitar_revocar">Revoke invitation</string>
     <string name="camareros_sincronizar">Sync from Identity</string>
