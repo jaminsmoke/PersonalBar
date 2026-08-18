@@ -235,7 +235,9 @@ class PersonalBarApp : Application() {
 
     /** Cierra la sesión (logout): desconecta Identity y limpia sesión + flag local. */
     fun cerrarSesion() {
-        IdentityNegocioClient.desconectar()
+        // Conservar `baseUrl` (config estática): si `desconectar()` la anulase, el
+        // siguiente `loginNegocio` fallaría (IdentityHttp devuelve -1 con baseUrl null).
+        IdentityNegocioClient.desconectarConservandoBaseUrl()
         _sesion.value = null
         _sesionEstado.value = SesionEstado.SIN_SESION
         _logoBytes.value = null
@@ -260,10 +262,17 @@ class PersonalBarApp : Application() {
                     db.barDao().upsertSesionNegocio(renovada)
                 }
                 IdentityNegocioClient.RevalidacionResultado.REVOCADA -> {
+                    // «Logout técnico»: la cuenta ya no vale. Se desconecta el cliente
+                    // (el proyector de oficio deja de emitir porque `conectado` pasa a
+                    // false) y se limpia `identity_config.conectado`, pero se conserva
+                    // `sesion_negocio` con `validaHasta = 0` (diagnóstico) y la cola de
+                    // `servicios_pendientes` (idempotente, drena con la siguiente cuenta).
                     val invalida = sesion.copy(validaHasta = 0L)
                     _sesion.value = invalida
                     _sesionEstado.value = SesionEstado.INVALIDA
                     db.barDao().upsertSesionNegocio(invalida)
+                    IdentityNegocioClient.desconectarConservandoBaseUrl()
+                    repository.setIdentityConfig(IdentityConfig())
                 }
                 IdentityNegocioClient.RevalidacionResultado.SIN_RED -> Unit // caduca sola
             }

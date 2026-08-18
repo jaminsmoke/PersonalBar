@@ -9,6 +9,7 @@ import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,6 +29,43 @@ class IdentityClientsTest {
     @Test
     fun basesSonDistintas() {
         assertNotEquals(IdentityNegocioClient.DEFAULT_BASE_URL, IdentityCamareroClient.DEFAULT_BASE_URL)
+    }
+
+    @Test
+    fun desconectarConservandoBaseUrlMantieneConfigYDesconectaSesion() {
+        // Estado de sesión conectada (como tras un login).
+        IdentityNegocioClient.configurar("https://dev.local")
+        IdentityNegocioClient.negocioToken = "tok-1"
+        IdentityNegocioClient.establecimientoUuid = "e-1"
+        IdentityNegocioClient.cuentaNegocio = IdentityCuentaNegocio(
+            email = "negocioTest@x.es",
+            nombreMostrar = "Bar Test",
+        )
+        assertTrue(IdentityNegocioClient.conectado)
+
+        // «Logout técnico» del 401/logout: conserva baseUrl (config estática).
+        IdentityNegocioClient.desconectarConservandoBaseUrl()
+
+        assertFalse(IdentityNegocioClient.conectado)
+        assertNull(IdentityNegocioClient.negocioToken)
+        assertNull(IdentityNegocioClient.establecimientoUuid)
+        assertEquals("https://dev.local", IdentityNegocioClient.baseUrl)
+
+        IdentityNegocioClient.baseUrl = IdentityNegocioClient.DEFAULT_BASE_URL
+    }
+
+    @Test
+    fun desconectarDestructivoAnulaBaseUrl() {
+        IdentityNegocioClient.configurar("https://dev.local")
+        IdentityNegocioClient.negocioToken = "tok-1"
+        IdentityNegocioClient.establecimientoUuid = "e-1"
+
+        IdentityNegocioClient.desconectar()
+
+        assertFalse(IdentityNegocioClient.conectado)
+        assertNull(IdentityNegocioClient.baseUrl)
+
+        IdentityNegocioClient.baseUrl = IdentityNegocioClient.DEFAULT_BASE_URL
     }
 
     @Test
