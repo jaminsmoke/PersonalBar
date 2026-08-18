@@ -171,6 +171,21 @@ interface BarRepository {
     /** Intervalos de jornada local (abiertos/cerrados), por camarero. */
     val jornadas: StateFlow<List<JornadaLocal>>
 
+    /**
+     * Resumen de jornadas para el periodo [desde]..[hasta] (epoch ms; null = sin
+     * límite): intervalos crudos + horas trabajadas y **mesas distintas** servidas
+     * por camarero (mesa con al menos un ticket RECOGIDO en el periodo; el periodo
+     * se acota por `Ronda.creadoEn`, aproximación v0.1). Lo consume el GET LAN
+     * `/v1/sesion/jornadas` y la vista del puesto.
+     */
+    fun resumenJornadas(desde: Long?, hasta: Long?): JornadasResumen
+
+    /** Horario del establecimiento (local): una fila por día; vacío = sin configurar. */
+    val horario: StateFlow<List<HorarioLocal>>
+
+    /** Reemplaza el horario completo (persistido en Room; offline como layout/carta). */
+    fun guardarHorario(horario: List<HorarioLocal>)
+
     /** Eventos de servicio pendientes de subir a Identity (cola persistente). */
     val serviciosPendientes: StateFlow<List<ServicioPendiente>>
 

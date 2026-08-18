@@ -36,6 +36,7 @@ class InMemoryBarRepository(
     qrKeyInicial: QrKey? = null,
     altasPendientesIniciales: List<AltaPendiente> = emptyList(),
     jornadasIniciales: List<JornadaLocal> = emptyList(),
+    horarioInicial: List<HorarioLocal> = emptyList(),
     serviciosPendientesIniciales: List<ServicioPendiente> = emptyList(),
 ) : BarRepository {
 
@@ -63,6 +64,7 @@ class InMemoryBarRepository(
     private val _altasPendientes = MutableStateFlow(altasPendientesIniciales)
     private val _jornadas = MutableStateFlow(jornadasIniciales)
     private val _serviciosPendientes = MutableStateFlow(serviciosPendientesIniciales)
+    private val _horario = MutableStateFlow(horarioInicial)
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
     /** Derivado síncrono de [Camarero.deServicio]: se recalcula en cada mutación de camareros. */
@@ -91,7 +93,45 @@ class InMemoryBarRepository(
     override val altasPendientes: StateFlow<List<AltaPendiente>> = _altasPendientes.asStateFlow()
     override val jornadas: StateFlow<List<JornadaLocal>> = _jornadas.asStateFlow()
     override val serviciosPendientes: StateFlow<List<ServicioPendiente>> = _serviciosPendientes.asStateFlow()
+    override val horario: StateFlow<List<HorarioLocal>> = _horario.asStateFlow()
     override val eventos: SharedFlow<SalaEvent> = _eventos.asSharedFlow()
+
+    override fun guardarHorario(horario: List<HorarioLocal>) {
+        _horario.value = horario.sortedBy { it.diaSemana }
+    }
+
+    override fun resumenJornadas(desde: Long?, hasta: Long?): JornadasResumen {
+        val ahora = System.currentTimeMillis()
+        val enPeriodo: (Long) -> Boolean = { t ->
+            (desde == null || t >= desde) && (hasta == null || t <= hasta)
+        }
+        val intervalos = _jornadas.value
+            .filter { enPeriodo(it.inicio) }
+            .map { JornadaIntervalo(camareroId = it.camareroId, inicio = it.inicio, fin = it.fin) }
+        val camarerosDelPeriodo = intervalos.map { it.camareroId }.distinct()
+        // Mesas servidas por camarero: mesa (idZona) con al menos un ticket RECOGIDO
+        // cuya ronda entró en el periodo (aproximación v0.1: se acota por
+        // `Ronda.creadoEn`) y fue pedida por ese camarero (`Ronda.camarero`).
+        val mesasPorCamarero = _servidos.value
+            .filter { it.estado == TicketEstado.RECOGIDO }
+            .mapNotNull { rondaDe(it.rondaId) }
+            .filter { enPeriodo(it.creadoEn) && it.camarero != null }
+            .groupBy({ it.camarero!! }, { it.mesaId })
+            .mapValues { (_, mesas) -> mesas.distinct().size }
+        val porCamarero = camarerosDelPeriodo.map { camareroId ->
+            val horas = intervalos
+                .filter { it.camareroId == camareroId }
+                .sumOf { (it.fin ?: ahora) - it.inicio }
+            ResumenCamarero(
+                camareroId = camareroId,
+                horasMs = horas,
+                mesasDistintas = mesasPorCamarero[camareroId] ?: 0,
+            )
+        }
+        return JornadasResumen(intervalos = intervalos, porCamarero = porCamarero)
+    }
+
+    private fun rondaDe(rondaId: String): Ronda? = _rondas.value.firstOrNull { it.id == rondaId }
 
     // ── Rondas / tickets ──────────────────────────────────────────────────────
 

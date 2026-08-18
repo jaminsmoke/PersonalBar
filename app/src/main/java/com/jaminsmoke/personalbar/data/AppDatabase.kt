@@ -17,8 +17,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * `jornadas` (intervalos locales del libro de oficio) y `servicios_pendientes`
  * (cola persistente de eventos por emitir a Identity); v10 añade
  * `sesion_negocio.validaHasta` (validez local de la sesión para login offline,
- * renovada +7 días en cada contacto con el VPS). Schema exportado a
- * `app/schemas/` para versionar migraciones futuras igual que Commander.
+ * renovada +7 días en cada contacto con el VPS); v11 añade `horario_local`
+ * (apertura/cierre del establecimiento por día, fuente local del puesto).
+ * Schema exportado a `app/schemas/` para versionar migraciones futuras igual
+ * que Commander.
  */
 @Database(
     entities = [
@@ -37,8 +39,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AltaPendiente::class,
         JornadaLocal::class,
         ServicioPendiente::class,
+        HorarioLocal::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -191,6 +194,22 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE sesion_negocio ADD COLUMN validaHasta INTEGER")
+            }
+        }
+
+        /**
+         * v10→v11: `horario_local` (apertura/cierre por día de la semana del
+         * establecimiento). Tabla nueva con PK por día (1 = lunes … 7 = domingo);
+         * sin datos previos que migrar (arranca vacía = sin horario configurado).
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS horario_local (" +
+                        "diaSemana INTEGER NOT NULL PRIMARY KEY, " +
+                        "abre TEXT, " +
+                        "cierra TEXT)"
+                )
             }
         }
     }

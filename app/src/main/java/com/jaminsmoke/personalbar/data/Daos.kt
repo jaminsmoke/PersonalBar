@@ -233,4 +233,21 @@ interface BarDao {
 
     @Query("DELETE FROM servicios_pendientes WHERE eventoId = :eventoId")
     suspend fun deleteServicioPendiente(eventoId: String)
+
+    // ── Horario del establecimiento (local, tabla singleton por día) ────────
+
+    @Query("SELECT * FROM horario_local ORDER BY diaSemana")
+    suspend fun getHorario(): List<HorarioLocal>
+
+    @Transaction
+    suspend fun replaceHorario(horario: List<HorarioLocal>) {
+        deleteHorario()
+        insertHorario(horario)
+    }
+
+    @Query("DELETE FROM horario_local")
+    suspend fun deleteHorario()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHorario(horario: List<HorarioLocal>)
 }

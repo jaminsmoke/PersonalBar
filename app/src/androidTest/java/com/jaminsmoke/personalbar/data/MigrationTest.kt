@@ -249,6 +249,26 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v10_a_v11_crea_horario_local() {
+        // 1. BD en v10 (con la sesión de negocio que ya existe, sin horario)
+        helper.createDatabase(TEST_DB, 10).close()
+
+        // 2. Migrar a v11: la tabla horario_local existe y arranca vacía
+        val db = helper.runMigrationsAndValidate(TEST_DB, 11, true, AppDatabase.MIGRATION_10_11)
+        db.use {
+            it.execSQL(
+                "INSERT INTO horario_local (diaSemana, abre, cierra) VALUES (1, '10:00', '22:00')"
+            )
+            val cursor = it.query("SELECT abre, cierra FROM horario_local WHERE diaSemana = 1")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("10:00", c.getString(0))
+                assertEquals("22:00", c.getString(1))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }

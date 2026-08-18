@@ -17,7 +17,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,6 +57,8 @@ enum class GestionAcceso(
     CARTA(R.string.gestion_carta, Icons.Default.RestaurantMenu),
     ENLACES(R.string.gestion_enlaces, Icons.Default.QrCode),
     PERFIL(R.string.gestion_perfil, Icons.Default.Storefront),
+    JORNADAS(R.string.gestion_jornadas, Icons.Default.Schedule),
+    HORARIO(R.string.gestion_horario, Icons.Default.AccessTime),
 }
 
 /**
@@ -106,6 +110,18 @@ fun GestionScreen(
             onVolver = { seleccion = null },
         ) {
             PerfilEstablecimientoScreen()
+        }
+        GestionAcceso.JORNADAS -> GestionSubPantalla(
+            titulo = stringResource(R.string.gestion_jornadas),
+            onVolver = { seleccion = null },
+        ) {
+            JornadasScreen()
+        }
+        GestionAcceso.HORARIO -> GestionSubPantalla(
+            titulo = stringResource(R.string.gestion_horario),
+            onVolver = { seleccion = null },
+        ) {
+            HorarioScreen()
         }
     }
 }

@@ -15,6 +15,30 @@
     <string name="gestion_carta">Carta</string>
     <string name="gestion_enlaces">QR\'s</string>
     <string name="gestion_perfil">Perfil</string>
+    <string name="gestion_jornadas">Jornadas</string>
+    <string name="gestion_horario">Horario</string>
+    <string name="jornadas_titulo">Jornadas de los camareros</string>
+    <string name="jornadas_vacio">Sin jornadas en este periodo</string>
+    <string name="jornadas_horas">Horas</string>
+    <string name="jornadas_mesas">Mesas servidas</string>
+    <string name="jornadas_abierta">en curso</string>
+    <string name="horario_titulo">Horario del establecimiento</string>
+    <string name="horario_abre">Abre</string>
+    <string name="horario_cierra">Cierra</string>
+    <string name="horario_cerrado">Cerrado</string>
+    <string name="horario_abierto">Abierto</string>
+    <string name="horario_guardado">Horario guardado</string>
+    <string name="horario_guardar">Guardar horario</string>
+    <string name="horario_invalido">La hora de apertura debe ser anterior al cierre</string>
+    <string-array name="dias_semana_corto">
+        <item>Lun</item>
+        <item>Mar</item>
+        <item>Mié</item>
+        <item>Jue</item>
+        <item>Vie</item>
+        <item>Sáb</item>
+        <item>Dom</item>
+    </string-array>
 
     <!-- Local -->
     <string name="local_inactivo">Local inactivo</string>

@@ -94,6 +94,7 @@ class RoomBarRepository(
                 altasPendientesIniciales = dao.getAltasPendientes(),
                 jornadasIniciales = dao.getJornadas(),
                 serviciosPendientesIniciales = dao.getServiciosPendientes(),
+                horarioInicial = dao.getHorario(),
             )
         }
     }
@@ -118,6 +119,13 @@ class RoomBarRepository(
     override val altasPendientes: StateFlow<List<AltaPendiente>> get() = inner.altasPendientes
     override val jornadas: StateFlow<List<JornadaLocal>> get() = inner.jornadas
     override val serviciosPendientes: StateFlow<List<ServicioPendiente>> get() = inner.serviciosPendientes
+    override val horario: StateFlow<List<HorarioLocal>> get() = inner.horario
+    override fun resumenJornadas(desde: Long?, hasta: Long?): JornadasResumen = inner.resumenJornadas(desde, hasta)
+
+    override fun guardarHorario(horario: List<HorarioLocal>) {
+        inner.guardarHorario(horario)
+        writeScope.launch { dao.replaceHorario(horario) }
+    }
     override val eventos: SharedFlow<SalaEvent> get() = inner.eventos
 
     // ── Rondas / tickets ─────────────────────────────────────────────────────
@@ -437,6 +445,7 @@ class RoomBarRepository(
             dao.replaceCamareros(seed.camareros.value)
             dao.replaceInvitaciones(seed.invitaciones.value)
             dao.upsertIdentityConfig(seed.identityConfig.value)
+            dao.replaceHorario(seed.horario.value)
         }
     }
 }

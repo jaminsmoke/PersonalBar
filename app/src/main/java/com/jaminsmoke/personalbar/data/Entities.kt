@@ -266,6 +266,32 @@ data class JornadaLocal(
 )
 
 /**
+ * Intervalo de jornada expuesto por el resumen (LAN/vista): camarero + inicio/fin.
+ * [fin] null = jornada abierta (se cuenta hasta el instante actual).
+ */
+@Serializable
+data class JornadaIntervalo(
+    val camareroId: String,
+    val inicio: Long,
+    val fin: Long? = null,
+)
+
+/** Horas trabajadas y mesas distintas servidas por un camarero en un periodo. */
+@Serializable
+data class ResumenCamarero(
+    val camareroId: String,
+    val horasMs: Long,
+    val mesasDistintas: Int,
+)
+
+/** Resumen de jornadas para un periodo (GET LAN `/v1/sesion/jornadas` y vista del puesto). */
+@Serializable
+data class JornadasResumen(
+    val intervalos: List<JornadaIntervalo>,
+    val porCamarero: List<ResumenCamarero>,
+)
+
+/**
  * Evento de servicio pendiente de subir a Identity (cola persistente del libro de oficio).
  *
  * [eventoId] es la PK y la clave de idempotencia del server (`servicio:{rondaId}`):
@@ -280,6 +306,24 @@ data class ServicioPendiente(
     val cantidad: Int = 1,
     val creadaEn: Long = System.currentTimeMillis(),
 )
+
+/**
+ * Horario del establecimiento (apertura/cierre por día de la semana). Tabla local
+ * del puesto (Room v11): funciona offline, como layout y carta. La fuente canónica
+ * vivirá en Identity negocio `:8082` (ítem cross del Server) cuando la web pública
+ * lo requiera; entonces Bar publicará este local best-effort.
+ * [diaSemana]: 1 = lunes … 7 = domingo (ISO-8601). [abre]/[cierra] en formato
+ * `HH:mm` (24 h); ambos null = día cerrado.
+ */
+@Entity(tableName = "horario_local")
+data class HorarioLocal(
+    @PrimaryKey val diaSemana: Int,
+    val abre: String? = null,
+    val cierra: String? = null,
+) {
+    /** true si el día está abierto con horario coherente (`abre` y `cierra` presentes). */
+    val abierto: Boolean get() = abre != null && cierra != null
+}
 
 /**
  * Camarero de la lista blanca del establecimiento (mirror de Identity).
