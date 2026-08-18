@@ -221,6 +221,34 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v9_a_v10_anade_validaHasta() {
+        // 1. BD en v9 con una sesión de negocio (sin validaHasta)
+        helper.createDatabase(TEST_DB, 9).use { db ->
+            db.execSQL(
+                "INSERT INTO sesion_negocio (id, token, email, nombreMostrar, establecimientoUuid, tipo, logoUrl, dataOrigin) " +
+                    "VALUES ('local', 'tok-1', 'negocio@x.es', 'La Terraza', 'e-1', 'BAR', NULL, 'real')"
+            )
+        }
+
+        // 2. Migrar a v10: la sesión se conserva y validaHasta arranca NULL
+        //    (sin validez offline hasta el primer contacto con el VPS)
+        val db = helper.runMigrationsAndValidate(TEST_DB, 10, true, AppDatabase.MIGRATION_9_10)
+        db.use {
+            val cursor = it.query(
+                "SELECT token, email, nombreMostrar, establecimientoUuid, validaHasta FROM sesion_negocio WHERE id = 'local'"
+            )
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("tok-1", c.getString(0))
+                assertEquals("negocio@x.es", c.getString(1))
+                assertEquals("La Terraza", c.getString(2))
+                assertEquals("e-1", c.getString(3))
+                assertEquals(null, c.getString(4))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }

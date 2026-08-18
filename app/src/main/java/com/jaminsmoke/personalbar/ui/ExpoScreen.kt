@@ -63,6 +63,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Camarero
+import com.jaminsmoke.personalbar.data.SesionEstado
 import com.jaminsmoke.personalbar.ui.components.PbColumnHeader
 import com.jaminsmoke.personalbar.ui.components.PbEmptyQueue
 import com.jaminsmoke.personalbar.ui.components.PbRoomStatus
@@ -92,8 +93,10 @@ fun ExpoScreen(
     // Sesión real de la cuenta del establecimiento (gate del puesto): sin sesión,
     // el rail se atenúa y el workspace muestra el login/registro. Misma instancia
     // que el header (mismo ViewModelStoreOwner de la Activity).
-    val sesion by sesionViewModel.sesion.collectAsState()
-    val sinSesion = sesion == null
+    // Estado derivado de la sesión: solo VALIDA abre el puesto (sin sesión,
+    // caducada o inválida → bloqueado con login en grande).
+    val sesionEstado by sesionViewModel.sesionEstado.collectAsState()
+    val sinSesion = sesionEstado != SesionEstado.VALIDA
     var section by remember { mutableStateOf(PbSection.COLAS) }
     // Sub-pantalla de Gestión pedida externamente (p. ej. «Ir al perfil» desde la sesión).
     var gestionSolicitud by remember { mutableStateOf<GestionAcceso?>(null) }

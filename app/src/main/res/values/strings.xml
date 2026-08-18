@@ -209,6 +209,8 @@
     <string name="sesion_email">Email</string>
     <string name="sesion_password">Contraseña</string>
     <string name="sesion_logo">Logo del establecimiento</string>
+    <string name="sesion_valida_hasta">Sesión válida hasta el %1$s</string>
+    <string name="sesion_caduca_pronto">Caduca en menos de 24 h</string>
     <string name="sesion_elegir_logo">Elegir logo</string>
     <string name="sesion_logo_opcional">Sin logo (opcional)</string>
     <string name="sesion_logo_seleccionado">Logo seleccionado</string>

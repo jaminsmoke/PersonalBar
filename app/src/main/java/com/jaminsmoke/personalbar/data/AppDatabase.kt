@@ -15,7 +15,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * `sesion_negocio.dataOrigin` (procedencia canónica de Identity); v8 añade
  * `camareros.sesionActiva` (sesión de trabajo concedida por Bar); v9 añade
  * `jornadas` (intervalos locales del libro de oficio) y `servicios_pendientes`
- * (cola persistente de eventos por emitir a Identity). Schema exportado a
+ * (cola persistente de eventos por emitir a Identity); v10 añade
+ * `sesion_negocio.validaHasta` (validez local de la sesión para login offline,
+ * renovada +7 días en cada contacto con el VPS). Schema exportado a
  * `app/schemas/` para versionar migraciones futuras igual que Commander.
  */
 @Database(
@@ -36,7 +38,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         JornadaLocal::class,
         ServicioPendiente::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -177,6 +179,18 @@ abstract class AppDatabase : RoomDatabase() {
                         "cantidad INTEGER NOT NULL, " +
                         "creadaEn INTEGER NOT NULL)"
                 )
+            }
+        }
+
+        /**
+         * v9→v10: `sesion_negocio.validaHasta` (validez local de la sesión para
+         * login offline, epoch ms). Nullable: las sesiones existentes quedan NULL
+         * (sin validez offline) hasta el siguiente contacto exitoso con el VPS
+         * (login o revalidación), que la renueva a +7 días.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sesion_negocio ADD COLUMN validaHasta INTEGER")
             }
         }
     }
