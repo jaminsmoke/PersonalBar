@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.LocalBar
 import androidx.compose.material.icons.filled.Map
@@ -68,7 +70,9 @@ import com.jaminsmoke.personalbar.ui.components.PbTicketCard
 import com.jaminsmoke.personalbar.ui.gestion.GestionAcceso
 import com.jaminsmoke.personalbar.ui.gestion.GestionScreen
 import com.jaminsmoke.personalbar.ui.mapa.MapaScreen
+import com.jaminsmoke.personalbar.ui.sesion.SesionForm
 import com.jaminsmoke.personalbar.ui.sesion.SesionHeader
+import com.jaminsmoke.personalbar.ui.SesionViewModel
 
 /** Entradas del sidebar (navigation rail) del puesto de barra. */
 enum class PbSection(val route: String, val labelRes: Int, val icon: ImageVector) {
@@ -82,8 +86,14 @@ enum class PbSection(val route: String, val labelRes: Int, val icon: ImageVector
 @Composable
 fun ExpoScreen(
     viewModel: ExpoViewModel = viewModel(),
+    sesionViewModel: SesionViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // Sesión real de la cuenta del establecimiento (gate del puesto): sin sesión,
+    // el rail se atenúa y el workspace muestra el login/registro. Misma instancia
+    // que el header (mismo ViewModelStoreOwner de la Activity).
+    val sesion by sesionViewModel.sesion.collectAsState()
+    val sinSesion = sesion == null
     var section by remember { mutableStateOf(PbSection.COLAS) }
     // Sub-pantalla de Gestión pedida externamente (p. ej. «Ir al perfil» desde la sesión).
     var gestionSolicitud by remember { mutableStateOf<GestionAcceso?>(null) }
@@ -137,6 +147,7 @@ fun ExpoScreen(
             PbSidebar(
                 current = section,
                 onSelect = { section = it },
+                bloqueado = sinSesion,
             )
             VerticalDivider(
                 color = MaterialTheme.colorScheme.outlineVariant,
@@ -149,6 +160,12 @@ fun ExpoScreen(
                     .fillMaxHeight()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
             ) {
+                // Sin sesión de negocio: el puesto queda bloqueado (rail atenuado) y
+                // el workspace muestra el login/crear cuenta en grande.
+                if (sinSesion) {
+                    PbSesionWorkspace(sesionViewModel = sesionViewModel)
+                    return@Box
+                }
                 when (section) {
                     PbSection.COLAS -> ExpoColas(
                         uiState = uiState,
@@ -204,6 +221,7 @@ fun ExpoScreen(
 private fun PbSidebar(
     current: PbSection,
     onSelect: (PbSection) -> Unit,
+    bloqueado: Boolean = false,
 ) {
     NavigationRail(
         containerColor = MaterialTheme.colorScheme.background,
@@ -217,7 +235,8 @@ private fun PbSidebar(
             PbSection.entries.forEach { item ->
                 NavigationRailItem(
                     selected = item == current,
-                    onClick = { onSelect(item) },
+                    onClick = { if (!bloqueado) onSelect(item) },
+                    enabled = !bloqueado,
                     icon = {
                         Icon(
                             imageVector = item.icon,
@@ -227,6 +246,52 @@ private fun PbSidebar(
                     label = { Text(stringResource(item.labelRes)) },
                 )
             }
+        }
+    }
+}
+
+/**
+ * Pantalla de sesión del workspace (sin sesión): formulario de login/registro en
+ * grande, con el icono de cuenta y un aviso de que el puesto requiere la cuenta
+ * del establecimiento. Al éxito, [SesionViewModel.sesion] cambia → el gate monta
+ * el puesto al instante.
+ */
+@Composable
+private fun PbSesionWorkspace(sesionViewModel: SesionViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 48.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = Icons.Default.AccountCircle,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.size(64.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.sesion_requerida_titulo),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.sesion_requerida_aviso),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(24.dp))
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.6f)
+                .padding(16.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+        ) {
+            SesionForm(viewModel = sesionViewModel, modifier = Modifier.padding(16.dp))
         }
     }
 }
