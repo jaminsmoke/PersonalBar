@@ -242,6 +242,38 @@ enum class RolCamarero { DUENO, STAFF }
 enum class CamareroEstado { ACTIVA, REVOCADA }
 
 /**
+ * Intervalo de jornada local (libro de oficio, lado Bar).
+ *
+ * El productor abre la jornada al conceder sesión de trabajo ([BarRepository.iniciarSesion])
+ * y la cierra al cortar (fin de jornada, timeout o revocación). Es **local**: el libro
+ * canónico vive en Identity (camareros `:8080`); Bar lo guarda para no perder el
+ * intervalo si se reinicia y para poder proyectarlo luego.
+ */
+@Entity(tableName = "jornadas")
+data class JornadaLocal(
+    @PrimaryKey val id: String,
+    val camareroId: String,
+    val inicio: Long,
+    val fin: Long? = null,
+)
+
+/**
+ * Evento de servicio pendiente de subir a Identity (cola persistente del libro de oficio).
+ *
+ * [eventoId] es la PK y la clave de idempotencia del server (`servicio:{rondaId}`):
+ * reintentar no duplica. El proyector drena la cola cuando la cuenta de negocio está
+ * vinculada; éxito borra la fila, fallo la deja para el siguiente intento.
+ */
+@Entity(tableName = "servicios_pendientes")
+data class ServicioPendiente(
+    @PrimaryKey val eventoId: String,
+    val camareroId: String,
+    val tipo: String,
+    val cantidad: Int = 1,
+    val creadaEn: Long = System.currentTimeMillis(),
+)
+
+/**
  * Camarero de la lista blanca del establecimiento (mirror de Identity).
  * La identidad canónica vive en Identity; Bar guarda a quién acepta en la LAN.
  * [id] es el `camarero_id` (UUID) de Identity, extraído del QR `phid1`.

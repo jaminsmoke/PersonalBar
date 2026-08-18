@@ -35,6 +35,8 @@ class InMemoryBarRepository(
     siguienteColaInicial: Map<Destino, Int> = emptyMap(),
     qrKeyInicial: QrKey? = null,
     altasPendientesIniciales: List<AltaPendiente> = emptyList(),
+    jornadasIniciales: List<JornadaLocal> = emptyList(),
+    serviciosPendientesIniciales: List<ServicioPendiente> = emptyList(),
 ) : BarRepository {
 
     private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>().also { it.addAll(rondasIniciales.map { r -> r.id }) }
@@ -59,6 +61,8 @@ class InMemoryBarRepository(
     private val _invitaciones = MutableStateFlow(invitacionesIniciales)
     private val _qrKey = MutableStateFlow(qrKeyInicial)
     private val _altasPendientes = MutableStateFlow(altasPendientesIniciales)
+    private val _jornadas = MutableStateFlow(jornadasIniciales)
+    private val _serviciosPendientes = MutableStateFlow(serviciosPendientesIniciales)
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
     /** Derivado síncrono de [Camarero.deServicio]: se recalcula en cada mutación de camareros. */
@@ -85,6 +89,8 @@ class InMemoryBarRepository(
     override val invitaciones: StateFlow<List<Invitacion>> = _invitaciones.asStateFlow()
     override val qrKey: StateFlow<QrKey?> = _qrKey.asStateFlow()
     override val altasPendientes: StateFlow<List<AltaPendiente>> = _altasPendientes.asStateFlow()
+    override val jornadas: StateFlow<List<JornadaLocal>> = _jornadas.asStateFlow()
+    override val serviciosPendientes: StateFlow<List<ServicioPendiente>> = _serviciosPendientes.asStateFlow()
     override val eventos: SharedFlow<SalaEvent> = _eventos.asSharedFlow()
 
     // ── Rondas / tickets ──────────────────────────────────────────────────────
@@ -165,7 +171,43 @@ class InMemoryBarRepository(
         _comidaQueue.update { it.filterNot { t -> t.id == ticketId } }
         _servidos.update { it + recogido }
         _eventos.tryEmit(SalaEvent.recogido(recogido, mesaIdDe(recogido), camareroDe(recogido)))
+        encolarRondaServidaSiCompleta(ticket.rondaId)
         return true
+    }
+
+    /**
+     * Si la ronda quedó completa (todos sus tickets RECOGIDO), encola el evento
+     * «ronda servida» acreditado al camarero que pidió. Resolución estricta por
+     * nombre normalizado contra la lista blanca: solo si hay **exactamente uno**
+     * ACTIVA se emite; si no resuelve, no se emite (el libro no adivina).
+     */
+    private fun encolarRondaServidaSiCompleta(rondaId: String) {
+        val enColas = (_bebidaQueue.value + _comidaQueue.value).any { it.rondaId == rondaId }
+        if (enColas) return
+        // Salvaguarda: solo cuenta como servida si la ronda tiene tickets ya recogidos
+        // (una ronda sin tickets no genera evento fantasma).
+        if (_servidos.value.none { it.rondaId == rondaId }) return
+        val ronda = _rondas.value.firstOrNull { it.id == rondaId } ?: return
+        val camareroId = resolverCamareroActivo(ronda.camarero) ?: return
+        _serviciosPendientes.update { lista ->
+            val pendiente = ServicioPendiente(
+                eventoId = "servicio:$rondaId",
+                camareroId = camareroId,
+                tipo = "ronda_servida",
+            )
+            val idx = lista.indexOfFirst { it.eventoId == pendiente.eventoId }
+            if (idx >= 0) lista.toMutableList().also { it[idx] = pendiente } else lista + pendiente
+        }
+    }
+
+    /** Camarero ACTIVA cuyo nombre normalizado coincide con [nombre]; null si no resuelve a exactamente uno. */
+    private fun resolverCamareroActivo(nombre: String?): String? {
+        val norm = normalizarNombreCamarero(nombre)
+        if (norm.isEmpty()) return null
+        val coinciden = _camareros.value.filter {
+            it.estado == CamareroEstado.ACTIVA && normalizarNombreCamarero(it.nombre) == norm
+        }
+        return coinciden.singleOrNull()?.id
     }
 
     /** Ronda origen de un ticket (para resolver la mesa y el camarero que pidió). */
@@ -379,6 +421,7 @@ class InMemoryBarRepository(
         }
         lastSeen.remove(camareroId)
         if (camarero.sesionActiva) {
+            cerrarJornadaAbierta(camareroId)
             _eventos.tryEmit(SalaEvent.cortada(camareroId))
         }
         refrescarDeServicio()
@@ -395,6 +438,7 @@ class InMemoryBarRepository(
             list.map { if (it.id == camareroId) it.copy(sesionActiva = true) else it }
         }
         lastSeen[camareroId] = System.currentTimeMillis()
+        abrirJornada(camareroId)
         refrescarConectados()
         return true
     }
@@ -406,9 +450,28 @@ class InMemoryBarRepository(
             list.map { if (it.id == camareroId) it.copy(sesionActiva = false) else it }
         }
         lastSeen.remove(camareroId)
+        cerrarJornadaAbierta(camareroId)
         _eventos.tryEmit(SalaEvent.cortada(camareroId))
         refrescarConectados()
         return true
+    }
+
+    /** Abre un intervalo de jornada si el camarero no tiene ya uno abierto (id estable por inicio). */
+    private fun abrirJornada(camareroId: String) {
+        if (_jornadas.value.any { it.camareroId == camareroId && it.fin == null }) return
+        val inicio = System.currentTimeMillis()
+        val jornada = JornadaLocal(id = "jornada:$camareroId:$inicio", camareroId = camareroId, inicio = inicio)
+        _jornadas.update { it + jornada }
+    }
+
+    /** Cierra la jornada abierta del camarero (fin = ahora); no-op si no hay ninguna. */
+    private fun cerrarJornadaAbierta(camareroId: String) {
+        val ahora = System.currentTimeMillis()
+        _jornadas.update { lista ->
+            lista.map {
+                if (it.camareroId == camareroId && it.fin == null) it.copy(fin = ahora) else it
+            }
+        }
     }
 
     override fun registrarHeartbeat(camareroId: String): Boolean {
@@ -510,5 +573,18 @@ class InMemoryBarRepository(
 
     override fun eliminarAltaPendiente(camareroId: String) {
         _altasPendientes.update { it.filterNot { a -> a.camareroId == camareroId } }
+    }
+
+    // ── Libro de oficio (jornada + cola de servicios) ────────────────────────
+
+    override fun registrarServicioPendiente(servicio: ServicioPendiente) {
+        _serviciosPendientes.update { lista ->
+            val idx = lista.indexOfFirst { it.eventoId == servicio.eventoId }
+            if (idx >= 0) lista.toMutableList().also { it[idx] = servicio } else lista + servicio
+        }
+    }
+
+    override fun eliminarServicioPendiente(eventoId: String) {
+        _serviciosPendientes.update { it.filterNot { s -> s.eventoId == eventoId } }
     }
 }

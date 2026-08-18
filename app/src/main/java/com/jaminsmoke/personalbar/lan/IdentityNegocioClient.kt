@@ -181,6 +181,16 @@ data class IdentityMembresia(
     val estado: String = "activa",
 )
 
+/** Cuerpo de `POST /v1/negocio/estadisticas/servicio` (productor del libro de oficio). */
+@Serializable
+data class ServicioRegistroRequest(
+    @SerialName("establecimiento_id") val establecimientoId: String,
+    @SerialName("camarero_id") val camareroId: String,
+    @SerialName("evento_id") val eventoId: String,
+    val tipo: String = "ronda_servida",
+    val cantidad: Int = 1,
+)
+
 @Serializable
 data class LayoutUpdateRequest(
     val salas: List<Sala>,
@@ -542,5 +552,33 @@ object IdentityNegocioClient {
     suspend fun borrarLogoEstablecimiento(): Boolean = withContext(Dispatchers.IO) {
         val id = establecimientoUuid ?: return@withContext false
         IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/logo", token = negocioToken).first in 200..299
+    }
+
+    // ── Libro de oficio (productor: estadísticas de servicio) ────────────────
+
+    /**
+     * `POST /v1/negocio/estadisticas/servicio` → registra un evento de servicio
+     * («ronda servida») en el libro de oficio del camarero. Idempotente por
+     * [eventoId]: reintentar tras un timeout no duplica. Devuelve true si Identity
+     * aceptó (2xx); false si no hay sesión de negocio o la petición falló
+     * (el proyector deja el evento en la cola y reintenta).
+     */
+    suspend fun registrarServicio(
+        camareroId: String,
+        eventoId: String,
+        tipo: String = "ronda_servida",
+        cantidad: Int = 1,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        val body = LanJson.encodeToString(
+            ServicioRegistroRequest(
+                establecimientoId = id,
+                camareroId = camareroId,
+                eventoId = eventoId,
+                tipo = tipo,
+                cantidad = cantidad,
+            )
+        )
+        IdentityHttp.request(baseUrl, "POST", "/v1/negocio/estadisticas/servicio", body = body, token = negocioToken).first in 200..299
     }
 }

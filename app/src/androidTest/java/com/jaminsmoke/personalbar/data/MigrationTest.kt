@@ -165,6 +165,32 @@ class MigrationTest {
     }
 
     @Test
+    fun migracion_v8_a_v9_crea_jornadas_y_servicios_pendientes() {
+        helper.createDatabase(TEST_DB, 8).close()
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 9, true, AppDatabase.MIGRATION_8_9)
+        db.use {
+            it.execSQL(
+                "INSERT INTO jornadas (id, camareroId, inicio, fin) VALUES ('j-1', 'c-1', 1000, NULL)"
+            )
+            it.execSQL(
+                "INSERT INTO servicios_pendientes (eventoId, camareroId, tipo, cantidad, creadaEn) " +
+                    "VALUES ('servicio:r1', 'c-1', 'ronda_servida', 1, 0)"
+            )
+            val cursor = it.query("SELECT camareroId FROM jornadas WHERE id = 'j-1'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("c-1", c.getString(0))
+            }
+            val cursor2 = it.query("SELECT tipo FROM servicios_pendientes WHERE eventoId = 'servicio:r1'")
+            cursor2.use { c ->
+                c.moveToFirst()
+                assertEquals("ronda_servida", c.getString(0))
+            }
+        }
+    }
+
+    @Test
     fun migracion_v1_a_v2_anade_numeroCola() {
         // 1. BD en v1 con datos
         helper.createDatabase(TEST_DB, 1).use { db ->

@@ -250,6 +250,51 @@ class RoomBarRepositoryTest {
         assertEquals(setOf("cam-a", "cam-b"), repo2.camareros.first().map { it.id }.toSet())
     }
 
+    // ═══ Libro de oficio: jornadas + cola de servicios persistidas ═══
+
+    @Test
+    fun jornadas_y_cola_de_servicios_persisten_tras_recarga() = runBlocking {
+        val repo1 = nuevoRepo()
+
+        // Camarero ACTIVA con el nombre de la ronda demo → resuelve la atribución.
+        repo1.sincronizarMiembros(listOf("cam-1"))
+        repo1.altaCamarero("cam-1", null, nombre = "Lucía Test")
+        assertTrue(repo1.iniciarSesion("cam-1"))
+
+        // Completar la ronda demo (bebida + comida) → se encola «ronda servida».
+        val ticketBebida = repo1.bebidaQueue.first().first { it.rondaId == "r1" }
+        assertTrue(repo1.marcarPreparado(ticketBebida.id, "cam-1"))
+        assertTrue(repo1.marcarRecogido(ticketBebida.id))
+        val ticketComida = repo1.comidaQueue.first().first { it.rondaId == "r1" }
+        assertTrue(repo1.marcarPreparado(ticketComida.id, "cam-1"))
+        assertTrue(repo1.marcarRecogido(ticketComida.id))
+        repo1.awaitPersistencia()
+
+        // Jornada abierta por la sesión + evento encolado.
+        assertEquals(1, repo1.jornadas.first().size)
+        assertTrue(repo1.jornadas.first().single().fin == null)
+        assertEquals("servicio:r1", repo1.serviciosPendientes.first().single().eventoId)
+
+        // Cortar la sesión cierra la jornada; ambas cosas sobreviven a la recarga.
+        assertTrue(repo1.cortarSesion("cam-1"))
+        repo1.awaitPersistencia()
+
+        val repo2 = nuevoRepo()
+        val jornada = repo2.jornadas.first().single()
+        assertEquals("cam-1", jornada.camareroId)
+        assertTrue(jornada.fin != null)
+        val pendiente = repo2.serviciosPendientes.first().single()
+        assertEquals("servicio:r1", pendiente.eventoId)
+        assertEquals("ronda_servida", pendiente.tipo)
+        assertEquals("cam-1", pendiente.camareroId)
+
+        // Eliminar el evento tras «subirlo» a Identity persiste la cola vacía.
+        repo2.eliminarServicioPendiente("servicio:r1")
+        repo2.awaitPersistencia()
+        val repo3 = nuevoRepo()
+        assertTrue(repo3.serviciosPendientes.first().isEmpty())
+    }
+
     // ═══ De servicio: varios preparadores + persistencia ═══
 
     @Test

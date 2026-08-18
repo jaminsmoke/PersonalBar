@@ -11,6 +11,7 @@ import com.jaminsmoke.personalbar.data.RoomBarRepository
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.lan.BarLanServer
 import com.jaminsmoke.personalbar.lan.Conectividad
+import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,7 +42,7 @@ class PersonalBarApp : Application() {
             AppDatabase::class.java,
             "personalbar.db",
         )
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9)
             .build()
     }
 
@@ -86,16 +87,23 @@ class PersonalBarApp : Application() {
     private val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var sessionJob: Job? = null
 
+    /** Scope del proyector de oficio (libro de oficio → Identity). Vive ligado al
+     *  proceso; se arranca/para con el ciclo del nodo ([startLocal]/[stopLocal]). */
+    private val proyeccionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var proyeccionJob: Job? = null
+
     /** Arranca el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
     fun startLocal(): Boolean {
         val ok = lanServer.startServer()
         _roomActive.value = lanServer.isRunning
         startSessionTimeout()
+        startProyeccionOficio()
         return ok
     }
 
     /** Para el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
     fun stopLocal() {
+        stopProyeccionOficio()
         stopSessionTimeout()
         lanServer.stopServer()
         _roomActive.value = false
@@ -117,9 +125,44 @@ class PersonalBarApp : Application() {
         sessionJob = null
     }
 
+    /**
+     * Proyector del libro de oficio: drena la cola persistente de eventos de
+     * servicio hacia Identity cuando la cuenta de negocio está vinculada.
+     * Éxito → borra la fila (idempotencia por `evento_id` en el server); fallo
+     * → la deja para el siguiente intento. Nunca bloquea el camino LAN de
+     * rondas/colas: la emisión es asíncrona y best-effort.
+     */
+    private fun startProyeccionOficio() {
+        proyeccionJob?.cancel()
+        proyeccionJob = proyeccionScope.launch {
+            while (isActive) {
+                delay(OFICIO_PROYECCION_INTERVALO_MS)
+                if (!IdentityNegocioClient.conectado) continue
+                val pendientes = repository.serviciosPendientes.value.toList()
+                pendientes.forEach { servicio ->
+                    if (IdentityNegocioClient.registrarServicio(
+                            camareroId = servicio.camareroId,
+                            eventoId = servicio.eventoId,
+                            tipo = servicio.tipo,
+                            cantidad = servicio.cantidad,
+                        )
+                    ) {
+                        repository.eliminarServicioPendiente(servicio.eventoId)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopProyeccionOficio() {
+        proyeccionJob?.cancel()
+        proyeccionJob = null
+    }
+
     override fun onTerminate() {
         stopLocal()
         sessionScope.cancel()
+        proyeccionScope.cancel()
         super.onTerminate()
     }
 
@@ -127,6 +170,9 @@ class PersonalBarApp : Application() {
 
         /** Cada cuánto se revisa el timeout (5 s). */
         const val SESSION_CHECK_INTERVAL_MS: Long = 5_000L
+
+        /** Cada cuánto intenta drenar la cola de oficio (10 s). */
+        const val OFICIO_PROYECCION_INTERVALO_MS: Long = 10_000L
 
         @Volatile
         private var instance: PersonalBarApp? = null

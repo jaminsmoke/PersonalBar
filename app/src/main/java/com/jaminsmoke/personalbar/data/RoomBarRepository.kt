@@ -91,6 +91,8 @@ class RoomBarRepository(
                 siguienteColaInicial = siguienteCola,
                 qrKeyInicial = dao.getQrKey(),
                 altasPendientesIniciales = dao.getAltasPendientes(),
+                jornadasIniciales = dao.getJornadas(),
+                serviciosPendientesIniciales = dao.getServiciosPendientes(),
             )
         }
     }
@@ -113,6 +115,8 @@ class RoomBarRepository(
     override val invitaciones: StateFlow<List<Invitacion>> get() = inner.invitaciones
     override val qrKey: StateFlow<QrKey?> get() = inner.qrKey
     override val altasPendientes: StateFlow<List<AltaPendiente>> get() = inner.altasPendientes
+    override val jornadas: StateFlow<List<JornadaLocal>> get() = inner.jornadas
+    override val serviciosPendientes: StateFlow<List<ServicioPendiente>> get() = inner.serviciosPendientes
     override val eventos: SharedFlow<SalaEvent> get() = inner.eventos
 
     // ── Rondas / tickets ─────────────────────────────────────────────────────
@@ -250,7 +254,10 @@ class RoomBarRepository(
 
     override fun revocarCamarero(camareroId: String): Boolean {
         val ok = inner.revocarCamarero(camareroId)
-        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        if (ok) persist {
+            dao.replaceCamareros(inner.camareros.value)
+            dao.replaceJornadas(inner.jornadas.value)
+        }
         return ok
     }
 
@@ -268,13 +275,19 @@ class RoomBarRepository(
 
     override fun iniciarSesion(camareroId: String): Boolean {
         val ok = inner.iniciarSesion(camareroId)
-        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        if (ok) persist {
+            dao.replaceCamareros(inner.camareros.value)
+            dao.replaceJornadas(inner.jornadas.value)
+        }
         return ok
     }
 
     override fun cortarSesion(camareroId: String): Boolean {
         val ok = inner.cortarSesion(camareroId)
-        if (ok) persist { dao.replaceCamareros(inner.camareros.value) }
+        if (ok) persist {
+            dao.replaceCamareros(inner.camareros.value)
+            dao.replaceJornadas(inner.jornadas.value)
+        }
         return ok
     }
 
@@ -327,6 +340,16 @@ class RoomBarRepository(
     override fun eliminarAltaPendiente(camareroId: String) {
         inner.eliminarAltaPendiente(camareroId)
         persist { dao.deleteAltaPendiente(camareroId) }
+    }
+
+    override fun registrarServicioPendiente(servicio: ServicioPendiente) {
+        inner.registrarServicioPendiente(servicio)
+        persist { dao.replaceServiciosPendientes(inner.serviciosPendientes.value) }
+    }
+
+    override fun eliminarServicioPendiente(eventoId: String) {
+        inner.eliminarServicioPendiente(eventoId)
+        persist { dao.replaceServiciosPendientes(inner.serviciosPendientes.value) }
     }
 
     // ── Persistencia ─────────────────────────────────────────────────────────
