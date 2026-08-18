@@ -62,6 +62,9 @@ def normalize(ruta: str) -> str:
     ruta = ruta.replace("$id", "{establecimiento_id}")
     ruta = ruta.replace("$camareroId", "{camarero_id}")
     ruta = ruta.replace("$invitacionId", "{invitacion_id}")
+    ruta = ruta.replace("$enlaceId", "{enlace_id}")
+    # Query interpolada (p. ej. ".../invitaciones$q"): el sufijo `$var` al final no es path.
+    ruta = re.sub(r"\$[A-Za-z_][A-Za-z0-9_]*$", "", ruta)
     return ruta.split("?", 1)[0]
 
 
@@ -190,11 +193,15 @@ def selftest() -> None:
         IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/miembros", token = t)
         IdentityHttp.requestBytes(baseUrl, "GET", LOGO_PATH, t)
         IdentityHttp.uploadMultipart(baseUrl, LOGO_PATH, "logo", "f", b, "mime", t)
+        IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/enlaces/$enlaceId/revocar", token = t)
+        IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/invitaciones$q", token = t)
     '''
     rutas = client_paths(src)
     assert ("GET", "/v1/establecimientos/{establecimiento_id}/miembros") in rutas, rutas
     assert ("GET", "/v1/auth/negocio/me/logo") in rutas, rutas
     assert ("POST", "/v1/auth/negocio/me/logo") in rutas, rutas
+    assert ("POST", "/v1/establecimientos/{establecimiento_id}/enlaces/{enlace_id}/revocar") in rutas, rutas
+    assert ("GET", "/v1/establecimientos/{establecimiento_id}/invitaciones") in rutas, rutas
 
     # Comparación: falta una ruta → fallo.
     import tempfile
