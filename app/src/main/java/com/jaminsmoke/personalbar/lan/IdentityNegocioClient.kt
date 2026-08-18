@@ -269,6 +269,22 @@ object IdentityNegocioClient {
         establecimientoDataOrigin = null
     }
 
+    /**
+     * Desconecta la **sesión** (token/UUID/cuenta) conservando `baseUrl` (config
+     * estática del proceso: `DEFAULT_BASE_URL` o el valor de `configurar(...)` de
+     * dev/Docker). Es el método correcto para un «logout técnico» — p. ej. el 401
+     * de la revalidación (#96) o el cierre de sesión explícito — porque el siguiente
+     * `loginNegocio` necesita `baseUrl` (si es null, `IdentityHttp` devuelve -1).
+     * [desconectar] (que anula también `baseUrl`) solo debe usarse si se quiere
+     * desmontar el cliente por completo (tests/dev).
+     */
+    fun desconectarConservandoBaseUrl() {
+        negocioToken = null
+        establecimientoUuid = null
+        cuentaNegocio = null
+        establecimientoDataOrigin = null
+    }
+
     /** `POST /v1/auth/negocio/registro` → crea la cuenta de negocio. Devuelve el id o null. */
     suspend fun registroNegocio(
         nombreMostrar: String,
