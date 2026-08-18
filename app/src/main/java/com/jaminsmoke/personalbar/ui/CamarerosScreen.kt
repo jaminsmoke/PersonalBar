@@ -2,6 +2,7 @@ package com.jaminsmoke.personalbar.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,10 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -28,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,102 +42,273 @@ import com.jaminsmoke.personalbar.data.CamareroEstado
 import com.jaminsmoke.personalbar.data.Invitacion
 import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.RolCamarero
+import com.jaminsmoke.personalbar.lan.IdentityCamareroDirectorio
 
 @Composable
 fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
     val camareros by viewModel.camareros.collectAsState()
     val identityConfig by viewModel.identityConfig.collectAsState()
     val invitaciones by viewModel.invitaciones.collectAsState()
+    val directorio by viewModel.directorio.collectAsState()
+    val directorioCargando by viewModel.directorioCargando.collectAsState()
     val trabajando by viewModel.trabajando.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
 
     var qrInput by remember { mutableStateOf("") }
     var emailInput by remember { mutableStateOf("") }
+    var busqueda by remember { mutableStateOf("") }
     var ficha by remember { mutableStateOf<Camarero?>(null) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
     ) {
-        item {
-            Text(
-                text = stringResource(R.string.camareros_titulo),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(R.string.camareros_subtitulo),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = stringResource(R.string.camareros_titulo),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.camareros_subtitulo),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
 
-        // ── Alta canónica: invitación por email ────────────────────────────────
-        item {
-            InvitacionSection(
-                conectado = identityConfig.conectado,
-                isOnline = isOnline,
-                invitaciones = invitaciones,
-                trabajando = trabajando,
-                email = emailInput,
-                onEmail = { emailInput = it },
-                onInvitar = {
-                    viewModel.invitarPorEmail(emailInput)
-                    emailInput = ""
-                },
-                onRevocar = viewModel::revocarInvitacion,
-                onSincronizar = viewModel::sincronizar,
-            )
-        }
-
-        item {
-            HorizontalDivider()
-        }
-
-        // ── Camareros del establecimiento ──────────────────────────────────────
-        item {
-            Text(
-                text = stringResource(R.string.camareros_seccion_miembros),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        if (camareros.isEmpty()) {
-            item {
-                Text(
-                    text = stringResource(R.string.camareros_vacia),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // Dos columnas (tablet apaisada): izquierda = lista blanca + QR; derecha = directorio + email.
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                MiembrosSection(
+                    camareros = camareros,
+                    onVerFicha = { ficha = it },
+                    onRevocar = viewModel::revocar,
+                )
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(12.dp))
+                QrSection(
+                    qr = qrInput,
+                    onQr = { qrInput = it },
+                    trabajando = trabajando,
+                    mensaje = mensaje,
+                    onDarAlta = {
+                        if (viewModel.altaPorQr(qrInput) == AltaResultado.OK) qrInput = ""
+                    },
                 )
             }
-        } else {
-            items(camareros, key = { it.id }) { camarero ->
-                CamareroRow(
-                    camarero = camarero,
-                    onVerFicha = { ficha = camarero },
-                    onRevocar = { viewModel.revocar(camarero.id) },
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                DirectorioSection(
+                    conectado = identityConfig.conectado,
+                    isOnline = isOnline,
+                    cargando = directorioCargando,
+                    directorio = directorio,
+                    busqueda = busqueda,
+                    onBusqueda = { busqueda = it },
+                    onBuscar = { viewModel.buscarDirectorio(busqueda) },
+                    onInvitar = viewModel::invitarDelDirectorio,
+                )
+                Spacer(Modifier.height(12.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(12.dp))
+                InvitacionSection(
+                    conectado = identityConfig.conectado,
+                    isOnline = isOnline,
+                    invitaciones = invitaciones,
+                    trabajando = trabajando,
+                    email = emailInput,
+                    onEmail = { emailInput = it },
+                    onInvitar = {
+                        viewModel.invitarPorEmail(emailInput)
+                        emailInput = ""
+                    },
+                    onRevocar = viewModel::revocarInvitacion,
+                    onSincronizar = viewModel::sincronizar,
                 )
             }
-        }
-
-        // ── Respaldo: QR (identificar / alta offline) ──────────────────────────
-        item {
-            HorizontalDivider()
-            QrSection(
-                qr = qrInput,
-                onQr = { qrInput = it },
-                trabajando = trabajando,
-                mensaje = mensaje,
-                onDarAlta = {
-                    if (viewModel.altaPorQr(qrInput) == AltaResultado.OK) qrInput = ""
-                },
-            )
         }
     }
 
     ficha?.let { camarero ->
         FichaCamareroDialog(camarero = camarero, onDismiss = { ficha = null })
+    }
+}
+
+/** Columna izquierda: camareros del establecimiento (lista blanca). */
+@Composable
+private fun MiembrosSection(
+    camareros: List<Camarero>,
+    onVerFicha: (Camarero) -> Unit,
+    onRevocar: (String) -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.camareros_seccion_miembros),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    Spacer(Modifier.height(8.dp))
+    if (camareros.isEmpty()) {
+        Text(
+            text = stringResource(R.string.camareros_vacia),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            camareros.forEach { camarero ->
+                CamareroRow(
+                    camarero = camarero,
+                    onVerFicha = { onVerFicha(camarero) },
+                    onRevocar = { onRevocar(camarero.id) },
+                )
+            }
+        }
+    }
+}
+
+/** Columna derecha: directorio de camareros visibles para invitar. */
+@Composable
+private fun DirectorioSection(
+    conectado: Boolean,
+    isOnline: Boolean,
+    cargando: Boolean,
+    directorio: List<IdentityCamareroDirectorio>,
+    busqueda: String,
+    onBusqueda: (String) -> Unit,
+    onBuscar: () -> Unit,
+    onInvitar: (IdentityCamareroDirectorio) -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.camareros_directorio_titulo),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+    Text(
+        text = stringResource(R.string.camareros_directorio_subtitulo),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (!conectado) {
+        Text(
+            text = stringResource(R.string.camareros_directorio_sin_identity),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        return
+    }
+    if (!isOnline) {
+        Text(
+            text = stringResource(R.string.sin_conexion_aviso),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        return
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            value = busqueda,
+            onValueChange = onBusqueda,
+            label = { Text(stringResource(R.string.camareros_directorio_buscar)) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+        )
+        Spacer(Modifier.width(12.dp))
+        Button(onClick = onBuscar, enabled = !cargando) {
+            Text(stringResource(R.string.camareros_directorio_buscar_accion))
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    when {
+        cargando -> Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        }
+        directorio.isEmpty() -> Text(
+            text = stringResource(R.string.camareros_directorio_vacio),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            directorio.forEach { entry ->
+                DirectorioRow(entry = entry, onInvitar = { onInvitar(entry) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun DirectorioRow(
+    entry: IdentityCamareroDirectorio,
+    onInvitar: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            InicialesAvatar(entry)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.nombreCompleto,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                entry.nick?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = stringResource(R.string.camareros_directorio_nick, it),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(
+                    if (entry.libre) R.string.camareros_directorio_libre else R.string.camareros_directorio_ocupado,
+                ),
+                style = MaterialTheme.typography.labelMedium,
+                color = if (entry.libre) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(12.dp))
+            OutlinedButton(onClick = onInvitar) {
+                Text(stringResource(R.string.camareros_invitar))
+            }
+        }
+    }
+}
+
+@Composable
+private fun InicialesAvatar(entry: IdentityCamareroDirectorio) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.size(40.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = entry.iniciales,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
     }
 }
 

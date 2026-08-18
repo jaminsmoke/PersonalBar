@@ -184,6 +184,18 @@
     <string name="camareros_sincronizados">Lista sincronizada con Identity</string>
     <string name="camareros_sin_identity">Inicia sesión con la cuenta del establecimiento (icono del header) para invitar por email y verificar la firma del QR</string>
 
+    <!-- Directorio de camareros -->
+    <string name="camareros_directorio_titulo">Directorio</string>
+    <string name="camareros_directorio_subtitulo">Camareros que quieren ser invitados</string>
+    <string name="camareros_directorio_buscar">Buscar camarero</string>
+    <string name="camareros_directorio_buscar_accion">Buscar</string>
+    <string name="camareros_directorio_vacio">Sin resultados. Busca por nombre, apellidos o nick.</string>
+    <string name="camareros_directorio_sin_identity">Inicia sesión con la cuenta del establecimiento para ver el directorio</string>
+    <string name="camareros_directorio_libre">Libre</string>
+    <string name="camareros_directorio_ocupado">Ocupado</string>
+    <string name="camareros_directorio_nick">Nick: %1$s</string>
+    <string name="camareros_directorio_invitacion_enviada">Invitación enviada</string>
+
     <!-- Sesión de la cuenta de negocio (header) -->
     <string name="sesion_iniciar_sesion">Iniciar sesión</string>
     <string name="sesion_crear_cuenta">Crear cuenta</string>

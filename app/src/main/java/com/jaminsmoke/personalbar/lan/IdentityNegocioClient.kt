@@ -124,6 +124,27 @@ data class IdentityCamarero(
     val email: String = "",
 )
 
+/** Entrada del directorio de camareros (`GET .../camareros/directorio`). Sin email (privacidad). */
+@Serializable
+data class IdentityCamareroDirectorio(
+    val id: String,
+    val nombre: String = "",
+    val apellidos: String = "",
+    val nick: String? = null,
+    @SerialName("foto_url") val fotoUrl: String? = null,
+    val libre: Boolean = false,
+    val visibilidad: String = "nunca",
+) {
+    val nombreCompleto: String
+        get() = "$nombre $apellidos".trim().ifBlank { nick.orEmpty().ifBlank { "Camarero" } }
+
+    val iniciales: String
+        get() = buildString {
+            nombre.firstOrNull()?.let { append(it.uppercaseChar()) }
+            apellidos.firstOrNull()?.let { append(it.uppercaseChar()) }
+        }.ifBlank { nick?.firstOrNull()?.uppercaseChar()?.toString().orEmpty().ifBlank { "?" } }
+}
+
 @Serializable
 data class IdentityInvitacion(
     val id: String,
@@ -345,10 +366,28 @@ object IdentityNegocioClient {
         if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityCamarero>(text) }.getOrNull() else null
     }
 
+    /** `GET /v1/establecimientos/{id}/camareros/directorio?q=&limit=` — directorio sin email. */
+    suspend fun directorioCamareros(q: String? = null, limit: Int = 100): List<IdentityCamareroDirectorio> = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext emptyList()
+        val params = mutableListOf("limit=$limit")
+        q?.trim()?.takeIf { it.isNotEmpty() }?.let { params.add(0, "q=${URLEncoder.encode(it, "UTF-8")}") }
+        val path = "/v1/establecimientos/$id/camareros/directorio?${params.joinToString("&")}"
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", path, token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<List<IdentityCamareroDirectorio>>(text) }.getOrNull().orEmpty() else emptyList()
+    }
+
     /** `POST /v1/establecimientos/{id}/invitaciones` → crea la invitación y envía el email. */
     suspend fun crearInvitacion(email: String, rol: String = "staff"): IdentityInvitacion? = withContext(Dispatchers.IO) {
         val id = establecimientoUuid ?: return@withContext null
         val body = """{"email":"$email","rol":"$rol"}"""
+        val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/invitaciones", body = body, token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityInvitacion>(text) }.getOrNull() else null
+    }
+
+    /** `POST /v1/establecimientos/{id}/invitaciones` por `camarero_id` (flujo directorio). */
+    suspend fun crearInvitacionPorCamarero(camareroId: String, rol: String = "staff"): IdentityInvitacion? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val body = """{"camarero_id":"$camareroId","rol":"$rol"}"""
         val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/invitaciones", body = body, token = negocioToken)
         if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityInvitacion>(text) }.getOrNull() else null
     }

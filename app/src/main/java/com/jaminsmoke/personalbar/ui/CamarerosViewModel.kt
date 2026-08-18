@@ -15,6 +15,7 @@ import com.jaminsmoke.personalbar.data.Phid1
 import com.jaminsmoke.personalbar.data.QrKey
 import com.jaminsmoke.personalbar.data.QrParser
 import com.jaminsmoke.personalbar.data.QrVerificador
+import com.jaminsmoke.personalbar.lan.IdentityCamareroDirectorio
 import com.jaminsmoke.personalbar.lan.IdentityCamareroClient
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,13 @@ class CamarerosViewModel : ViewModel() {
     /** Último mensaje de feedback como id de recurso (null = sin mensaje). */
     private val _mensaje = MutableStateFlow<Int?>(null)
     val mensaje: StateFlow<Int?> = _mensaje.asStateFlow()
+
+    /** Directorio de camareros visibles para invitar (efímero; la verdad vive en Identity). */
+    private val _directorio = MutableStateFlow<List<IdentityCamareroDirectorio>>(emptyList())
+    val directorio: StateFlow<List<IdentityCamareroDirectorio>> = _directorio.asStateFlow()
+
+    private val _directorioCargando = MutableStateFlow(false)
+    val directorioCargando: StateFlow<Boolean> = _directorioCargando.asStateFlow()
 
     /**
      * Alta por QR. Es **respaldo/identificación**, no alta canónica: con Identity
@@ -203,6 +211,45 @@ class CamarerosViewModel : ViewModel() {
             sincronizarAltasPendientes()
             _trabajando.value = false
             _mensaje.value = R.string.camareros_sincronizados
+        }
+    }
+
+    /** Consulta el directorio de camareros visibles para invitar (búsqueda opcional). */
+    fun buscarDirectorio(q: String?) {
+        if (!repository.identityConfig.value.conectado) {
+            _mensaje.value = R.string.camareros_directorio_sin_identity
+            return
+        }
+        if (!isOnline.value) {
+            _mensaje.value = R.string.sin_conexion_aviso
+            return
+        }
+        _directorioCargando.value = true
+        viewModelScope.launch {
+            _directorio.value = IdentityNegocioClient.directorioCamareros(q)
+            _directorioCargando.value = false
+        }
+    }
+
+    /** Invita a un camarero del directorio (por id; el server resuelve el email). */
+    fun invitarDelDirectorio(camarero: IdentityCamareroDirectorio) {
+        if (!repository.identityConfig.value.conectado || !isOnline.value) return
+        viewModelScope.launch {
+            val invitacion = IdentityNegocioClient.crearInvitacionPorCamarero(camarero.id)
+            if (invitacion == null) {
+                _mensaje.value = R.string.camareros_invitacion_error
+            } else {
+                repository.registrarInvitacion(
+                    Invitacion(
+                        id = invitacion.id,
+                        email = invitacion.email,
+                        rol = invitacion.rol,
+                        estado = InvitacionEstado.PENDIENTE,
+                        expiraEn = invitacion.expiraEn,
+                    )
+                )
+                _mensaje.value = R.string.camareros_directorio_invitacion_enviada
+            }
         }
     }
 }

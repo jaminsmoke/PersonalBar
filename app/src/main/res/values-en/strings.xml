@@ -186,6 +186,18 @@
     <string name="camareros_sincronizados">List synced with Identity</string>
     <string name="camareros_sin_identity">Sign in with the venue account (header icon) to invite by email and verify the QR signature</string>
 
+    <!-- Waiter directory -->
+    <string name="camareros_directorio_titulo">Directory</string>
+    <string name="camareros_directorio_subtitulo">Waiters who want to be invited</string>
+    <string name="camareros_directorio_buscar">Search waiter</string>
+    <string name="camareros_directorio_buscar_accion">Search</string>
+    <string name="camareros_directorio_vacio">No results. Search by name, surname or nick.</string>
+    <string name="camareros_directorio_sin_identity">Sign in with the venue account to view the directory</string>
+    <string name="camareros_directorio_libre">Available</string>
+    <string name="camareros_directorio_ocupado">At a venue</string>
+    <string name="camareros_directorio_nick">Nick: %1$s</string>
+    <string name="camareros_directorio_invitacion_enviada">Invitation sent</string>
+
     <!-- Venue account session (header) -->
     <string name="sesion_iniciar_sesion">Sign in</string>
     <string name="sesion_crear_cuenta">Create account</string>
