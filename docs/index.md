@@ -19,7 +19,7 @@ Colas de Bebida y Comida separadas y nodo LAN de la familia PersonalHostel: los 
 
 [📖 Manual en la Wiki](https://github.com/jaminsmoke/PersonalBar/wiki){ .md-button .md-button--primary }
 
-[Personal Comander](https://github.com/jaminsmoke/PersonalComander) · [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity)
+[Personal Comander](https://github.com/jaminsmoke/PersonalComander) · [PersonalHostel-Server](https://github.com/jaminsmoke/PersonalHostel-Server)
 
 </div>
 
@@ -46,7 +46,7 @@ Colas de Bebida y Comida separadas y nodo LAN de la familia PersonalHostel: los 
 
 - :material-qrcode: **Lista blanca del local**
 
-    Alta de camareros por su QR de identidad (PersonalHostel-Identity). Sin alta no hay acceso, aunque estén en el Wi‑Fi.
+    Alta de camareros por su QR de identidad (PersonalHostel-Server). Sin alta no hay acceso, aunque estén en el Wi‑Fi.
 
 - :material-map: **Mapa de la sala**
 

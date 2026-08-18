@@ -28,7 +28,7 @@ Personal Bar es un puesto Android que actúa como **host de sala LAN**. Las áre
 
 - **Nodo LAN (puerto 8787)**: Bar es el servidor de la sala; el tráfico es cleartext **solo en rangos LAN privados** (`network_security_config`). No exponer el puerto a internet. La lista blanca de camareros controla quién accede; sin alta no hay acceso aunque estén en el Wi‑Fi.
 - **Firma y keystore**: la firma de release usa `keystore.properties` (local, nunca versionado). No compartir keystores ni contraseñas.
-- **Identidad**: el login y la creación de cuenta de establecimiento van por HTTPS a PersonalHostel-Identity; nunca por el puerto LAN.
+- **Identidad**: el login y la creación de cuenta de establecimiento van por HTTPS a PersonalHostel-Server; nunca por el puerto LAN.
 - **Datos locales**: establecimiento, salas, rondas y tickets viven en una base de datos Room local; protégete el acceso físico al puesto.
 
 ## Buena práctica para investigadores

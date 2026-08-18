@@ -6,7 +6,7 @@
 
 **El puesto de barra que gestiona la sala.** Colas de Bebida y Comida separadas, nodo LAN de la familia PersonalHostel: los Personal Commander de sala y terraza se conectan aquí, mandan rondas y la barra las prepara y entrega **por destino**.
 
-[🌐 Site](https://jaminsmoke.github.io/PersonalBar/) · [📖 Wiki](https://github.com/jaminsmoke/PersonalBar/wiki) · [Personal Comander](https://github.com/jaminsmoke/PersonalComander) · [PersonalHostel-Identity](https://github.com/jaminsmoke/PersonalHostel-Identity)
+[🌐 Site](https://jaminsmoke.github.io/PersonalBar/) · [📖 Wiki](https://github.com/jaminsmoke/PersonalBar/wiki) · [Personal Comander](https://github.com/jaminsmoke/PersonalComander) · [PersonalHostel-Server](https://github.com/jaminsmoke/PersonalHostel-Server)
 
 [![Build](https://img.shields.io/github/actions/workflow/status/jaminsmoke/PersonalBar/ci.yml?label=build&color=%23E9C349)](https://github.com/jaminsmoke/PersonalBar/actions)
 [![License](https://img.shields.io/github/license/jaminsmoke/PersonalBar?color=%23E9C349)](LICENSE)
@@ -26,7 +26,7 @@ Una ronda llega del Commander → Bar la parte en **BARRA** (bebida) y **COCINA*
 
 - 🥤 **Expo de colas por destino** — dos columnas fijas (Bebida y Comida) en la tablet apaisado. Ticket: mesa, ronda, camarero y líneas.
 - 📡 **Nodo de sala LAN** — servidor Ktor integrado (puerto **8787**). Los Commander se conectan, envían rondas y reciben el estado en tiempo real (SSE).
-- 🔒 **Lista blanca del local** — los camareros se dan de alta por su **QR de identidad** (PersonalHostel-Identity). Sin alta no hay acceso, aunque estén en el Wi‑Fi.
+- 🔒 **Lista blanca del local** — los camareros se dan de alta por su **QR de identidad** (PersonalHostel-Server). Sin alta no hay acceso, aunque estén en el Wi‑Fi.
 - 🗺️ **Mapa de la sala** — salas y mesas canónicas del establecimiento (barra, interior, terraza…), replicadas a los Commander.
 - 🎛️ **Gestión** — camareros (lista blanca) y carta del bar, desde el hub de gestión.
 - 🛎️ **Preparado con nombre** — cada ticket registra quién lo preparó, simétrico a quién lo pidió.
@@ -98,7 +98,7 @@ app/src/main/java/com/jaminsmoke/personalbar/
 
 ## Nodo LAN
 
-Bar es el **host de sala** de la familia. Puerto fijo: **8787** (solo LAN privada; identidad = HTTPS a PersonalHostel-Identity).
+Bar es el **host de sala** de la familia. Puerto fijo: **8787** (solo LAN privada; identidad = HTTPS a PersonalHostel-Server).
 
 | Endpoint | Método | Descripción |
 |---|---|---|

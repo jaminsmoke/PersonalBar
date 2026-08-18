@@ -23,7 +23,7 @@ Familia de producto de hostelería. Owner GitHub: [`jaminsmoke`](https://github.
 |---|---|---|---|
 | **Personal Comander** | [`jaminsmoke/PersonalComander`](https://github.com/jaminsmoke/PersonalComander) | App del camarero (móvil vertical): mesas, comanda, cuenta profesional | [Project 9](https://github.com/users/jaminsmoke/projects/9) |
 | **Personal Bar** (este) | [`jaminsmoke/PersonalBar`](https://github.com/jaminsmoke/PersonalBar) | Puesto del negocio (tablet apaisada): nodo LAN `:8787`, colas, lista blanca, mapa | [Project 11](https://github.com/users/jaminsmoke/projects/11) |
-| **PersonalHostel Identity** | [`jaminsmoke/PersonalHostel-Identity`](https://github.com/jaminsmoke/PersonalHostel-Identity) | Registro canónico (Docker/VPS): camareros `:8080`, negocio `:8082` | [Project 10](https://github.com/users/jaminsmoke/projects/10) |
+| **PersonalHostel Server** | [`jaminsmoke/PersonalHostel-Server`](https://github.com/jaminsmoke/PersonalHostel-Server) | Registro canónico (Docker/VPS): camareros `:8080`, negocio `:8082` | [Project 10](https://github.com/users/jaminsmoke/projects/10) |
 
 Kanban: cada app tiene el suyo. Cambio que necesite al otro lado → Detectado en **su** Project. Commander no llama a `:8082`.
 
@@ -46,7 +46,7 @@ There is no `./gradlew` until the bootstrap item lands.
 ## Relación con el resto
 
 ```
-[Identidad — PersonalHostel-Identity]     QR permanente, login, foto
+[Identidad — PersonalHostel-Server]     QR permanente, login, foto
         ▲
         │ HTTPS (cuando exista registro)
         │
@@ -60,7 +60,7 @@ There is no `./gradlew` until the bootstrap item lands.
 |---|---|---|
 | **Personal Bar** (este) | Expo barra + **host LAN** | Fuente de verdad de mesas, rondas, tickets |
 | Personal Comander | Sala / terraza | Cliente LAN; un tablet solo sigue offline hasta que este nodo reciba |
-| PersonalHostel-Identity | Identidad de profesionales | Docker local `localhost:8080` (scaffold); no es el nodo de sala |
+| PersonalHostel-Server | Identidad de profesionales | Docker local `localhost:8080` (scaffold); no es el nodo de sala |
 | Personal Kitchen (futuro) | Tickets de comida | Se lleva el destino COCINA; Bar se queda BARRA |
 | Personal TPV (futuro) | Cobro / contabilidad | Puede **heredar el nodo**; Bar sigue siendo expo |
 
