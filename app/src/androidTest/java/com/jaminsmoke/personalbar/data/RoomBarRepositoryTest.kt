@@ -250,6 +250,42 @@ class RoomBarRepositoryTest {
         assertEquals(setOf("cam-a", "cam-b"), repo2.camareros.first().map { it.id }.toSet())
     }
 
+    // ═══ Divergencia de identity_config (gate de sesión) ═══
+
+    @Test
+    fun identity_config_conectado_sin_sesion_se_corrige() = runBlocking {
+        // Simula el bug: login sin «Recuérdame» dejó `identity_config.conectado=true`
+        // en Room pero `sesion_negocio` vacía (no se restaura al reiniciar).
+        db.barDao().upsertIdentityConfig(
+            IdentityConfig(conectado = true, establecimientoUuid = "uuid-1")
+        )
+
+        val repo = nuevoRepo()
+        // Sin sesión persistida con token → el gate no puede ver «conectado».
+        assertFalse(repo.identityConfig.first().conectado)
+        assertEquals(null, repo.identityConfig.first().establecimientoUuid)
+    }
+
+    @Test
+    fun identity_config_conectado_se_mantiene_con_sesion_guardada() = runBlocking {
+        // Con «Recuérdame» (sesión con token), `conectado=true` se conserva al recargar.
+        db.barDao().upsertSesionNegocio(
+            SesionNegocio(
+                token = "tok-1",
+                email = "negocio@x.es",
+                nombreMostrar = "La Terraza Test",
+                establecimientoUuid = "uuid-1",
+            )
+        )
+        db.barDao().upsertIdentityConfig(
+            IdentityConfig(conectado = true, establecimientoUuid = "uuid-1")
+        )
+
+        val repo = nuevoRepo()
+        assertTrue(repo.identityConfig.first().conectado)
+        assertEquals("uuid-1", repo.identityConfig.first().establecimientoUuid)
+    }
+
     // ═══ Libro de oficio: jornadas + cola de servicios persistidas ═══
 
     @Test

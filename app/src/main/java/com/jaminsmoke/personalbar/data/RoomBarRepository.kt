@@ -75,6 +75,7 @@ class RoomBarRepository(
             } else {
                 mesasBd
             }
+            val sesionBd = dao.getSesionNegocio()
             InMemoryBarRepository(
                 establecimientoInicial = dao.getEstablecimiento() ?: establecimientoInicial,
                 salasIniciales = salasBd,
@@ -87,7 +88,7 @@ class RoomBarRepository(
                 reservasIniciales = dao.getReservas(),
                 camarerosIniciales = dao.getCamareros(),
                 invitacionesIniciales = dao.getInvitaciones(),
-                identityConfigInicial = dao.getIdentityConfig() ?: IdentityConfig(),
+                identityConfigInicial = identityConfigConSesion(dao.getIdentityConfig(), sesionBd),
                 siguienteColaInicial = siguienteCola,
                 qrKeyInicial = dao.getQrKey(),
                 altasPendientesIniciales = dao.getAltasPendientes(),
@@ -406,6 +407,21 @@ class RoomBarRepository(
 
     private companion object {
         const val TAG = "RoomBarRepository"
+
+        /**
+         * `identity_config.conectado` solo puede ser true si hay sesión de negocio
+         * persistida con token (Recuérdame). Un login sin «Recuérdame» dejaba
+         * `conectado=true` pegado en Room sin sesión real → al reiniciar los gates
+         * creían que había sesión. Sin token, se fuerza `conectado=false`.
+         */
+        fun identityConfigConSesion(
+            config: IdentityConfig?,
+            sesion: SesionNegocio?,
+        ): IdentityConfig {
+            val base = config ?: IdentityConfig()
+            val haySesion = sesion?.token != null
+            return if (haySesion) base else base.copy(conectado = false)
+        }
 
         /** Escribe el estado completo de [seed] a la BD (primera instalación). */
         suspend fun persistAll(seed: InMemoryBarRepository, dao: BarDao) {
