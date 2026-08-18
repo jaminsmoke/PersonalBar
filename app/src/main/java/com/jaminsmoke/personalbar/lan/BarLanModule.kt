@@ -9,6 +9,7 @@ import com.jaminsmoke.personalbar.data.QrParser
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
+import com.jaminsmoke.personalbar.data.JornadasResumen
 import com.jaminsmoke.personalbar.data.Ticket
 import com.jaminsmoke.personalbar.data.convertirLayout
 import io.ktor.http.ContentType
@@ -71,6 +72,12 @@ data class EstadoResponse(
 @Serializable
 data class CartaResponse(
     val productos: List<Producto>,
+)
+
+/** Resumen de jornadas para `GET /v1/sesion/jornadas` (Commander pinta el panel). */
+@Serializable
+data class JornadasResponse(
+    val resumen: JornadasResumen,
 )
 
 /** Módulo Ktor del nodo de sala: /health, contrato /v1 y SSE /v1/eventos. */
@@ -194,6 +201,14 @@ fun Application.barModule(repository: BarRepository) {
 
         get("/v1/carta") {
             call.respond(CartaResponse(productos = repository.catalogo.value))
+        }
+
+        get("/v1/sesion/jornadas") {
+            // Historial de jornadas + resumen por camarero (horas y mesas distintas
+            // servidas) del periodo. `desde`/`hasta` son epoch ms opcionales.
+            val desde = call.request.queryParameters["desde"]?.toLongOrNull()
+            val hasta = call.request.queryParameters["hasta"]?.toLongOrNull()
+            call.respond(JornadasResponse(resumen = repository.resumenJornadas(desde, hasta)))
         }
 
         sse("/v1/eventos") {

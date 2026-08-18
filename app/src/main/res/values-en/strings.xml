@@ -15,6 +15,30 @@
     <string name="gestion_carta">Menu</string>
     <string name="gestion_enlaces">QR codes</string>
     <string name="gestion_perfil">Profile</string>
+    <string name="gestion_jornadas">Shifts</string>
+    <string name="gestion_horario">Opening hours</string>
+    <string name="jornadas_titulo">Staff shifts</string>
+    <string name="jornadas_vacio">No shifts in this period</string>
+    <string name="jornadas_horas">Hours</string>
+    <string name="jornadas_mesas">Tables served</string>
+    <string name="jornadas_abierta">in progress</string>
+    <string name="horario_titulo">Venue opening hours</string>
+    <string name="horario_abre">Opens</string>
+    <string name="horario_cierra">Closes</string>
+    <string name="horario_cerrado">Closed</string>
+    <string name="horario_abierto">Open</string>
+    <string name="horario_guardado">Opening hours saved</string>
+    <string name="horario_guardar">Save opening hours</string>
+    <string name="horario_invalido">Opening time must be before closing time</string>
+    <string-array name="dias_semana_corto">
+        <item>Mon</item>
+        <item>Tue</item>
+        <item>Wed</item>
+        <item>Thu</item>
+        <item>Fri</item>
+        <item>Sat</item>
+        <item>Sun</item>
+    </string-array>
 
     <!-- Venue -->
     <string name="local_inactivo">Venue inactive</string>
