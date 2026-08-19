@@ -94,6 +94,9 @@ class RoomBarRepository(
                 altasPendientesIniciales = dao.getAltasPendientes(),
                 jornadasIniciales = dao.getJornadas(),
                 serviciosPendientesIniciales = dao.getServiciosPendientes(),
+                operacionesCatalogoIniciales = dao.getOperacionesCatalogo(),
+                revisionesProductoIniciales = dao.getProductosSync().associate { it.aggregateId to it.revision },
+                catalogoSyncDesdeInicial = dao.getCatalogoSyncEstado()?.desdeRevision ?: 0,
                 horarioInicial = dao.getHorario(),
             )
         }
@@ -119,6 +122,9 @@ class RoomBarRepository(
     override val altasPendientes: StateFlow<List<AltaPendiente>> get() = inner.altasPendientes
     override val jornadas: StateFlow<List<JornadaLocal>> get() = inner.jornadas
     override val serviciosPendientes: StateFlow<List<ServicioPendiente>> get() = inner.serviciosPendientes
+    override val operacionesCatalogo: StateFlow<List<OperacionCatalogo>> get() = inner.operacionesCatalogo
+    override val revisionesProducto: StateFlow<Map<String, Int>> get() = inner.revisionesProducto
+    override val catalogoSyncDesde: StateFlow<Int> get() = inner.catalogoSyncDesde
     override val horario: StateFlow<List<HorarioLocal>> get() = inner.horario
     override fun resumenJornadas(desde: Long?, hasta: Long?): JornadasResumen = inner.resumenJornadas(desde, hasta)
 
@@ -138,19 +144,28 @@ class RoomBarRepository(
 
     override fun crearProducto(nombre: String, categoria: String, precio: Double): Boolean {
         val ok = inner.crearProducto(nombre, categoria, precio)
-        if (ok) persist { dao.replaceProductos(inner.catalogo.value) }
+        if (ok) persist {
+            dao.replaceProductos(inner.catalogo.value)
+            dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value)
+        }
         return ok
     }
 
     override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean): Boolean {
         val ok = inner.editarProducto(id, nombre, categoria, precio, disponible)
-        if (ok) persist { dao.replaceProductos(inner.catalogo.value) }
+        if (ok) persist {
+            dao.replaceProductos(inner.catalogo.value)
+            dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value)
+        }
         return ok
     }
 
     override fun borrarProducto(id: String): Boolean {
         val ok = inner.borrarProducto(id)
-        if (ok) persist { dao.replaceProductos(inner.catalogo.value) }
+        if (ok) persist {
+            dao.replaceProductos(inner.catalogo.value)
+            dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value)
+        }
         return ok
     }
 
@@ -162,7 +177,12 @@ class RoomBarRepository(
 
     override fun marcarRecogido(ticketId: String): Boolean {
         val ok = inner.marcarRecogido(ticketId)
-        if (ok) persist { dao.replaceTickets(ticketsActuales()) }
+        if (ok) persist {
+            dao.replaceTickets(ticketsActuales())
+            // Recoger el último ticket de una ronda encola «ronda servida» (libro de
+            // oficio): persistirlo para que sobreviva al reinicio.
+            dao.replaceServiciosPendientes(inner.serviciosPendientes.value)
+        }
         return ok
     }
 
@@ -360,6 +380,43 @@ class RoomBarRepository(
         inner.eliminarServicioPendiente(eventoId)
         persist { dao.replaceServiciosPendientes(inner.serviciosPendientes.value) }
     }
+
+    override fun eliminarOperacionCatalogo(operationId: String) {
+        inner.eliminarOperacionCatalogo(operationId)
+        persist { dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value) }
+    }
+
+    override fun actualizarRevisionProducto(aggregateId: String, revision: Int) {
+        inner.actualizarRevisionProducto(aggregateId, revision)
+        persist { dao.replaceProductosSync(revisionesARows()) }
+    }
+
+    override fun quitarRevisionProducto(aggregateId: String) {
+        inner.quitarRevisionProducto(aggregateId)
+        persist { dao.replaceProductosSync(revisionesARows()) }
+    }
+
+    override fun encolarSeedCatalogo() {
+        inner.encolarSeedCatalogo()
+        persist { dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value) }
+    }
+
+    override fun aplicarCambiosCatalogo(cambios: List<CambioRemoto>, revisionActual: Int) {
+        inner.aplicarCambiosCatalogo(cambios, revisionActual)
+        persist {
+            dao.replaceProductos(inner.catalogo.value)
+            dao.replaceProductosSync(revisionesARows())
+            dao.upsertCatalogoSyncEstado(CatalogoSyncEstado(desdeRevision = inner.catalogoSyncDesde.value))
+        }
+    }
+
+    override fun fijarCursorCatalogo(revision: Int) {
+        inner.fijarCursorCatalogo(revision)
+        persist { dao.upsertCatalogoSyncEstado(CatalogoSyncEstado(desdeRevision = inner.catalogoSyncDesde.value)) }
+    }
+
+    private fun revisionesARows(): List<ProductoSync> =
+        inner.revisionesProducto.value.map { (id, revision) -> ProductoSync(id, revision) }
 
     // ── Persistencia ─────────────────────────────────────────────────────────
 

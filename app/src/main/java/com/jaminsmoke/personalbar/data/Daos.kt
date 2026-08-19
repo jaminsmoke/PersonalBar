@@ -250,4 +250,49 @@ interface BarDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHorario(horario: List<HorarioLocal>)
+
+    // ── Outbox de catálogo (sync carta → Identity) ─────────────────────────
+
+    @Query("SELECT * FROM operaciones_catalogo ORDER BY creadaEn")
+    suspend fun getOperacionesCatalogo(): List<OperacionCatalogo>
+
+    @Transaction
+    suspend fun replaceOperacionesCatalogo(ops: List<OperacionCatalogo>) {
+        deleteOperacionesCatalogo()
+        insertOperacionesCatalogo(ops)
+    }
+
+    @Query("DELETE FROM operaciones_catalogo")
+    suspend fun deleteOperacionesCatalogo()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOperacionesCatalogo(ops: List<OperacionCatalogo>)
+
+    @Query("DELETE FROM operaciones_catalogo WHERE operationId = :operationId")
+    suspend fun deleteOperacionCatalogo(operationId: String)
+
+    // ── Revisiones por producto (mirror del sync) ──────────────────────────
+
+    @Query("SELECT * FROM producto_sync")
+    suspend fun getProductosSync(): List<ProductoSync>
+
+    @Transaction
+    suspend fun replaceProductosSync(rows: List<ProductoSync>) {
+        deleteProductosSync()
+        insertProductosSync(rows)
+    }
+
+    @Query("DELETE FROM producto_sync")
+    suspend fun deleteProductosSync()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProductosSync(rows: List<ProductoSync>)
+
+    // ── Cursor del pull de catálogo (singleton) ────────────────────────────
+
+    @Query("SELECT * FROM catalogo_sync_estado LIMIT 1")
+    suspend fun getCatalogoSyncEstado(): CatalogoSyncEstado?
+
+    @Upsert
+    suspend fun upsertCatalogoSyncEstado(estado: CatalogoSyncEstado)
 }

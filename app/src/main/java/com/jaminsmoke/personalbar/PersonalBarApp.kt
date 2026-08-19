@@ -1,6 +1,7 @@
 package com.jaminsmoke.personalbar
 
 import android.app.Application
+import android.util.Log
 import androidx.room.Room
 import com.jaminsmoke.personalbar.data.AppDatabase
 import com.jaminsmoke.personalbar.data.BarRepository
@@ -19,6 +20,8 @@ import com.jaminsmoke.personalbar.lan.Conectividad
 import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import com.jaminsmoke.personalbar.lan.PresenciaEmisor
+import com.jaminsmoke.personalbar.lan.ResultadoPullCatalogo
+import com.jaminsmoke.personalbar.lan.ResultadoSyncCatalogo
 import com.jaminsmoke.personalbar.lan.toInvitacion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.UUID
 
 /**
  * Application del nodo de sala. Arranca el servidor LAN en [onCreate] y expone el
@@ -50,7 +54,7 @@ class PersonalBarApp : Application() {
             AppDatabase::class.java,
             "personalbar.db",
         )
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9, AppDatabase.MIGRATION_9_10, AppDatabase.MIGRATION_10_11)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9, AppDatabase.MIGRATION_9_10, AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12, AppDatabase.MIGRATION_12_13, AppDatabase.MIGRATION_13_14)
             .build()
     }
 
@@ -75,6 +79,10 @@ class PersonalBarApp : Application() {
     /** Error al intentar arrancar el nodo (id de recurso; null = sin error). Lo consume el chip del header. */
     private val _lanError = MutableStateFlow<Int?>(null)
     val lanError: StateFlow<Int?> = _lanError.asStateFlow()
+
+    /** Establecimiento desvinculado porque ya no existe en Identity (404 en el sync). */
+    private val _establecimientoFantasma = MutableStateFlow(false)
+    val establecimientoFantasma: StateFlow<Boolean> = _establecimientoFantasma.asStateFlow()
 
     // ── Sesión de negocio (modelo de sesión) ─────────────────────────────────
     // Vive en el proceso (no en un ViewModel) para que la revalidación funcione
@@ -137,6 +145,14 @@ class PersonalBarApp : Application() {
     private val proyeccionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var proyeccionJob: Job? = null
 
+    /** Scope del proyector del sync de catálogo (outbox → Identity). Vive ligado al
+     *  proceso; se arranca/para con el ciclo del nodo ([startLocal]/[stopLocal]). */
+    private val syncCatalogoScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var syncCatalogoJob: Job? = null
+
+    /** true = ya se decidió el seed/divergencia contra el server (evita re-snapshots). */
+    private var catalogoSeedDecidido = false
+
     private val presenciaScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val presenciaEmisor by lazy {
         PresenciaEmisor(this) { repository.establecimiento.value.nombre }
@@ -151,6 +167,7 @@ class PersonalBarApp : Application() {
         _lanError.value = if (ok) null else R.string.local_error_arranque
         startSessionTimeout()
         startProyeccionOficio()
+        startSyncCatalogo()
         startRevalidacionSesion()
         if (ok) presenciaEmisor.start(presenciaScope)
         return ok
@@ -160,6 +177,7 @@ class PersonalBarApp : Application() {
     fun stopLocal() {
         presenciaEmisor.stop(enviarAdios = true)
         stopProyeccionOficio()
+        stopSyncCatalogo()
         stopRevalidacionSesion()
         stopSessionTimeout()
         lanServer.stopServer()
@@ -217,6 +235,109 @@ class PersonalBarApp : Application() {
         proyeccionJob = null
     }
 
+    /**
+     * Proyector del sync de catálogo (pull + push, best-effort, sin bloquear la LAN).
+     *
+     * Primer contacto: `GET /catalogo` (snapshot) para decidir el seed — si el server
+     * está en revisión 0, encola el catálogo local como `crear`; si ya tiene datos,
+     * marca divergencia (revisión manual) sin machacar. Después: `GET /sync/cambios`
+     * para aplicar deltas y avanzar el cursor. Push: drena el outbox con
+     * `POST /sync/operaciones`; `aplicada` → actualiza revisión y borra la fila,
+     * `conflicto`/`rechazada` → se conserva, `establecimiento fantasma` (404) →
+     * desvincula sin tocar el outbox.
+     */
+    private fun startSyncCatalogo() {
+        syncCatalogoJob?.cancel()
+        syncCatalogoJob = syncCatalogoScope.launch {
+            while (isActive) {
+                delay(SYNC_CATALOGO_INTERVALO_MS)
+                if (!IdentityNegocioClient.conectado) continue
+
+                // 1. PULL: snapshot en el primer contacto; deltas después.
+                if (!catalogoSeedDecidido) {
+                    when (val pull = IdentityNegocioClient.obtenerCatalogoRemoto()) {
+                        is ResultadoPullCatalogo.Snapshot -> {
+                            if (pull.revision == 0) {
+                                // Server vacío: subir el catálogo local (seed + ediciones).
+                                repository.encolarSeedCatalogo()
+                            } else {
+                                Log.w(TAG, "El server ya tiene catálogo (revisión ${pull.revision}); el local diverge — revisión manual pendiente")
+                            }
+                            repository.fijarCursorCatalogo(pull.revision)
+                            catalogoSeedDecidido = true
+                        }
+                        ResultadoPullCatalogo.EstablecimientoFantasma -> {
+                            marcarEstablecimientoFantasma()
+                            continue
+                        }
+                        ResultadoPullCatalogo.Error -> Unit // reintento
+                        is ResultadoPullCatalogo.Cambios -> Unit // imposible en el primer contacto
+                    }
+                } else {
+                    when (val pull = IdentityNegocioClient.obtenerCambiosRemoto(repository.catalogoSyncDesde.value)) {
+                        is ResultadoPullCatalogo.Cambios ->
+                            repository.aplicarCambiosCatalogo(pull.cambios, pull.revisionActual)
+                        ResultadoPullCatalogo.EstablecimientoFantasma -> {
+                            marcarEstablecimientoFantasma()
+                            continue
+                        }
+                        ResultadoPullCatalogo.Error -> Unit // reintento
+                        is ResultadoPullCatalogo.Snapshot -> Unit // ya se decidió el seed
+                    }
+                }
+
+                // 2. PUSH: drena el outbox.
+                for (op in repository.operacionesCatalogo.value.toList()) {
+                    when (val resultado = IdentityNegocioClient.enviarOperacionCatalogo(op)) {
+                        is ResultadoSyncCatalogo.Aplicada -> {
+                            if (resultado.revision != null) {
+                                repository.actualizarRevisionProducto(op.aggregateId, resultado.revision)
+                            } else {
+                                repository.quitarRevisionProducto(op.aggregateId)
+                            }
+                            repository.eliminarOperacionCatalogo(op.operationId)
+                        }
+                        ResultadoSyncCatalogo.Conflicto ->
+                            Log.w(TAG, "Operación de catálogo en conflicto (pendiente de resolución): ${op.operationId}")
+                        ResultadoSyncCatalogo.Rechazada ->
+                            Log.w(TAG, "Operación de catálogo rechazada (se conserva): ${op.operationId}")
+                        ResultadoSyncCatalogo.EstablecimientoFantasma -> {
+                            marcarEstablecimientoFantasma()
+                            break
+                        }
+                        ResultadoSyncCatalogo.Error -> Unit // reintento en el siguiente ciclo
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopSyncCatalogo() {
+        syncCatalogoJob?.cancel()
+        syncCatalogoJob = null
+    }
+
+    /**
+     * El establecimiento vinculado ya no existe en Identity (404/410 en el sync).
+     * Desvincula el UUID (sin cerrar la sesión de negocio ni tocar el token), conserva
+     * el outbox intacto y avisa para re-vincular. El proyector se detiene porque
+     * `conectado` pasa a false; el mirror y la cola no se pierden.
+     */
+    private fun marcarEstablecimientoFantasma() {
+        IdentityNegocioClient.establecimientoUuid = null
+        IdentityNegocioClient.establecimientoDataOrigin = null
+        catalogoSeedDecidido = false
+        _establecimientoFantasma.value = true
+        val sesion = _sesion.value
+        if (sesion != null) {
+            val actualizada = sesion.copy(establecimientoUuid = null)
+            _sesion.value = actualizada
+            sessionScope.launch { db.barDao().upsertSesionNegocio(actualizada) }
+        }
+        repository.setIdentityConfig(IdentityConfig(error = "establecimiento_fantasma"))
+        Log.w(TAG, "Establecimiento fantasma en el sync: desvinculado; outbox conservado para re-vincular")
+    }
+
     // ── Sesión de negocio: restauración, alta y validez ─────────────────────
 
     /** Restaura la sesión persistida («Recuérdame») y su validez local. No revalida
@@ -241,6 +362,8 @@ class PersonalBarApp : Application() {
         hidratarIdentity(sesion)
         _sesion.value = sesion
         _sesionEstado.value = sesionEstadoDe(sesion, System.currentTimeMillis())
+        _establecimientoFantasma.value = false
+        catalogoSeedDecidido = false
         sessionScope.launch {
             if (recordar) db.barDao().upsertSesionNegocio(sesion)
             else db.barDao().clearSesionNegocio()
@@ -257,6 +380,8 @@ class PersonalBarApp : Application() {
         _sesion.value = null
         _sesionEstado.value = SesionEstado.SIN_SESION
         _logoBytes.value = null
+        _establecimientoFantasma.value = false
+        catalogoSeedDecidido = false
         repository.setIdentityConfig(IdentityConfig())
         sessionScope.launch { db.barDao().clearSesionNegocio() }
     }
@@ -352,16 +477,22 @@ class PersonalBarApp : Application() {
         stopLocal()
         sessionScope.cancel()
         proyeccionScope.cancel()
+        syncCatalogoScope.cancel()
         super.onTerminate()
     }
 
     companion object {
+
+        private const val TAG = "PersonalBarApp"
 
         /** Cada cuánto se revisa el timeout (5 s). */
         const val SESSION_CHECK_INTERVAL_MS: Long = 5_000L
 
         /** Cada cuánto intenta drenar la cola de oficio (10 s). */
         const val OFICIO_PROYECCION_INTERVALO_MS: Long = 10_000L
+
+        /** Cada cuánto intenta drenar el outbox de catálogo (10 s). */
+        const val SYNC_CATALOGO_INTERVALO_MS: Long = 10_000L
 
         /** Cada cuánto se revalida la sesión contra el VPS (24 h). */
         const val SESION_REVALIDACION_INTERVALO_MS: Long = 24 * 60 * 60 * 1000L
@@ -421,8 +552,8 @@ private fun posicionY(salaOrden: Int): Float = 120f + salaOrden * 640f
  * gestionado cuando aterrice el editor (ítem de seguimiento).
  */
 private fun catalogoPorDefecto(): List<Producto> = listOf(
-    Producto(id = "cana", nombre = "Caña", categoria = "Bebida"),
-    Producto(id = "tinto-verano", nombre = "Tinto de verano", categoria = "Bebida"),
-    Producto(id = "croquetas", nombre = "Croquetas", categoria = "Comida"),
-    Producto(id = "tostada", nombre = "Tostada con tomate", categoria = "Comida"),
+    Producto(id = UUID.randomUUID().toString(), nombre = "Caña", categoria = "Bebida"),
+    Producto(id = UUID.randomUUID().toString(), nombre = "Tinto de verano", categoria = "Bebida"),
+    Producto(id = UUID.randomUUID().toString(), nombre = "Croquetas", categoria = "Comida"),
+    Producto(id = UUID.randomUUID().toString(), nombre = "Tostada con tomate", categoria = "Comida"),
 )

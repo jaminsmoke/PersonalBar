@@ -1,6 +1,5 @@
 package com.jaminsmoke.personalbar.data
 
-import java.text.Normalizer
 import kotlinx.serialization.Serializable
 
 /**
@@ -42,6 +41,33 @@ fun destinoDesdeCategoria(categoria: String): Destino {
     }
 }
 
+/** Destino del sync (`barra`/`cocina`) derivado de la categoría, para el payload de `POST /sync/operaciones`. */
+fun destinoSyncDesdeCategoria(categoria: String): String = when (destinoDesdeCategoria(categoria)) {
+    Destino.BARRA -> "barra"
+    Destino.COCINA -> "cocina"
+}
+
+/**
+ * Producto canónico remoto (snapshot/delta de Identity) para aplicar al mirror
+ * local. [precio] en euros (el server devuelve `precio_centimos`); [revision]
+ * es la revisión canónica del producto (para `base_revision` y conflictos).
+ */
+data class ProductoRemoto(
+    val id: String,
+    val nombre: String,
+    val categoria: String,
+    val precio: Double,
+    val disponible: Boolean,
+    val revision: Int,
+)
+
+/** Cambio de catálogo (delta) del server. [producto] null = archivado (tombstone). */
+data class CambioRemoto(
+    val aggregateId: String,
+    val action: String,          // crear|actualizar|archivar
+    val producto: ProductoRemoto?,
+)
+
 /**
  * Prefijo corto de zona para IDs tipo B1, T1, I1… Reutiliza la semántica de Commander
  * para que la misma mesa se reconozca igual en ambos nodos.
@@ -54,15 +80,4 @@ fun zonaPrefijo(zona: String): String = when {
     zona.contains("VIP", ignoreCase = true) || zona.contains("Reservado", ignoreCase = true) -> "V"
     zona.isBlank() -> "M"
     else -> zona.trim().firstOrNull()?.uppercase() ?: "M"
-}
-
-/**
- * Slug estable para ids de producto: minúsculas, acentos fuera, no-alfanuméricos
- * a guion. «Caña» → `cana`; «Tostada con tomate» → `tostada-con-tomate`.
- * Devuelve cadena vacía si no queda nada (p. ej. solo símbolos).
- */
-fun slugProducto(nombre: String): String {
-    val nfd = Normalizer.normalize(nombre.trim().lowercase(), Normalizer.Form.NFD)
-    val ascii = nfd.replace(Regex("\\p{M}+"), "")
-    return ascii.replace(Regex("[^a-z0-9]+"), "-").trim('-')
 }

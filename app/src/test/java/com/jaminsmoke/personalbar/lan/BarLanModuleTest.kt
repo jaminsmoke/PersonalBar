@@ -234,6 +234,7 @@ class BarLanModuleTest {
         val resp = client.get("/v1/carta")
         assertEquals(HttpStatusCode.OK, resp.status)
         val carta = LanJson.decodeFromString<CartaResponse>(resp.bodyAsText())
+        assertEquals(CartaResponse.CARTA_SCHEMA, carta.schema)
         assertEquals(2, carta.productos.size)
         assertEquals(setOf("cana", "croquetas"), carta.productos.map { it.id }.toSet())
         // Incluye el flag `disponible` que Commander cachea para ocultar en comanda.

@@ -248,6 +248,8 @@
     <string name="sesion_login_fallido">Email o contraseña incorrectos</string>
     <string name="sesion_registro_fallido">No se pudo crear la cuenta (¿email ya registrado?)</string>
     <string name="sesion_vincular_fallido">No se pudo vincular el establecimiento</string>
+    <string name="sesion_establecimiento_desvinculado">El establecimiento vinculado ya no existe en el servidor. Re-vincula para seguir sincronizando.</string>
+    <string name="sesion_revincular">Re-vincular</string>
     <string name="sesion_tipo_bar">Bar</string>
     <string name="sesion_tipo_restaurante">Restaurante</string>
     <string name="sesion_tipo_cafeteria">Cafetería</string>

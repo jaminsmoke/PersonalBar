@@ -1,5 +1,6 @@
 package com.jaminsmoke.personalbar.data
 
+import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -209,17 +210,18 @@ class InMemoryBarRepositoryTest {
     }
 
     @Test
-    fun crearProductoGeneraSlugEstable() {
+    fun crearProductoGeneraUuidEstable() {
         val repo = InMemoryBarRepository()
         assertTrue(repo.crearProducto("Coca-Cola", "Bebida", 2.5))
         val p = repo.catalogo.value.single()
-        assertEquals("coca-cola", p.id)
         assertEquals("Coca-Cola", p.nombre)
         assertEquals("Bebida", p.categoria)
         assertEquals(2.5, p.precio, 0.0)
+        // id canónico UUID v4 (36 chars 8-4-4-4-12)
+        assertEquals(p.id, UUID.fromString(p.id).toString())
         // editar nombre no cambia el id (identidad de red estable)
-        assertTrue(repo.editarProducto("coca-cola", "Coca Cola Zero", "Bebida", 3.0, true))
-        assertEquals("coca-cola", repo.catalogo.value.single().id)
+        assertTrue(repo.editarProducto(p.id, "Coca Cola Zero", "Bebida", 3.0, true))
+        assertEquals(p.id, repo.catalogo.value.single().id)
         assertEquals("Coca Cola Zero", repo.catalogo.value.single().nombre)
     }
 
@@ -232,14 +234,13 @@ class InMemoryBarRepositoryTest {
     }
 
     @Test
-    fun crearProductoConSlugDuplicadoSufija() {
+    fun crearProductoMismoNombreGeneraIdsUnicos() {
         val repo = InMemoryBarRepository()
         assertTrue(repo.crearProducto("Caña", "Bebida", 2.0))
         assertTrue(repo.crearProducto("Cana", "Bebida", 2.5))
         val ids = repo.catalogo.value.map { it.id }.toSet()
         assertEquals(2, ids.size)
-        assertTrue("cana" in ids)
-        assertTrue("cana-2" in ids)
+        assertTrue(ids.all { runCatching { UUID.fromString(it) }.isSuccess })
     }
 
     @Test
@@ -253,6 +254,129 @@ class InMemoryBarRepositoryTest {
     @Test
     fun editarProductoNoExistenteDevuelveFalse() {
         assertFalse(repo().editarProducto("no-existe", "X", "Bebida", 1.0, true))
+    }
+
+    // ── Outbox de catálogo (sync → Identity) ───────────────────────────────
+
+    @Test
+    fun crearProductoEncolaOperacionCrearConDestinoYPrecioEnCentimos() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 2.5))
+        val op = repo.operacionesCatalogo.value.single()
+        assertEquals("crear", op.action)
+        assertEquals(repo.catalogo.value.single().id, op.aggregateId)
+        assertEquals("Caña", op.nombre)
+        assertEquals("barra", op.destino)
+        assertEquals(250, op.precioCentimos)
+        assertEquals(0, op.baseRevision)
+    }
+
+    @Test
+    fun crearProductoDeComidaDerivaDestinoCocina() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Croquetas", "Comida", 3.0))
+        val op = repo.operacionesCatalogo.value.single()
+        assertEquals("cocina", op.destino)
+        assertEquals(300, op.precioCentimos)
+    }
+
+    @Test
+    fun precioSeConvierteACentimosConRedondeo() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Café", "Bebida", 1.999))
+        assertEquals(200, repo.operacionesCatalogo.value.single().precioCentimos)
+    }
+
+    @Test
+    fun editarProductoEncolaActualizarConBaseRevision() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 2.0))
+        val id = repo.catalogo.value.single().id
+        repo.actualizarRevisionProducto(id, 1)
+        assertTrue(repo.editarProducto(id, "Caña grande", "Bebida", 2.5, false))
+        val edit = repo.operacionesCatalogo.value.last()
+        assertEquals("actualizar", edit.action)
+        assertEquals(id, edit.aggregateId)
+        assertEquals(1, edit.baseRevision)
+        assertEquals("Caña grande", edit.nombre)
+        assertEquals(250, edit.precioCentimos)
+        assertEquals(false, edit.disponible)
+    }
+
+    @Test
+    fun borrarProductoEncolaArchivarSinPayload() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 2.0))
+        val id = repo.catalogo.value.single().id
+        assertTrue(repo.borrarProducto(id))
+        val archivar = repo.operacionesCatalogo.value.last()
+        assertEquals("archivar", archivar.action)
+        assertEquals(id, archivar.aggregateId)
+        assertNull(archivar.nombre)
+        assertNull(archivar.categoria)
+        assertNull(archivar.destino)
+        assertNull(archivar.precioCentimos)
+    }
+
+    @Test
+    fun eliminarOperacionCatalogoQuitaDelOutbox() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 2.0))
+        val op = repo.operacionesCatalogo.value.single()
+        repo.eliminarOperacionCatalogo(op.operationId)
+        assertTrue(repo.operacionesCatalogo.value.isEmpty())
+    }
+
+    @Test
+    fun encolarSeedCatalogoEncolaCrearSoloParaNoSincronizados() {
+        val repo = repo() // catálogo inicial: cana + croquetas, sin revisiones
+        repo.encolarSeedCatalogo()
+        assertEquals(2, repo.operacionesCatalogo.value.size)
+        assertTrue(repo.operacionesCatalogo.value.all { it.action == "crear" })
+
+        // Idempotente: repetir no duplica.
+        repo.encolarSeedCatalogo()
+        assertEquals(2, repo.operacionesCatalogo.value.size)
+
+        // Un producto ya sincronizado (con revisión) no se re-encola.
+        repo.actualizarRevisionProducto("cana", 1)
+        repo.eliminarOperacionCatalogo(
+            repo.operacionesCatalogo.value.first { it.aggregateId == "cana" }.operationId
+        )
+        repo.encolarSeedCatalogo()
+        assertEquals(listOf("croquetas"), repo.operacionesCatalogo.value.map { it.aggregateId })
+    }
+
+    @Test
+    fun aplicarCambiosCatalogoAplicaCrearActualizarYArchivar() {
+        val repo = InMemoryBarRepository()
+        repo.aplicarCambiosCatalogo(
+            listOf(
+                CambioRemoto("p1", "crear", ProductoRemoto("p1", "Caña", "Bebida", 2.5, true, 1)),
+                CambioRemoto("p1", "actualizar", ProductoRemoto("p1", "Caña grande", "Bebida", 3.0, false, 2)),
+            ),
+            revisionActual = 2,
+        )
+        assertEquals(1, repo.catalogo.value.size)
+        assertEquals("Caña grande", repo.catalogo.value.single().nombre)
+        assertEquals(3.0, repo.catalogo.value.single().precio, 0.0)
+        assertEquals(false, repo.catalogo.value.single().disponible)
+        assertEquals(2, repo.revisionesProducto.value["p1"])
+        assertEquals(2, repo.catalogoSyncDesde.value)
+
+        // Archivar quita el producto, su revisión y avanza el cursor.
+        repo.aplicarCambiosCatalogo(listOf(CambioRemoto("p1", "archivar", null)), 3)
+        assertTrue(repo.catalogo.value.isEmpty())
+        assertTrue(repo.revisionesProducto.value.isEmpty())
+        assertEquals(3, repo.catalogoSyncDesde.value)
+    }
+
+    @Test
+    fun fijarCursorCatalogoAvanzaElCursor() {
+        val repo = InMemoryBarRepository()
+        assertEquals(0, repo.catalogoSyncDesde.value)
+        repo.fijarCursorCatalogo(4)
+        assertEquals(4, repo.catalogoSyncDesde.value)
     }
 
     @Test

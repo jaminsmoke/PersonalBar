@@ -123,6 +123,11 @@ class RoomBarRepositoryTest {
         assertTrue(repo1.marcarRecogido(ticketBebida.id))
         repo1.awaitPersistencia()
 
+        // «Recuérdame»: sesión con token → `conectado=true` sobrevive a la recarga.
+        db.barDao().upsertSesionNegocio(
+            SesionNegocio(token = "tok-1", email = "negocio@x.es", establecimientoUuid = "uuid-1")
+        )
+
         // Segunda instancia sobre la misma BD = "reinicio de la app"
         val repo2 = nuevoRepo()
 
@@ -280,6 +285,8 @@ class RoomBarRepositoryTest {
         db.barDao().upsertIdentityConfig(
             IdentityConfig(conectado = true, establecimientoUuid = "uuid-1")
         )
+        // Sembrar una sala para que la recarga tome la rama «BD existente» (no el seed).
+        db.barDao().insertSalas(listOf(demoSala))
 
         val repo = nuevoRepo()
         assertTrue(repo.identityConfig.first().conectado)
@@ -293,8 +300,7 @@ class RoomBarRepositoryTest {
         val repo1 = nuevoRepo()
 
         // Camarero ACTIVA con el nombre de la ronda demo → resuelve la atribución.
-        repo1.sincronizarMiembros(listOf("cam-1"))
-        repo1.altaCamarero("cam-1", null, nombre = "Lucía Test")
+        assertTrue(repo1.altaCamarero("cam-1", null, nombre = "Lucía Test"))
         assertTrue(repo1.iniciarSesion("cam-1"))
 
         // Completar la ronda demo (bebida + comida) → se encola «ronda servida».
@@ -329,6 +335,56 @@ class RoomBarRepositoryTest {
         repo2.awaitPersistencia()
         val repo3 = nuevoRepo()
         assertTrue(repo3.serviciosPendientes.first().isEmpty())
+    }
+
+    // ═══ Sync de catálogo: outbox + revisiones persistidas ═══
+
+    @Test
+    fun outbox_de_catalogo_y_revisiones_persisten_tras_recarga() = runBlocking {
+        val repo1 = nuevoRepo()
+
+        // Crear un producto → encola «crear»; editar → «actualizar».
+        assertTrue(repo1.crearProducto("Café solo", "Bebida", 1.5))
+        repo1.awaitPersistencia()
+        val creado = repo1.catalogo.first().first { it.nombre == "Café solo" }
+        assertTrue(repo1.editarProducto(creado.id, "Café con leche", "Bebida", 1.8, true))
+        repo1.awaitPersistencia()
+
+        // Revisión canónica tras «aplicar» el crear en el server.
+        repo1.actualizarRevisionProducto(creado.id, 1)
+        repo1.awaitPersistencia()
+
+        val repo2 = nuevoRepo()
+        val ops = repo2.operacionesCatalogo.first()
+        assertEquals(2, ops.size)
+        assertTrue(ops.any { it.action == "crear" && it.aggregateId == creado.id && it.precioCentimos == 150 })
+        assertTrue(ops.any { it.action == "actualizar" && it.aggregateId == creado.id && it.precioCentimos == 180 })
+        assertEquals(mapOf(creado.id to 1), repo2.revisionesProducto.first())
+
+        // Eliminar la operación «crear» tras entregarla persiste la cola reducida.
+        val crearOp = ops.first { it.action == "crear" }
+        repo2.eliminarOperacionCatalogo(crearOp.operationId)
+        repo2.awaitPersistencia()
+        val repo3 = nuevoRepo()
+        assertEquals(1, repo3.operacionesCatalogo.first().size)
+        assertEquals("actualizar", repo3.operacionesCatalogo.first().single().action)
+    }
+
+    @Test
+    fun aplicar_cambios_y_cursor_persisten_tras_recarga() = runBlocking {
+        val repo1 = nuevoRepo()
+        repo1.aplicarCambiosCatalogo(
+            listOf(
+                CambioRemoto("nuevo", "crear", ProductoRemoto("nuevo", "Pizza", "Comida", 9.5, true, 1))
+            ),
+            revisionActual = 1,
+        )
+        repo1.awaitPersistencia()
+
+        val repo2 = nuevoRepo()
+        assertEquals(1, repo2.catalogoSyncDesde.first())
+        assertTrue(repo2.catalogo.first().any { it.id == "nuevo" && it.nombre == "Pizza" && it.precio == 9.5 })
+        assertEquals(1, repo2.revisionesProducto.first()["nuevo"])
     }
 
     // ═══ De servicio: varios preparadores + persistencia ═══

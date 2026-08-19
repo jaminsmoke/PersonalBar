@@ -8,10 +8,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.net.URLEncoder
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import com.jaminsmoke.personalbar.BuildConfig
 import com.jaminsmoke.personalbar.data.Invitacion
 import com.jaminsmoke.personalbar.data.InvitacionEstado
+import com.jaminsmoke.personalbar.data.CambioRemoto
 import com.jaminsmoke.personalbar.data.Mesa
+import com.jaminsmoke.personalbar.data.OperacionCatalogo
+import com.jaminsmoke.personalbar.data.ProductoRemoto
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.invitacionEstadoDesdeApi
 
@@ -190,6 +196,166 @@ data class ServicioRegistroRequest(
     val tipo: String = "ronda_servida",
     val cantidad: Int = 1,
 )
+
+/**
+ * Resultado de entregar una operación del outbox de catálogo a Identity.
+ * [Aplicada] lleva la revisión canónica del producto (`null` = archivado, el
+ * server devuelve un tombstone sin revisión); [Conflicto]/[Rechazada]/[Error]
+ * dejan la operación en la cola para el siguiente ciclo (o resolución manual).
+ */
+sealed interface ResultadoSyncCatalogo {
+    data class Aplicada(val revision: Int?) : ResultadoSyncCatalogo
+    data object Conflicto : ResultadoSyncCatalogo
+    data object Rechazada : ResultadoSyncCatalogo
+    data object Error : ResultadoSyncCatalogo
+    /** El establecimiento ya no existe en el server (404/410): desvincular y conservar el outbox. */
+    data object EstablecimientoFantasma : ResultadoSyncCatalogo
+}
+
+/** Payload del producto en `POST /sync/operaciones` (campos exactos del contrato v0.2). */
+@Serializable
+data class ProductoPayload(
+    val nombre: String,
+    val categoria: String,
+    val destino: String,
+    @SerialName("precio_centimos") val precioCentimos: Int,
+    val moneda: String = "EUR",
+    val disponible: Boolean = true,
+)
+
+/** Cuerpo de `POST /v1/establecimientos/{id}/sync/operaciones`. */
+@Serializable
+data class OperacionSyncRequest(
+    @SerialName("operation_id") val operationId: String,
+    @SerialName("device_id") val deviceId: String,
+    @SerialName("aggregate_type") val aggregateType: String = "producto",
+    @SerialName("aggregate_id") val aggregateId: String,
+    val action: String,
+    @SerialName("base_revision") val baseRevision: Int = 0,
+    @SerialName("base_snapshot") val baseSnapshot: Map<String, String>? = null,
+    val payload: ProductoPayload? = null,
+    @SerialName("client_created_at") val clientCreatedAt: String,
+)
+
+/**
+ * Snapshot de producto devuelto por Identity (`result_snapshot` de `POST /sync/operaciones`
+ * y `snapshot` de `GET /sync/cambios`). Para `archivar` es un tombstone (`id` +
+ * `archived_at`, sin el resto); para crear/actualizar trae el snapshot completo.
+ */
+@Serializable
+data class ProductoSnapshot(
+    val id: String = "",
+    val nombre: String? = null,
+    val categoria: String? = null,
+    val destino: String? = null,
+    @SerialName("precio_centimos") val precioCentimos: Int? = null,
+    val moneda: String? = null,
+    val disponible: Boolean? = null,
+    val revision: Int? = null,
+    @SerialName("archived_at") val archivedAt: String? = null,
+) {
+    /** true si es el tombstone de un archivado (sin datos de producto). */
+    val esArchivado: Boolean get() = nombre == null && archivedAt != null
+
+    fun toRemoto(): ProductoRemoto = ProductoRemoto(
+        id = id,
+        nombre = nombre.orEmpty(),
+        categoria = categoria.orEmpty(),
+        precio = (precioCentimos ?: 0) / 100.0,
+        disponible = disponible ?: true,
+        revision = revision ?: 0,
+    )
+}
+
+@Serializable
+data class OperacionSyncResponse(
+    @SerialName("operation_id") val operationId: String = "",
+    val estado: String = "",
+    @SerialName("aggregate_type") val aggregateType: String = "",
+    @SerialName("aggregate_id") val aggregateId: String = "",
+    val action: String = "",
+    @SerialName("base_revision") val baseRevision: Int = 0,
+    @SerialName("global_revision") val globalRevision: Int? = null,
+    @SerialName("result_snapshot") val resultSnapshot: ProductoSnapshot? = null,
+    @SerialName("conflict_id") val conflictId: String? = null,
+    @SerialName("client_created_at") val clientCreatedAt: String = "",
+    @SerialName("server_received_at") val serverReceivedAt: String = "",
+)
+
+/** `client_created_at` con offset obligatorio (el server rechaza timestamps naive con 422). */
+private val SYNC_TS_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
+
+internal fun epochUtcIso(epochMs: Long): String =
+    SYNC_TS_FORMAT.format(Instant.ofEpochMilli(epochMs).atOffset(ZoneOffset.UTC))
+
+/** Cuerpo de error de Identity (`{code, detail}`); el `code` es estable para ramificar. */
+@Serializable
+data class IdentityError(val code: String = "", val detail: String = "")
+
+/** true si la respuesta es el 404/410 de «establecimiento fantasma» (ya no existe en el server). */
+internal fun esEstablecimientoFantasma(code: Int, text: String): Boolean {
+    if (code != 404 && code != 410) return false
+    return runCatching { LanJson.decodeFromString<IdentityError>(text).code }
+        .getOrNull() == "identity.establecimiento_no_encontrado"
+}
+
+/** Producto de `GET /catalogo` (snapshot completo). */
+@Serializable
+data class ProductoCatalogoDto(
+    val id: String = "",
+    val nombre: String = "",
+    val categoria: String = "",
+    val destino: String = "",
+    @SerialName("precio_centimos") val precioCentimos: Int = 0,
+    val moneda: String = "EUR",
+    val disponible: Boolean = true,
+    val revision: Int = 0,
+) {
+    fun toRemoto(): ProductoRemoto = ProductoRemoto(
+        id = id, nombre = nombre, categoria = categoria,
+        precio = precioCentimos / 100.0, disponible = disponible, revision = revision,
+    )
+}
+
+@Serializable
+data class CatalogoResponseDto(
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    val revision: Int = 0,
+    @SerialName("server_time") val serverTime: String = "",
+    val productos: List<ProductoCatalogoDto> = emptyList(),
+)
+
+/** Cambio (delta) de `GET /sync/cambios`. */
+@Serializable
+data class CambioSyncDto(
+    val revision: Int = 0,
+    @SerialName("operation_id") val operationId: String = "",
+    @SerialName("aggregate_type") val aggregateType: String = "",
+    @SerialName("aggregate_id") val aggregateId: String = "",
+    val action: String = "",
+    val snapshot: ProductoSnapshot = ProductoSnapshot(),
+) {
+    fun toRemoto(): CambioRemoto {
+        val producto = if (action == "archivar" || snapshot.esArchivado) null else snapshot.toRemoto()
+        return CambioRemoto(aggregateId = aggregateId, action = action, producto = producto)
+    }
+}
+
+@Serializable
+data class CambiosResponseDto(
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    val desde: Int = 0,
+    @SerialName("revision_actual") val revisionActual: Int = 0,
+    val cambios: List<CambioSyncDto> = emptyList(),
+)
+
+/** Resultado del pull de catálogo (snapshot inicial o deltas). */
+sealed interface ResultadoPullCatalogo {
+    data class Snapshot(val productos: List<ProductoRemoto>, val revision: Int) : ResultadoPullCatalogo
+    data class Cambios(val cambios: List<CambioRemoto>, val revisionActual: Int) : ResultadoPullCatalogo
+    data object EstablecimientoFantasma : ResultadoPullCatalogo
+    data object Error : ResultadoPullCatalogo
+}
 
 @Serializable
 data class LayoutUpdateRequest(
@@ -616,5 +782,91 @@ object IdentityNegocioClient {
             )
         )
         IdentityHttp.request(baseUrl, "POST", "/v1/negocio/estadisticas/servicio", body = body, token = negocioToken).first in 200..299
+    }
+
+    // ── Sync de catálogo (outbox → Identity) ────────────────────────────────
+
+    /** Id de dispositivo estable para el `device_id` del contrato. v0.1: un nodo = un puesto. */
+    const val DEVICE_ID: String = "bar-tablet-01"
+
+    /**
+     * `POST /v1/establecimientos/{id}/sync/operaciones` → entrega una operación
+     * del outbox de catálogo. Idempotente por `operation_id`: reintentar (p. ej.
+     * tras un timeout) no duplica ni cambia el resultado. Devuelve [Error] si no
+     * hay sesión de negocio, la red falla o la respuesta es ilegible (el proyector
+     * la deja en la cola y reintenta en el siguiente ciclo).
+     */
+    suspend fun enviarOperacionCatalogo(op: OperacionCatalogo): ResultadoSyncCatalogo = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext ResultadoSyncCatalogo.Error
+        // `archivar` no lleva payload (el server espera null); crear/actualizar exigen el payload completo.
+        val payload = if (op.action == "archivar" || op.nombre == null) {
+            null
+        } else {
+            ProductoPayload(
+                nombre = op.nombre,
+                categoria = op.categoria.orEmpty(),
+                destino = op.destino ?: "barra",
+                precioCentimos = op.precioCentimos ?: 0,
+                moneda = op.moneda,
+                disponible = op.disponible,
+            )
+        }
+        val body = LanJson.encodeToString(
+            OperacionSyncRequest(
+                operationId = op.operationId,
+                deviceId = DEVICE_ID,
+                aggregateType = "producto",
+                aggregateId = op.aggregateId,
+                action = op.action,
+                baseRevision = op.baseRevision,
+                baseSnapshot = null,
+                payload = payload,
+                clientCreatedAt = epochUtcIso(op.creadaEn),
+            )
+        )
+        val (code, text) = IdentityHttp.request(
+            baseUrl, "POST", "/v1/establecimientos/$id/sync/operaciones",
+            body = body, token = negocioToken,
+        )
+        if (esEstablecimientoFantasma(code, text)) return@withContext ResultadoSyncCatalogo.EstablecimientoFantasma
+        if (code !in 200..299) return@withContext ResultadoSyncCatalogo.Error
+        val resp = runCatching { LanJson.decodeFromString<OperacionSyncResponse>(text) }.getOrNull()
+            ?: return@withContext ResultadoSyncCatalogo.Error
+        when (resp.estado) {
+            "aplicada" -> ResultadoSyncCatalogo.Aplicada(resp.resultSnapshot?.revision)
+            "conflicto" -> ResultadoSyncCatalogo.Conflicto
+            "rechazada" -> ResultadoSyncCatalogo.Rechazada
+            else -> ResultadoSyncCatalogo.Error
+        }
+    }
+
+    /**
+     * `GET /v1/establecimientos/{id}/catalogo` → snapshot completo del catálogo
+     * canónico (para decidir el seed inicial y la divergencia en el primer contacto).
+     */
+    suspend fun obtenerCatalogoRemoto(): ResultadoPullCatalogo = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext ResultadoPullCatalogo.Error
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/catalogo", token = negocioToken)
+        if (esEstablecimientoFantasma(code, text)) return@withContext ResultadoPullCatalogo.EstablecimientoFantasma
+        if (code !in 200..299) return@withContext ResultadoPullCatalogo.Error
+        val resp = runCatching { LanJson.decodeFromString<CatalogoResponseDto>(text) }.getOrNull()
+            ?: return@withContext ResultadoPullCatalogo.Error
+        ResultadoPullCatalogo.Snapshot(resp.productos.map { it.toRemoto() }, resp.revision)
+    }
+
+    /**
+     * `GET /v1/establecimientos/{id}/sync/cambios?desde=N` → deltas aplicados desde
+     * la revisión global [desde]. Devuelve los cambios y la revisión global actual.
+     */
+    suspend fun obtenerCambiosRemoto(desde: Int): ResultadoPullCatalogo = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext ResultadoPullCatalogo.Error
+        val (code, text) = IdentityHttp.request(
+            baseUrl, "GET", "/v1/establecimientos/$id/sync/cambios?desde=$desde", token = negocioToken,
+        )
+        if (esEstablecimientoFantasma(code, text)) return@withContext ResultadoPullCatalogo.EstablecimientoFantasma
+        if (code !in 200..299) return@withContext ResultadoPullCatalogo.Error
+        val resp = runCatching { LanJson.decodeFromString<CambiosResponseDto>(text) }.getOrNull()
+            ?: return@withContext ResultadoPullCatalogo.Error
+        ResultadoPullCatalogo.Cambios(resp.cambios.map { it.toRemoto() }, resp.revisionActual)
     }
 }
