@@ -84,23 +84,30 @@ fun PbSesionRequerida(
     }
 }
 
-/** Estado del local, clickeable: activo (mint) o inactivo (gris). Arranca/para el nodo. */
+/**
+ * Estado del local, clickeable: activo (mint) o inactivo (gris). Arranca/para el nodo.
+ * Con [error] (arranque fallido, p. ej. puerto ocupado) pinta el aviso en rojo; al pulsar
+ * de nuevo se reintenta el arranque.
+ */
 @Composable
 fun PbRoomStatus(
     active: Boolean,
     fgsOk: Boolean,
     conectados: Int,
     onToggle: () -> Unit,
+    error: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     // Nodo activo pero sin FGS (permiso revocado/transitorio): degradado, con aviso.
     val degradado = active && !fgsOk
     val accent = when {
+        error != null -> MaterialTheme.colorScheme.error
         degradado -> MaterialTheme.colorScheme.error
         active -> MaterialTheme.colorScheme.tertiary
         else -> MaterialTheme.colorScheme.outline
     }
     val etiqueta = when {
+        error != null -> stringResource(error)
         degradado -> stringResource(R.string.local_activo_sin_fgs)
         active -> pluralStringResource(
             R.plurals.local_activo_conectados,

@@ -43,6 +43,7 @@
     <!-- Venue -->
     <string name="local_inactivo">Venue inactive</string>
     <string name="local_activo_sin_fgs">Venue active without system permission</string>
+    <string name="local_error_arranque">Couldn\'t start the node: port 8787 is in use</string>
     <plurals name="local_activo_conectados">
         <item quantity="one">Venue active · 1 device connected</item>
         <item quantity="other">Venue active · %1$d devices connected</item>

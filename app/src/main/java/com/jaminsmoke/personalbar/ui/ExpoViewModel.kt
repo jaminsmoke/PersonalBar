@@ -42,6 +42,8 @@ data class ExpoUiState(
     val roomActive: Boolean = false,
     /** FGS arrancado: false = nodo activo pero sin servicio en primer plano (degradado). */
     val fgsOk: Boolean = true,
+    /** Error de arranque del nodo (id de recurso; null = sin error). Lo pinta el chip del header. */
+    val lanError: Int? = null,
     val camareros: List<Camarero> = emptyList(),
     /** Camareros ACTIVA marcados de servicio en el puesto (varios a la vez). */
     val deServicio: List<Camarero> = emptyList(),
@@ -120,6 +122,8 @@ class ExpoViewModel : ViewModel() {
                     enMano = enMano,
                     conectados = conectados,
                 )
+            }.combine(PersonalBarApp.get().lanError) { state, lanError ->
+                state.copy(lanError = lanError)
             }.collect { state ->
                 _uiState.value = state
                 // Tras arranque/recarga (Room) el «en mano» no se persiste: si hay

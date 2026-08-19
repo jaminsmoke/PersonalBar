@@ -5,6 +5,9 @@ import com.jaminsmoke.personalbar.data.BarRepository
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Servidor HTTP embebido del nodo de sala (Ktor, engine CIO).
@@ -24,7 +27,18 @@ class BarLanServer(
     fun startServer(): Boolean {
         if (isRunning) return true
         return try {
-            val s = embeddedServer(CIO, port = port, host = "0.0.0.0") {
+            // Scope propio del engine: el engine CIO hace el bind del puerto de forma
+            // asíncrona dentro de su `acceptJob`. Sin un CoroutineExceptionHandler en su
+            // contexto raíz, un fallo de bind se propaga al handler por defecto del thread
+            // y tumba el proceso (FATAL EXCEPTION) aunque `start()` también lo lance.
+            // Con este scope, la excepción se entrega aquí (log) y la única vía de fallo
+            // es `start()` → el try/catch de abajo degrada limpio sin crash.
+            val engineScope = CoroutineScope(
+                SupervisorJob() + CoroutineExceptionHandler { _, cause ->
+                    Log.e(TAG, "Corrutina del nodo LAN falló", cause)
+                }
+            )
+            val s = engineScope.embeddedServer(CIO, port = port, host = "0.0.0.0") {
                 barModule(repository)
             }
             s.start(wait = false)

@@ -124,6 +124,7 @@ fun ExpoScreen(
                         active = uiState.roomActive,
                         fgsOk = uiState.fgsOk,
                         conectados = uiState.conectados,
+                        error = uiState.lanError,
                         onToggle = {
                             if (uiState.roomActive) {
                                 paradaPendiente = true

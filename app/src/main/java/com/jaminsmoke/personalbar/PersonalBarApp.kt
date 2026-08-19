@@ -71,6 +71,10 @@ class PersonalBarApp : Application() {
     private val _roomActive = MutableStateFlow(false)
     val roomActive: StateFlow<Boolean> = _roomActive.asStateFlow()
 
+    /** Error al intentar arrancar el nodo (id de recurso; null = sin error). Lo consume el chip del header. */
+    private val _lanError = MutableStateFlow<Int?>(null)
+    val lanError: StateFlow<Int?> = _lanError.asStateFlow()
+
     // ── Sesión de negocio (modelo de sesión) ─────────────────────────────────
     // Vive en el proceso (no en un ViewModel) para que la revalidación funcione
     // también con la app en segundo plano (FGS «Local activo» mantiene el proceso).
@@ -136,6 +140,9 @@ class PersonalBarApp : Application() {
     fun startLocal(): Boolean {
         val ok = lanServer.startServer()
         _roomActive.value = lanServer.isRunning
+        // Fallo de arranque (p. ej. puerto 8787 ocupado): el chip del header lo muestra
+        // en rojo y al pulsar de nuevo se reintenta.
+        _lanError.value = if (ok) null else R.string.local_error_arranque
         startSessionTimeout()
         startProyeccionOficio()
         startRevalidacionSesion()
@@ -149,6 +156,7 @@ class PersonalBarApp : Application() {
         stopSessionTimeout()
         lanServer.stopServer()
         _roomActive.value = false
+        _lanError.value = null
     }
 
     /** Timer que auto-inactiva las sesiones sin heartbeat dentro del timeout. */

@@ -43,6 +43,7 @@
     <!-- Local -->
     <string name="local_inactivo">Local inactivo</string>
     <string name="local_activo_sin_fgs">Local activo sin permiso del sistema</string>
+    <string name="local_error_arranque">No se pudo arrancar el nodo: puerto 8787 ocupado</string>
     <plurals name="local_activo_conectados">
         <item quantity="one">Local activo · 1 dispositivo conectado</item>
         <item quantity="other">Local activo · %1$d dispositivos conectados</item>
