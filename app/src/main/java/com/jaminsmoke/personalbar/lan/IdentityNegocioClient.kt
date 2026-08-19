@@ -15,6 +15,7 @@ import com.jaminsmoke.personalbar.BuildConfig
 import com.jaminsmoke.personalbar.data.Invitacion
 import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.CambioRemoto
+import com.jaminsmoke.personalbar.data.ConflictoRemoto
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.OperacionCatalogo
 import com.jaminsmoke.personalbar.data.ProductoRemoto
@@ -299,6 +300,23 @@ internal fun esEstablecimientoFantasma(code: Int, text: String): Boolean {
         .getOrNull() == "identity.establecimiento_no_encontrado"
 }
 
+/**
+ * Mapea la respuesta de `POST /sync/conflictos/{id}/resolver` a [ResultadoResolucion].
+ * 2xx → [ResultadoResolucion.Resuelta]; 409 con `identity.resolucion_sync_obsoleta` →
+ * [ResultadoResolucion.Obsoleta]; 409 con `identity.conflicto_sync_ya_resuelto` →
+ * [ResultadoResolucion.YaResuelta]; 404/410 fantasma → [ResultadoResolucion.EstablecimientoFantasma].
+ */
+internal fun mapearResultadoResolucion(code: Int, text: String): ResultadoResolucion {
+    if (esEstablecimientoFantasma(code, text)) return ResultadoResolucion.EstablecimientoFantasma
+    if (code in 200..299) return ResultadoResolucion.Resuelta
+    val error = runCatching { LanJson.decodeFromString<IdentityError>(text) }.getOrNull()
+    return when (error?.code) {
+        "identity.resolucion_sync_obsoleta" -> ResultadoResolucion.Obsoleta
+        "identity.conflicto_sync_ya_resuelto" -> ResultadoResolucion.YaResuelta
+        else -> ResultadoResolucion.Error
+    }
+}
+
 /** Producto de `GET /catalogo` (snapshot completo). */
 @Serializable
 data class ProductoCatalogoDto(
@@ -355,6 +373,60 @@ sealed interface ResultadoPullCatalogo {
     data class Cambios(val cambios: List<CambioRemoto>, val revisionActual: Int) : ResultadoPullCatalogo
     data object EstablecimientoFantasma : ResultadoPullCatalogo
     data object Error : ResultadoPullCatalogo
+}
+
+/** Cuerpo de `POST /v1/establecimientos/{id}/sync/conflictos/{id}/resolver`. */
+@Serializable
+data class ResolverConflictoRequest(
+    val decision: String,       // aceptar|rechazar
+    @SerialName("expected_revision") val expectedRevision: Int,
+)
+
+/** Conflicto de `GET /sync/conflictos` (un `ConflictoSyncResponse` de Identity). */
+@Serializable
+data class ConflictoSyncDto(
+    val id: String = "",
+    @SerialName("operation_id") val operationId: String = "",
+    @SerialName("aggregate_type") val aggregateType: String = "",
+    @SerialName("aggregate_id") val aggregateId: String = "",
+    val action: String = "",
+    @SerialName("base_revision") val baseRevision: Int = 0,
+    @SerialName("canonical_revision") val canonicalRevision: Int = 0,
+    @SerialName("base_snapshot") val baseSnapshot: ProductoSnapshot? = null,
+    @SerialName("canonical_snapshot") val canonicalSnapshot: ProductoSnapshot? = null,
+    @SerialName("proposed_snapshot") val proposedSnapshot: ProductoSnapshot? = null,
+    val estado: String = "",
+    @SerialName("device_id") val deviceId: String = "",
+    @SerialName("client_created_at") val clientCreatedAt: String = "",
+) {
+    fun toRemoto(): ConflictoRemoto = ConflictoRemoto(
+        id = id,
+        operationId = operationId,
+        aggregateId = aggregateId,
+        action = action,
+        baseRevision = baseRevision,
+        canonicalRevision = canonicalRevision,
+        canonical = canonicalSnapshot?.takeIf { !it.esArchivado }?.toRemoto(),
+        proposed = proposedSnapshot?.takeIf { action != "archivar" && !it.esArchivado }?.toRemoto(),
+        estado = estado,
+        clientCreatedAt = clientCreatedAt,
+    )
+}
+
+/** Resultado de `GET /sync/conflictos`. */
+sealed interface ResultadoConflictos {
+    data class Lista(val conflictos: List<ConflictoRemoto>) : ResultadoConflictos
+    data object EstablecimientoFantasma : ResultadoConflictos
+    data object Error : ResultadoConflictos
+}
+
+/** Resultado de `POST /sync/conflictos/{id}/resolver`. */
+sealed interface ResultadoResolucion {
+    data object Resuelta : ResultadoResolucion
+    data object Obsoleta : ResultadoResolucion          // 409 identity.resolucion_sync_obsoleta
+    data object YaResuelta : ResultadoResolucion        // 409 identity.conflicto_sync_ya_resuelto
+    data object EstablecimientoFantasma : ResultadoResolucion
+    data object Error : ResultadoResolucion
 }
 
 @Serializable
@@ -869,4 +941,42 @@ object IdentityNegocioClient {
             ?: return@withContext ResultadoPullCatalogo.Error
         ResultadoPullCatalogo.Cambios(resp.cambios.map { it.toRemoto() }, resp.revisionActual)
     }
+
+    // ── Conflictos de catálogo (superficie de resolución) ───────────────────
+
+    /**
+     * `GET /v1/establecimientos/{id}/sync/conflictos?estado=` → conflictos del
+     * establecimiento. Por defecto lista solo los `pendiente` (los que exigen
+     * decisión); el resto de estados los puede pedir la UI explícitamente.
+     */
+    suspend fun listarConflictos(estado: String = "pendiente"): ResultadoConflictos = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext ResultadoConflictos.Error
+        val (code, text) = IdentityHttp.request(
+            baseUrl, "GET", "/v1/establecimientos/$id/sync/conflictos?estado=$estado", token = negocioToken,
+        )
+        if (esEstablecimientoFantasma(code, text)) return@withContext ResultadoConflictos.EstablecimientoFantasma
+        if (code !in 200..299) return@withContext ResultadoConflictos.Error
+        val resp = runCatching { LanJson.decodeFromString<List<ConflictoSyncDto>>(text) }.getOrNull()
+            ?: return@withContext ResultadoConflictos.Error
+        ResultadoConflictos.Lista(resp.map { it.toRemoto() })
+    }
+
+    /**
+     * `POST /v1/establecimientos/{id}/sync/conflictos/{id}/resolver` → acepta o
+     * rechaza el conflicto. `expectedRevision` debe ser la revisión canónica que se
+     * vio al listar; si el canónico se movió, el server responde 409 y el resultado
+     * es [ResultadoResolucion.Obsoleta] (la UI refresca antes de decidir de nuevo).
+     */
+    suspend fun resolverConflicto(conflictoId: String, decision: String, expectedRevision: Int): ResultadoResolucion =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext ResultadoResolucion.Error
+            val body = LanJson.encodeToString(
+                ResolverConflictoRequest(decision = decision, expectedRevision = expectedRevision)
+            )
+            val (code, text) = IdentityHttp.request(
+                baseUrl, "POST", "/v1/establecimientos/$id/sync/conflictos/$conflictoId/resolver",
+                body = body, token = negocioToken,
+            )
+            mapearResultadoResolucion(code, text)
+        }
 }

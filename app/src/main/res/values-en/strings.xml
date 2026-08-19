@@ -17,6 +17,7 @@
     <string name="gestion_perfil">Profile</string>
     <string name="gestion_jornadas">Shifts</string>
     <string name="gestion_horario">Opening hours</string>
+    <string name="gestion_conflictos">Conflicts</string>
     <string name="jornadas_titulo">Staff shifts</string>
     <string name="jornadas_vacio">No shifts in this period</string>
     <string name="jornadas_horas">Hours</string>
@@ -174,6 +175,30 @@
     <string name="carta_categoria_bebida">Drinks</string>
     <string name="carta_categoria_comida">Food</string>
     <string name="carta_no_disponible">Unavailable</string>
+
+    <!-- Catalog conflicts (resolution surface) -->
+    <string name="conflictos_titulo">Catalog conflicts</string>
+    <string name="conflictos_subtitulo">Changes that don\'t match Identity</string>
+    <string name="conflictos_refrescar">Refresh</string>
+    <string name="conflictos_vacio_titulo">No pending conflicts</string>
+    <string name="conflictos_vacio_subtitulo">When an offline change doesn\'t match Identity, it will appear here for you to decide.</string>
+    <string name="conflictos_error">Could not load conflicts</string>
+    <string name="conflictos_reintentar">Retry</string>
+    <string name="conflictos_accion_crear">Create</string>
+    <string name="conflictos_accion_actualizar">Update</string>
+    <string name="conflictos_accion_archivar">Archive</string>
+    <string name="conflictos_canonico">Identity</string>
+    <string name="conflictos_propuesto">Bar</string>
+    <string name="conflictos_aceptar">Accept</string>
+    <string name="conflictos_rechazar">Reject</string>
+    <string name="conflictos_resuelto_aceptado">Change accepted</string>
+    <string name="conflictos_resuelto_rechazado">Change rejected</string>
+    <string name="conflictos_obsoleto">The data changed on Identity; review again</string>
+    <string name="conflictos_ya_resuelta">That conflict was already resolved</string>
+    <string name="conflictos_archivado">Archived</string>
+    <string name="conflictos_disponible">Available: %1$s</string>
+    <string name="conflictos_si">Yes</string>
+    <string name="conflictos_no">No</string>
 
     <!-- Venue links (public QR) -->
     <string name="enlaces_titulo">Venue links</string>

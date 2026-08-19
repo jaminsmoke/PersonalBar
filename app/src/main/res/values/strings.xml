@@ -17,6 +17,7 @@
     <string name="gestion_perfil">Perfil</string>
     <string name="gestion_jornadas">Jornadas</string>
     <string name="gestion_horario">Horario</string>
+    <string name="gestion_conflictos">Conflictos</string>
     <string name="jornadas_titulo">Jornadas de los camareros</string>
     <string name="jornadas_vacio">Sin jornadas en este periodo</string>
     <string name="jornadas_horas">Horas</string>
@@ -173,6 +174,30 @@
     <string name="carta_categoria_bebida">Bebida</string>
     <string name="carta_categoria_comida">Comida</string>
     <string name="carta_no_disponible">No disponible</string>
+
+    <!-- Conflictos de catálogo (superficie de resolución) -->
+    <string name="conflictos_titulo">Conflictos de catálogo</string>
+    <string name="conflictos_subtitulo">Cambios que no coinciden con Identity</string>
+    <string name="conflictos_refrescar">Refrescar</string>
+    <string name="conflictos_vacio_titulo">Sin conflictos pendientes</string>
+    <string name="conflictos_vacio_subtitulo">Cuando un cambio offline no coincida con Identity, aparecerá aquí para decidir.</string>
+    <string name="conflictos_error">No se pudo cargar los conflictos</string>
+    <string name="conflictos_reintentar">Reintentar</string>
+    <string name="conflictos_accion_crear">Crear</string>
+    <string name="conflictos_accion_actualizar">Actualizar</string>
+    <string name="conflictos_accion_archivar">Archivar</string>
+    <string name="conflictos_canonico">Identity</string>
+    <string name="conflictos_propuesto">Bar</string>
+    <string name="conflictos_aceptar">Aceptar</string>
+    <string name="conflictos_rechazar">Rechazar</string>
+    <string name="conflictos_resuelto_aceptado">Cambio aceptado</string>
+    <string name="conflictos_resuelto_rechazado">Cambio rechazado</string>
+    <string name="conflictos_obsoleto">El dato cambió en Identity; revisa de nuevo</string>
+    <string name="conflictos_ya_resuelta">Ese conflicto ya estaba resuelto</string>
+    <string name="conflictos_archivado">Archivado</string>
+    <string name="conflictos_disponible">Disponible: %1$s</string>
+    <string name="conflictos_si">Sí</string>
+    <string name="conflictos_no">No</string>
 
     <!-- Enlaces del negocio (QR públicos) -->
     <string name="enlaces_titulo">Enlaces del negocio</string>
