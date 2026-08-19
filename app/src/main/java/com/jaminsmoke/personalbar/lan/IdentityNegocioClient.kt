@@ -127,6 +127,74 @@ data class EstablecimientoUpdateRequest(
     val visibleDirectorio: Boolean? = null,
 )
 
+/** `GET/PATCH /v1/establecimientos/{id}/perfil-web`. */
+@Serializable
+data class IdentityPerfilWeb(
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    val eslogan: String? = null,
+    val descripcion: String? = null,
+    val direccion: String? = null,
+    val ciudad: String? = null,
+    val telefono: String? = null,
+    @SerialName("email_contacto") val emailContacto: String? = null,
+    val web: String? = null,
+    val redes: Map<String, String> = emptyMap(),
+    val tz: String = "Europe/Madrid",
+    val plantilla: String = "estate_hospitality",
+    @SerialName("color_primario") val colorPrimario: String? = null,
+    @SerialName("web_publica") val webPublica: Boolean = true,
+    @SerialName("mostrar_equipo") val mostrarEquipo: Boolean = false,
+    @SerialName("hero_url") val heroUrl: String? = null,
+)
+
+/** PATCH parcial: los null no se serializan (`EncodeDefault.NEVER`). */
+@Serializable
+data class IdentityPerfilWebUpdate(
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val eslogan: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val descripcion: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val direccion: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val ciudad: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val telefono: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) @SerialName("email_contacto") val emailContacto: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val web: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val redes: Map<String, String>? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val tz: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) @SerialName("color_primario") val colorPrimario: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) @SerialName("web_publica") val webPublica: Boolean? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) @SerialName("mostrar_equipo") val mostrarEquipo: Boolean? = null,
+)
+
+@Serializable
+data class IdentityTurnoHorario(val abre: String, val cierra: String)
+
+@Serializable
+data class IdentityHorarioDia(
+    @SerialName("dia_semana") val diaSemana: Int,
+    val cerrado: Boolean = false,
+    val turnos: List<IdentityTurnoHorario> = emptyList(),
+)
+
+@Serializable
+data class IdentityHorarioResponse(
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    val dias: List<IdentityHorarioDia> = emptyList(),
+    @SerialName("updated_at") val updatedAt: String? = null,
+)
+
+@Serializable
+data class IdentityHorarioUpdate(val dias: List<IdentityHorarioDia>)
+
+@Serializable
+data class IdentityImagenGaleria(
+    val id: String,
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    val url: String = "",
+    val mimetype: String = "",
+    val size: Int = 0,
+    val orden: Int = 0,
+    @SerialName("creada_en") val creadaEn: String? = null,
+)
+
 @Serializable
 data class IdentityCamarero(
     val id: String,
@@ -886,6 +954,90 @@ object IdentityNegocioClient {
     suspend fun borrarLogoEstablecimiento(): Boolean = withContext(Dispatchers.IO) {
         val id = establecimientoUuid ?: return@withContext false
         IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/logo", token = negocioToken).first in 200..299
+    }
+
+    // ── Perfil público y web del local (`perfil-web`, hero, galería, horario) ─
+
+    /** `GET /v1/establecimientos/{id}/perfil-web`. */
+    suspend fun obtenerPerfilWeb(): IdentityPerfilWeb? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/perfil-web", token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityPerfilWeb>(text) }.getOrNull() else null
+    }
+
+    /** `PATCH /v1/establecimientos/{id}/perfil-web` — parcial; null no se envía. */
+    suspend fun editarPerfilWeb(update: IdentityPerfilWebUpdate): IdentityPerfilWeb? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val body = LanJson.encodeToString(update)
+        val (code, text) = IdentityHttp.request(baseUrl, "PATCH", "/v1/establecimientos/$id/perfil-web", body = body, token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityPerfilWeb>(text) }.getOrNull() else null
+    }
+
+    /** `POST /v1/establecimientos/{id}/hero` (multipart, campo `hero`). */
+    suspend fun subirHero(bytes: ByteArray, mimetype: String): IdentityPerfilWeb? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val ok = IdentityHttp.uploadMultipart(baseUrl, "/v1/establecimientos/$id/hero", "hero", "hero.webp", bytes, mimetype, negocioToken)
+        if (ok) obtenerPerfilWeb() else null
+    }
+
+    /** `GET /v1/establecimientos/{id}/hero` → bytes de la portada, o null. */
+    suspend fun obtenerHero(): ByteArray? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, bytes) = IdentityHttp.requestBytes(baseUrl, "GET", "/v1/establecimientos/$id/hero", negocioToken)
+        if (code in 200..299) bytes else null
+    }
+
+    /** `DELETE /v1/establecimientos/{id}/hero`. */
+    suspend fun borrarHero(): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/hero", token = negocioToken).first in 200..299
+    }
+
+    /** `GET /v1/establecimientos/{id}/galeria`. */
+    suspend fun listarGaleria(): List<IdentityImagenGaleria> = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext emptyList()
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/galeria", token = negocioToken)
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<List<IdentityImagenGaleria>>(text) }.getOrNull().orEmpty()
+        } else {
+            emptyList()
+        }
+    }
+
+    /** `POST /v1/establecimientos/{id}/galeria` (multipart, campo `imagen`). */
+    suspend fun subirGaleria(bytes: ByteArray, mimetype: String): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        IdentityHttp.uploadMultipart(baseUrl, "/v1/establecimientos/$id/galeria", "imagen", "foto.webp", bytes, mimetype, negocioToken)
+    }
+
+    /** `GET /v1/establecimientos/{id}/galeria/{imagenId}` → bytes, o null. */
+    suspend fun obtenerImagenGaleria(imagenId: String): ByteArray? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, bytes) = IdentityHttp.requestBytes(
+            baseUrl, "GET", "/v1/establecimientos/$id/galeria/$imagenId", negocioToken,
+        )
+        if (code in 200..299) bytes else null
+    }
+
+    /** `DELETE /v1/establecimientos/{id}/galeria/{imagenId}`. */
+    suspend fun borrarImagenGaleria(imagenId: String): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/galeria/$imagenId", token = negocioToken).first in 200..299
+    }
+
+    /** `GET /v1/establecimientos/{id}/horario`. */
+    suspend fun obtenerHorario(): IdentityHorarioResponse? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/horario", token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityHorarioResponse>(text) }.getOrNull() else null
+    }
+
+    /** `PATCH /v1/establecimientos/{id}/horario` — reemplazo completo de `dias`. */
+    suspend fun guardarHorario(dias: List<IdentityHorarioDia>): IdentityHorarioResponse? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val body = LanJson.encodeToString(IdentityHorarioUpdate(dias))
+        val (code, text) = IdentityHttp.request(baseUrl, "PATCH", "/v1/establecimientos/$id/horario", body = body, token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityHorarioResponse>(text) }.getOrNull() else null
     }
 
     // ── Libro de oficio (productor: estadísticas de servicio) ────────────────
