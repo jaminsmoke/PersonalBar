@@ -177,7 +177,6 @@ class PersonalBarApp : Application() {
         startSessionTimeout()
         startProyeccionOficio()
         startSyncCatalogo()
-        startProyeccionNotificaciones()
         startRevalidacionSesion()
         if (ok) presenciaEmisor.start(presenciaScope)
         return ok
@@ -188,7 +187,6 @@ class PersonalBarApp : Application() {
         presenciaEmisor.stop(enviarAdios = true)
         stopProyeccionOficio()
         stopSyncCatalogo()
-        stopProyeccionNotificaciones()
         stopRevalidacionSesion()
         stopSessionTimeout()
         lanServer.stopServer()
@@ -332,6 +330,9 @@ class PersonalBarApp : Application() {
      * Proyector de la bandeja de notificaciones: refresca el contador de
      * no-leídas (badge de la campana del header) con
      * `GET /notificaciones?solo_no_leidas=true` cada [NOTIFICACIONES_INTERVALO_MS].
+     * Vive ligado a la **sesión** (se arranca al restaurar/iniciar sesión y se
+     * para al cerrar sesión), no al ciclo del nodo LAN: las notificaciones son
+     * cloud y el badge debe verse al abrir la app aunque el nodo esté inactivo.
      * Best-effort: no bloquea la LAN ni el sync de catálogo.
      */
     private fun startProyeccionNotificaciones() {
@@ -403,6 +404,7 @@ class PersonalBarApp : Application() {
                 _sesionEstado.value = sesionEstadoDe(guardada, System.currentTimeMillis())
                 sessionScope.launch { _logoBytes.value = IdentityNegocioClient.obtenerLogo() }
                 sincronizarDesdeIdentity()
+                startProyeccionNotificaciones()
             }
         }
     }
@@ -422,12 +424,15 @@ class PersonalBarApp : Application() {
         }
         sessionScope.launch { _logoBytes.value = IdentityNegocioClient.obtenerLogo() }
         sincronizarDesdeIdentity()
+        startProyeccionNotificaciones()
     }
 
     /** Cierra la sesión (logout): desconecta Identity y limpia sesión + flag local. */
     fun cerrarSesion() {
         // Conservar `baseUrl` (config estática): si `desconectar()` la anulase, el
         // siguiente `loginNegocio` fallaría (IdentityHttp devuelve -1 con baseUrl null).
+        stopProyeccionNotificaciones()
+        _notificacionesNoLeidas.value = 0
         IdentityNegocioClient.desconectarConservandoBaseUrl()
         _sesion.value = null
         _sesionEstado.value = SesionEstado.SIN_SESION
