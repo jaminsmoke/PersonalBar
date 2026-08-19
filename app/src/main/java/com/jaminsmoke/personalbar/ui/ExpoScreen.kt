@@ -21,16 +21,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.LocalBar
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -38,6 +42,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -59,8 +64,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.SesionEstado
@@ -97,11 +105,15 @@ fun ExpoScreen(
     // caducada o inválida → bloqueado con login en grande).
     val sesionEstado by sesionViewModel.sesionEstado.collectAsState()
     val sinSesion = sesionEstado != SesionEstado.VALIDA
+    val noLeidas by PersonalBarApp.get().notificacionesNoLeidas.collectAsState()
     var section by remember { mutableStateOf(PbSection.COLAS) }
     // Sub-pantalla de Gestión pedida externamente (p. ej. «Ir al perfil» desde la sesión).
     var gestionSolicitud by remember { mutableStateOf<GestionAcceso?>(null) }
     // Parada del nodo pendiente de confirmación (la sala se quedaría ciega).
     var paradaPendiente by remember { mutableStateOf(false) }
+    // Bandeja de notificaciones (capa global abierta desde la campana del header).
+    var verNotificaciones by remember { mutableStateOf(false) }
+    var verConflicto by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -113,6 +125,10 @@ fun ExpoScreen(
                     )
                 },
                 actions = {
+                    NotificacionesCampana(
+                        noLeidas = noLeidas,
+                        onClick = { verNotificaciones = true },
+                    )
                     SesionHeader(
                         onAbrirPerfil = {
                             gestionSolicitud = GestionAcceso.PERFIL
@@ -197,6 +213,33 @@ fun ExpoScreen(
         }
     }
 
+    if (verNotificaciones) {
+        Dialog(
+            onDismissRequest = {
+                verNotificaciones = false
+                verConflicto = false
+            },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                if (verConflicto) {
+                    ConflictoDesdeNotificacion(onVolver = { verConflicto = false })
+                } else {
+                    NotificacionesScreen(
+                        onCerrar = {
+                            verNotificaciones = false
+                            verConflicto = false
+                        },
+                        onAbrirConflicto = { verConflicto = true },
+                    )
+                }
+            }
+        }
+    }
+
     if (paradaPendiente) {
         AlertDialog(
             onDismissRequest = { paradaPendiente = false },
@@ -218,6 +261,55 @@ fun ExpoScreen(
                 }
             },
         )
+    }
+}
+
+/** Campana del header con el badge de notificaciones no-leídas. */
+@Composable
+private fun NotificacionesCampana(
+    noLeidas: Int,
+    onClick: () -> Unit,
+) {
+    IconButton(onClick = onClick) {
+        BadgedBox(
+            badge = {
+                if (noLeidas > 0) {
+                    Badge { Text(if (noLeidas > 99) "99+" else "$noLeidas") }
+                }
+            },
+        ) {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = stringResource(R.string.notificaciones_campana),
+            )
+        }
+    }
+}
+
+/** Contenedor de `ConflictosScreen` dentro de la capa global (barra de volver a la bandeja). */
+@Composable
+private fun ConflictoDesdeNotificacion(onVolver: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onVolver) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.gestion_volver),
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = stringResource(R.string.gestion_conflictos),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        ConflictosScreen()
     }
 }
 

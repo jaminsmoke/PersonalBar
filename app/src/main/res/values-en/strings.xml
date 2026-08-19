@@ -200,6 +200,18 @@
     <string name="conflictos_si">Yes</string>
     <string name="conflictos_no">No</string>
 
+    <!-- Venue notifications (inbox) -->
+    <string name="notificaciones_campana">Notifications</string>
+    <string name="notificaciones_titulo">Notifications</string>
+    <string name="notificaciones_subtitulo">Venue alerts</string>
+    <string name="notificaciones_refrescar">Refresh</string>
+    <string name="notificaciones_cerrar">Close</string>
+    <string name="notificaciones_vacio_titulo">No notifications</string>
+    <string name="notificaciones_vacio_subtitulo">Alerts about changes awaiting a decision will appear here.</string>
+    <string name="notificaciones_error">Could not load notifications</string>
+    <string name="notificaciones_reintentar">Retry</string>
+    <string name="notificaciones_abrir_conflicto">Review conflict</string>
+
     <!-- Venue links (public QR) -->
     <string name="enlaces_titulo">Venue links</string>
     <string name="enlaces_subtitulo">Public QR codes for the profile and menu to share with customers</string>

@@ -87,6 +87,20 @@ data class ConflictoRemoto(
 )
 
 /**
+ * Notificación de la bandeja durable del negocio (`GET /notificaciones`).
+ * [conflictoId] y [deepLink] provienen del `payload` (solo `conflicto_sync` en v0.1).
+ */
+data class NotificacionRemoto(
+    val id: String,
+    val conflictoId: String?,
+    val tipo: String,
+    val titulo: String,
+    val mensaje: String,
+    val deepLink: String?,
+    val leida: Boolean,
+)
+
+/**
  * Prefijo corto de zona para IDs tipo B1, T1, I1… Reutiliza la semántica de Commander
  * para que la misma mesa se reconozca igual en ambos nodos.
  */

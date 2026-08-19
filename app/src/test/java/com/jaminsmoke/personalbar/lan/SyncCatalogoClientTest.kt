@@ -187,4 +187,55 @@ class SyncCatalogoClientTest {
         )
         assertEquals(ResultadoResolucion.Error, mapearResultadoResolucion(500, "{}"))
     }
+
+    @Test
+    fun notificacionNegocioDtoMapeaCamposYDeepLink() {
+        val json = """[
+            {
+                "id": "n1",
+                "establecimiento_id": "e1",
+                "conflicto_id": "c1",
+                "tipo": "conflicto_sync",
+                "titulo": "Cambio pendiente",
+                "mensaje": "Revisa los valores",
+                "payload": {"conflicto_id":"c1","deep_link":"personalhostel://establecimientos/e1/conflictos/c1"},
+                "created_at": "2026-08-19T12:00:00+00:00",
+                "read_at": null
+            }
+        ]""".trimIndent()
+        val list = LanJson.decodeFromString<List<NotificacionNegocioDto>>(json)
+        assertEquals(1, list.size)
+        val n = list[0].toRemoto()
+        assertEquals("n1", n.id)
+        assertEquals("c1", n.conflictoId)
+        assertEquals("conflicto_sync", n.tipo)
+        assertEquals("personalhostel://establecimientos/e1/conflictos/c1", n.deepLink)
+        assertFalse(n.leida)
+    }
+
+    @Test
+    fun notificacionNegocioDtoLeidaSinDeepLink() {
+        val dto = NotificacionNegocioDto(
+            id = "n1", conflictoId = "c1", tipo = "conflicto_sync",
+            titulo = "T", mensaje = "M", payload = emptyMap(),
+            readAt = "2026-08-19T12:00:00+00:00",
+        )
+        val n = dto.toRemoto()
+        assertTrue(n.leida)
+        assertNull(n.deepLink)
+    }
+
+    @Test
+    fun mapearResultadoMarcarLeidaMapeaCodigos() {
+        assertEquals(ResultadoMarcarLeida.Leida, mapearResultadoMarcarLeida(200, "{}"))
+        assertEquals(
+            ResultadoMarcarLeida.NoEncontrada,
+            mapearResultadoMarcarLeida(404, """{"code":"identity.notificacion_no_encontrada"}"""),
+        )
+        assertEquals(
+            ResultadoMarcarLeida.EstablecimientoFantasma,
+            mapearResultadoMarcarLeida(404, """{"code":"identity.establecimiento_no_encontrado"}"""),
+        )
+        assertEquals(ResultadoMarcarLeida.Error, mapearResultadoMarcarLeida(500, "{}"))
+    }
 }

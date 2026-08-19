@@ -64,6 +64,7 @@ def normalize(ruta: str) -> str:
     ruta = ruta.replace("$invitacionId", "{invitacion_id}")
     ruta = ruta.replace("$enlaceId", "{enlace_id}")
     ruta = ruta.replace("$conflictoId", "{conflicto_id}")
+    ruta = ruta.replace("$notificacionId", "{notificacion_id}")
     # Query interpolada (p. ej. ".../invitaciones$q"): el sufijo `$var` al final no es path.
     ruta = re.sub(r"\$[A-Za-z_][A-Za-z0-9_]*$", "", ruta)
     return ruta.split("?", 1)[0]
@@ -196,6 +197,7 @@ def selftest() -> None:
         IdentityHttp.uploadMultipart(baseUrl, LOGO_PATH, "logo", "f", b, "mime", t)
         IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/enlaces/$enlaceId/revocar", token = t)
         IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/sync/conflictos/$conflictoId/resolver", token = t)
+        IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/notificaciones/$notificacionId/leer", token = t)
         IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/invitaciones$q", token = t)
     '''
     rutas = client_paths(src)
@@ -206,6 +208,10 @@ def selftest() -> None:
     assert (
         "POST",
         "/v1/establecimientos/{establecimiento_id}/sync/conflictos/{conflicto_id}/resolver",
+    ) in rutas, rutas
+    assert (
+        "POST",
+        "/v1/establecimientos/{establecimiento_id}/notificaciones/{notificacion_id}/leer",
     ) in rutas, rutas
     assert ("GET", "/v1/establecimientos/{establecimiento_id}/invitaciones") in rutas, rutas
 
