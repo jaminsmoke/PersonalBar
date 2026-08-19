@@ -1,6 +1,7 @@
 package com.jaminsmoke.personalbar.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.LinkOff
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -35,8 +37,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
@@ -46,7 +55,7 @@ import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 /**
  * Panel «Enlaces del negocio»: QR públicos de la web y de la carta, oficios
  * distintos (promocional vs mesa). Muestra una tarjeta por tipo (`web` | `carta`):
- * si hay enlace activo, su QR y URL (fuente de Identity) con acciones rotar/revocar;
+ * si hay enlace activo, su QR y URL clicable (abre `url_publica` en el navegador)
  * si no, botón para crearlo. La tarjeta web también reconoce el alias legado
  * `ficha_negocio`.
  */
@@ -185,12 +194,37 @@ private fun EnlaceTarjeta(
                     Text(stringResource(R.string.enlaces_crear))
                 }
             } else {
+                val uriHandler = LocalUriHandler.current
+                val abrirEnlace = stringResource(R.string.enlaces_abrir)
+                val colorEnlace = MaterialTheme.colorScheme.primary
+                val urlAnotada = remember(url, colorEnlace) {
+                    buildAnnotatedString {
+                        withLink(
+                            LinkAnnotation.Url(
+                                url,
+                                TextLinkStyles(
+                                    style = SpanStyle(
+                                        color = colorEnlace,
+                                        textDecoration = TextDecoration.Underline,
+                                    ),
+                                ),
+                            ),
+                        ) {
+                            append(url)
+                        }
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val qr = remember(url) { qrImageBitmap(url, 320) }
                     Image(
                         bitmap = qr,
                         contentDescription = stringResource(R.string.enlaces_qr_desc, titulo),
-                        modifier = Modifier.size(220.dp),
+                        modifier = Modifier
+                            .size(220.dp)
+                            .clickable(
+                                onClickLabel = abrirEnlace,
+                                onClick = { uriHandler.openUri(url) },
+                            ),
                     )
                     Spacer(Modifier.width(20.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -200,13 +234,27 @@ private fun EnlaceTarjeta(
                             color = MaterialTheme.colorScheme.tertiary,
                         )
                         Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = url,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = urlAnotada,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                                contentDescription = abrirEnlace,
+                                tint = colorEnlace,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clickable(
+                                        onClickLabel = abrirEnlace,
+                                        onClick = { uriHandler.openUri(url) },
+                                    ),
+                            )
+                        }
                         Spacer(Modifier.height(12.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = { onRotar(enlace.id) }, enabled = !trabajando) {

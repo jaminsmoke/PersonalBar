@@ -250,6 +250,7 @@
     <string name="enlaces_revocar_titulo">Revoke link?</string>
     <string name="enlaces_revocar_mensaje">The link will stop working and printed QR codes will become invalid.</string>
     <string name="enlaces_estado_activo">Active</string>
+    <string name="enlaces_abrir">Open link</string>
     <string name="enlaces_qr_desc">QR for %1$s</string>
 
 

@@ -249,6 +249,7 @@
     <string name="enlaces_revocar_titulo">¿Revocar enlace?</string>
     <string name="enlaces_revocar_mensaje">El enlace dejará de funcionar y los QR impresos dejarán de ser válidos.</string>
     <string name="enlaces_estado_activo">Activo</string>
+    <string name="enlaces_abrir">Abrir enlace</string>
     <string name="enlaces_qr_desc">QR de %1$s</string>
 
     <!-- Identity (invitaciones por email) -->
