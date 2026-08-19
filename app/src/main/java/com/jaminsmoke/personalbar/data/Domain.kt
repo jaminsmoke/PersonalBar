@@ -69,6 +69,24 @@ data class CambioRemoto(
 )
 
 /**
+ * Conflicto de catálogo pendiente de decisión (`GET /sync/conflictos`).
+ * [canonical] null = el producto aún no existe en el server; [proposed] null =
+ * archivado (tombstone). Ambos son `ProductoRemoto` para pintar el diff en la UI.
+ */
+data class ConflictoRemoto(
+    val id: String,
+    val operationId: String,
+    val aggregateId: String,
+    val action: String,             // crear|actualizar|archivar
+    val baseRevision: Int,
+    val canonicalRevision: Int,
+    val canonical: ProductoRemoto?,
+    val proposed: ProductoRemoto?,
+    val estado: String,
+    val clientCreatedAt: String,
+)
+
+/**
  * Prefijo corto de zona para IDs tipo B1, T1, I1… Reutiliza la semántica de Commander
  * para que la misma mesa se reconozca igual en ambos nodos.
  */

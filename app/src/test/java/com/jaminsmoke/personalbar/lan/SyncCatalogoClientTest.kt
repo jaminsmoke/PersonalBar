@@ -112,4 +112,79 @@ class SyncCatalogoClientTest {
         assertTrue(json.contains("\"action\":\"archivar\""))
         assertTrue(json.contains("\"base_snapshot\":null"))
     }
+
+    @Test
+    fun conflictoSyncDtoDeserializaSnakeCase() {
+        val json = """[
+            {
+                "id": "c1",
+                "operation_id": "op1",
+                "aggregate_type": "producto",
+                "aggregate_id": "p1",
+                "action": "actualizar",
+                "base_revision": 0,
+                "canonical_revision": 2,
+                "canonical_snapshot": {"id":"p1","nombre":"Caña","precio_centimos":250,"disponible":true,"revision":2},
+                "proposed_snapshot": {"id":"p1","nombre":"Caña doble","precio_centimos":300,"disponible":true},
+                "estado": "pendiente",
+                "device_id": "bar-tablet-01",
+                "client_created_at": "2026-08-19T12:00:00+00:00"
+            }
+        ]""".trimIndent()
+        val list = LanJson.decodeFromString<List<ConflictoSyncDto>>(json)
+        assertEquals(1, list.size)
+        assertEquals("op1", list[0].operationId)
+        assertEquals(2, list[0].canonicalRevision)
+        assertEquals("Caña", list[0].toRemoto().canonical?.nombre)
+        assertEquals("Caña doble", list[0].toRemoto().proposed?.nombre)
+    }
+
+    @Test
+    fun conflictoSyncDtoArchivarDejaPropuestoNull() {
+        val dto = ConflictoSyncDto(
+            id = "c1", aggregateId = "p1", action = "archivar", canonicalRevision = 2,
+            canonicalSnapshot = ProductoSnapshot(id = "p1", nombre = "Caña", precioCentimos = 250, revision = 2),
+            proposedSnapshot = ProductoSnapshot(id = "p1"),
+        )
+        val conflicto = dto.toRemoto()
+        assertNull(conflicto.proposed)
+        assertEquals("Caña", conflicto.canonical?.nombre)
+        assertEquals(2.5, conflicto.canonical?.precio ?: 0.0, 0.0)
+    }
+
+    @Test
+    fun conflictoSyncDtoSinCanonicalDejaCanonicalNull() {
+        val dto = ConflictoSyncDto(
+            id = "c1", aggregateId = "p1", action = "actualizar",
+            proposedSnapshot = ProductoSnapshot(id = "p1", nombre = "Nuevo", precioCentimos = 100),
+        )
+        val conflicto = dto.toRemoto()
+        assertNull(conflicto.canonical)
+        assertEquals("Nuevo", conflicto.proposed?.nombre)
+    }
+
+    @Test
+    fun resolverConflictoRequestSerializaSnakeCase() {
+        val json = LanJson.encodeToString(ResolverConflictoRequest(decision = "aceptar", expectedRevision = 3))
+        assertTrue(json.contains("\"decision\":\"aceptar\""))
+        assertTrue(json.contains("\"expected_revision\":3"))
+    }
+
+    @Test
+    fun mapearResultadoResolucionMapeaCodigos() {
+        assertEquals(ResultadoResolucion.Resuelta, mapearResultadoResolucion(200, "{}"))
+        assertEquals(
+            ResultadoResolucion.Obsoleta,
+            mapearResultadoResolucion(409, """{"code":"identity.resolucion_sync_obsoleta"}"""),
+        )
+        assertEquals(
+            ResultadoResolucion.YaResuelta,
+            mapearResultadoResolucion(409, """{"code":"identity.conflicto_sync_ya_resuelto"}"""),
+        )
+        assertEquals(
+            ResultadoResolucion.EstablecimientoFantasma,
+            mapearResultadoResolucion(404, """{"code":"identity.establecimiento_no_encontrado"}"""),
+        )
+        assertEquals(ResultadoResolucion.Error, mapearResultadoResolucion(500, "{}"))
+    }
 }
