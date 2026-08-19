@@ -219,6 +219,7 @@ sealed interface ResultadoSyncCatalogo {
 data class ProductoPayload(
     val nombre: String,
     val categoria: String,
+    val descripcion: String? = null,
     val destino: String,
     @SerialName("precio_centimos") val precioCentimos: Int,
     val moneda: String = "EUR",
@@ -249,6 +250,7 @@ data class ProductoSnapshot(
     val id: String = "",
     val nombre: String? = null,
     val categoria: String? = null,
+    val descripcion: String? = null,
     val destino: String? = null,
     @SerialName("precio_centimos") val precioCentimos: Int? = null,
     val moneda: String? = null,
@@ -266,6 +268,7 @@ data class ProductoSnapshot(
         precio = (precioCentimos ?: 0) / 100.0,
         disponible = disponible ?: true,
         revision = revision ?: 0,
+        descripcion = descripcion,
     )
 }
 
@@ -339,6 +342,7 @@ data class ProductoCatalogoDto(
     val id: String = "",
     val nombre: String = "",
     val categoria: String = "",
+    val descripcion: String? = null,
     val destino: String = "",
     @SerialName("precio_centimos") val precioCentimos: Int = 0,
     val moneda: String = "EUR",
@@ -348,6 +352,7 @@ data class ProductoCatalogoDto(
     fun toRemoto(): ProductoRemoto = ProductoRemoto(
         id = id, nombre = nombre, categoria = categoria,
         precio = precioCentimos / 100.0, disponible = disponible, revision = revision,
+        descripcion = descripcion,
     )
 }
 
@@ -499,9 +504,9 @@ data class IdentityLayout(
 )
 
 /**
- * Enlace público del establecimiento (ficha o carta). `url_publica` la construye
- * Identity con sus envs (FICHA_NEGOCIO_URL_BASE / CARTA_URL_BASE); Bar solo la
- * consume y muestra, nunca concatena dominios ni rutas.
+ * Enlace público del establecimiento (web o carta). `url_publica` la construye
+ * Identity con `WEB_NEGOCIO_URL_BASE`; Bar solo la consume y muestra, nunca
+ * concatena dominios ni rutas. `tipo=ficha_negocio` es alias legado de `web`.
  */
 @Serializable
 data class IdentityEnlacePublico(
@@ -799,7 +804,7 @@ object IdentityNegocioClient {
             .getOrNull()?.let { it.salas to it.mesas }
     }
 
-    // ── Enlaces públicos del establecimiento (ficha_negocio | carta) ─────────
+    // ── Enlaces públicos del establecimiento (web | carta) ───────────────────
 
     /** `POST /v1/establecimientos/{id}/enlaces` — crea el enlace; idempotente: si ya
      *  existe uno activo del mismo tipo devuelve 200 con el existente (y 201 al crear). */
@@ -932,6 +937,7 @@ object IdentityNegocioClient {
             ProductoPayload(
                 nombre = op.nombre,
                 categoria = op.categoria.orEmpty(),
+                descripcion = op.descripcion,
                 destino = op.destino ?: "barra",
                 precioCentimos = op.precioCentimos ?: 0,
                 moneda = op.moneda,

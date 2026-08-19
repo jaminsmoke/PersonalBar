@@ -44,9 +44,11 @@ import com.jaminsmoke.personalbar.lan.IdentityEnlacePublico
 import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 
 /**
- * Panel «Enlaces del negocio»: QR públicos de la ficha y la carta. Muestra una
- * tarjeta por tipo (ficha_negocio | carta): si hay enlace activo, su QR y URL
- * (fuente de Identity) con acciones rotar/revocar; si no, botón para crearlo.
+ * Panel «Enlaces del negocio»: QR públicos de la web y de la carta, oficios
+ * distintos (promocional vs mesa). Muestra una tarjeta por tipo (`web` | `carta`):
+ * si hay enlace activo, su QR y URL (fuente de Identity) con acciones rotar/revocar;
+ * si no, botón para crearlo. La tarjeta web también reconoce el alias legado
+ * `ficha_negocio`.
  */
 @Composable
 fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
@@ -102,7 +104,8 @@ fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
                 items(TipoEnlacePublico.entries, key = { it.apiValor }) { tipo ->
                     EnlaceTarjeta(
                         titulo = stringResource(tipo.labelRes),
-                        enlace = enlaces.firstOrNull { e -> e.tipo == tipo.apiValor && esActivo(e) },
+                        ayuda = stringResource(tipo.ayudaRes),
+                        enlace = enlaces.firstOrNull { it.cubreTipo(tipo) },
                         trabajando = trabajando,
                         onCrear = { viewModel.crear(tipo) },
                         onRotar = { viewModel.rotar(it) },
@@ -135,14 +138,11 @@ fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
     }
 }
 
-/** Un enlace es «activo» si Identity lo marca así (los revocados/rotados se descartan). */
-private fun esActivo(enlace: IdentityEnlacePublico): Boolean =
-    enlace.estado.equals("activo", ignoreCase = true)
-
 /** Tarjeta de un tipo de enlace: QR + URL con acciones, o botón de creación si falta. */
 @Composable
 private fun EnlaceTarjeta(
     titulo: String,
+    ayuda: String,
     enlace: IdentityEnlacePublico?,
     trabajando: Boolean,
     onCrear: () -> Unit,
@@ -159,6 +159,12 @@ private fun EnlaceTarjeta(
                 text = titulo,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = ayuda,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
 

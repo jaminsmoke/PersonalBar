@@ -22,7 +22,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * reasigna `productos.id` de slug a UUID (migración de datos; el esquema no cambia);
  * v13 añade `operaciones_catalogo` (outbox del sync de carta) y `producto_sync`
  * (revisión canónica por producto); v14 añade `catalogo_sync_estado`
- * (cursor global del pull de deltas `GET /sync/cambios`).
+ * (cursor global del pull de deltas `GET /sync/cambios`); v15 añade modificadores
+ * y subfamilias de carta; v16 añade `descripcion` (copy público del plato) en
+ * `productos` y `operaciones_catalogo`.
  * Schema exportado a `app/schemas/` para versionar migraciones futuras igual
  * que Commander.
  */
@@ -51,7 +53,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         OpcionModificador::class,
         ProductoGrupo::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -316,6 +318,17 @@ abstract class AppDatabase : RoomDatabase() {
                         "grupoId TEXT NOT NULL, " +
                         "PRIMARY KEY (productoId, grupoId))"
                 )
+            }
+        }
+
+        /**
+         * v15→v16: copy público del plato (`descripcion`) en catálogo y outbox.
+         * Nullable: productos y operaciones previas quedan sin texto.
+         */
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE productos ADD COLUMN descripcion TEXT")
+                db.execSQL("ALTER TABLE operaciones_catalogo ADD COLUMN descripcion TEXT")
             }
         }
     }

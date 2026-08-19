@@ -394,6 +394,34 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v15_a_v16_anade_descripcion() {
+        helper.createDatabase(TEST_DB, 15).use { db ->
+            db.execSQL(
+                "INSERT INTO productos (id, nombre, categoria, precio, disponible, permiteNota) " +
+                    "VALUES ('p-1', 'Caña', 'Bebida', 2.0, 1, 0)"
+            )
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 16, true, AppDatabase.MIGRATION_15_16)
+        db.use {
+            val cursor = it.query("SELECT nombre, descripcion FROM productos WHERE id = 'p-1'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("Caña", c.getString(0))
+                assertEquals("descripcion arranca null", null, c.getString(1))
+            }
+            it.execSQL(
+                "UPDATE productos SET descripcion = 'De barril' WHERE id = 'p-1'"
+            )
+            val after = it.query("SELECT descripcion FROM productos WHERE id = 'p-1'")
+            after.use { c ->
+                c.moveToFirst()
+                assertEquals("De barril", c.getString(0))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }

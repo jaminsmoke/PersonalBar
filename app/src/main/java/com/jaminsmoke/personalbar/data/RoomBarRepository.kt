@@ -147,8 +147,10 @@ class RoomBarRepository(
         val ok = inner.crearRonda(ronda)
         if (ok) persist { dao.replaceRondas(inner.rondas.value); dao.replaceTickets(ticketsActuales()) }
         return ok
-    }    override fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean): Boolean {
-        val ok = inner.crearProducto(nombre, categoria, precio, subfamilia, permiteNota)
+    }
+
+    override fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean, descripcion: String?): Boolean {
+        val ok = inner.crearProducto(nombre, categoria, precio, subfamilia, permiteNota, descripcion)
         if (ok) persist {
             dao.replaceProductos(inner.catalogo.value)
             dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value)
@@ -156,8 +158,8 @@ class RoomBarRepository(
         return ok
     }
 
-    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String?, permiteNota: Boolean): Boolean {
-        val ok = inner.editarProducto(id, nombre, categoria, precio, disponible, subfamilia, permiteNota)
+    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String?, permiteNota: Boolean, descripcion: String?): Boolean {
+        val ok = inner.editarProducto(id, nombre, categoria, precio, disponible, subfamilia, permiteNota, descripcion)
         if (ok) persist {
             dao.replaceProductos(inner.catalogo.value)
             dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value)

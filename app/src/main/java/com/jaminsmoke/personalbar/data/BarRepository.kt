@@ -71,10 +71,10 @@ interface BarRepository {
     fun crearRonda(ronda: Ronda): Boolean
 
     /** @return true si se creó el producto con id UUID; false si el nombre o la categoría están vacíos. */
-    fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String? = null, permiteNota: Boolean = false): Boolean
+    fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String? = null, permiteNota: Boolean = false, descripcion: String? = null): Boolean
 
     /** @return true si se actualizó; false si no existe o los campos quedan vacíos. No cambia el id. */
-    fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String? = null, permiteNota: Boolean = false): Boolean
+    fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String? = null, permiteNota: Boolean = false, descripcion: String? = null): Boolean
 
     /** @return true si se borró; false si no existe. */
     fun borrarProducto(id: String): Boolean

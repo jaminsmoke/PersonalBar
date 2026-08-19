@@ -68,6 +68,8 @@ data class Producto(
     val subfamilia: String? = null,
     /** El producto admite nota libre en la línea (p. ej. «sin cebolla»). */
     val permiteNota: Boolean = false,
+    /** Copy público del plato (web/carta Identity); null = no se pinta. Máx. 800. */
+    val descripcion: String? = null,
 )
 
 /** Línea de una ronda/ticket: producto + cantidad. */
@@ -425,6 +427,7 @@ data class OperacionCatalogo(
     val precioCentimos: Int? = null,
     val moneda: String = "EUR",
     val disponible: Boolean = true,
+    val descripcion: String? = null,
     val creadaEn: Long = System.currentTimeMillis(),
 )
 

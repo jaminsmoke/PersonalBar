@@ -13,15 +13,39 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Tipos de enlace público del negocio (valores que Identity acepta en `tipo`). */
-enum class TipoEnlacePublico(val apiValor: String, val labelRes: Int) {
-    FICHA_NEGOCIO("ficha_negocio", R.string.enlaces_tipo_ficha),
-    CARTA("carta", R.string.enlaces_tipo_carta),
+/** Alias HTTP deprecado de Identity; se persiste y se lista como `web`. */
+const val TIPO_ENLACE_WEB_LEGADO = "ficha_negocio"
+
+/**
+ * Tipos de enlace público del negocio (valores canónicos que Identity acepta en `tipo`).
+ * Dos oficios distintos: web (material promocional) y carta (mesa/servilletero).
+ * Un tercer QR futuro se añade aquí; no concatenar rutas sobre `url_publica`.
+ */
+enum class TipoEnlacePublico(val apiValor: String, val labelRes: Int, val ayudaRes: Int) {
+    WEB("web", R.string.enlaces_tipo_web, R.string.enlaces_tipo_web_ayuda),
+    CARTA("carta", R.string.enlaces_tipo_carta, R.string.enlaces_tipo_carta_ayuda),
+}
+
+/** true si Identity marca el enlace como activo (revocados/rotados se descartan). */
+fun IdentityEnlacePublico.estaActivo(): Boolean =
+    estado.equals("activo", ignoreCase = true)
+
+/**
+ * true si este enlace cubre la tarjeta [tarjeta]: `web` acepta también el alias
+ * legado `ficha_negocio` (Identity lo persiste como `web` tras la migración 0011).
+ */
+fun IdentityEnlacePublico.cubreTipo(tarjeta: TipoEnlacePublico): Boolean {
+    if (!estaActivo()) return false
+    return when (tarjeta) {
+        TipoEnlacePublico.WEB ->
+            tipo == TipoEnlacePublico.WEB.apiValor || tipo == TIPO_ENLACE_WEB_LEGADO
+        TipoEnlacePublico.CARTA -> tipo == TipoEnlacePublico.CARTA.apiValor
+    }
 }
 
 /**
  * Panel «Enlaces del negocio»: crear (idempotente), listar, revocar y rotar los
- * enlaces públicos (ficha + carta) contra Identity. Los enlaces son datos efímeros
+ * enlaces públicos (web + carta) contra Identity. Los enlaces son datos efímeros
  * de Identity (se rotan/revocan y el QR debe estar fresco), así que se consultan
  * directo al cliente — no se espejan en Room.
  */

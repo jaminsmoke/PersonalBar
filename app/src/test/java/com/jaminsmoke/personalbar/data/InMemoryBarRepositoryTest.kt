@@ -259,6 +259,47 @@ class InMemoryBarRepositoryTest {
     // ── Modificadores y subfamilias (carta) ────────────────────────────────
 
     @Test
+    fun crearProductoGuardaYEncolaDescripcion() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Negroni", "Bebida", 8.0, descripcion = "  Gin, vermut y Campari  "))
+        val p = repo.catalogo.value.single()
+        assertEquals("Gin, vermut y Campari", p.descripcion)
+        assertEquals("Gin, vermut y Campari", repo.operacionesCatalogo.value.single().descripcion)
+    }
+
+    @Test
+    fun crearProductoDescripcionVaciaSeNormalizaANull() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 2.0, descripcion = "   "))
+        assertNull(repo.catalogo.value.single().descripcion)
+        assertNull(repo.operacionesCatalogo.value.single().descripcion)
+    }
+
+    @Test
+    fun editarProductoActualizaDescripcion() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Negroni", "Bebida", 8.0))
+        val id = repo.catalogo.value.single().id
+        assertTrue(repo.editarProducto(id, "Negroni", "Bebida", 8.0, true, descripcion = "Clásico italiano"))
+        assertEquals("Clásico italiano", repo.catalogo.value.single().descripcion)
+        assertEquals("Clásico italiano", repo.operacionesCatalogo.value.last().descripcion)
+    }
+
+    @Test
+    fun aplicarCambiosCatalogoAplicaDescripcionRemota() {
+        val repo = InMemoryBarRepository(
+            catalogoInicial = listOf(Producto("p1", "Caña", "Bebida", descripcion = "Local")),
+        )
+        repo.aplicarCambiosCatalogo(
+            listOf(
+                CambioRemoto("p1", "actualizar", ProductoRemoto("p1", "Caña", "Bebida", 2.5, true, 1, descripcion = "De barril")),
+            ),
+            revisionActual = 1,
+        )
+        assertEquals("De barril", repo.catalogo.value.single().descripcion)
+    }
+
+    @Test
     fun crearProductoGuardaSubfamiliaYPermiteNota() {
         val repo = InMemoryBarRepository()
         assertTrue(repo.crearProducto("Coca-Cola", "Bebida", 2.0, subfamilia = "Zero", permiteNota = true))

@@ -98,17 +98,27 @@ class IdentityClientsTest {
     fun enlacesListaDecodificaConUrlPublica() {
         val json = """
             [
-              {"id":"e-1","establecimiento_id":"est-1","tipo":"ficha_negocio","slug":"mi-bar-ficha","estado":"activo","expira_en":"2026-12-31T00:00:00Z","url_publica":"https://ficha.siberia.solutions/negocio?slug=mi-bar-ficha"},
-              {"id":"e-2","establecimiento_id":"est-1","tipo":"carta","slug":"mi-bar-carta","estado":"activo","url_publica":"https://carta.siberia.solutions/carta?slug=mi-bar-carta"}
+              {"id":"e-1","establecimiento_id":"est-1","tipo":"web","slug":"mi-bar-web","estado":"activo","expira_en":"2026-12-31T00:00:00Z","url_publica":"https://web.negocio.siberia.solutions/negocios/mi-bar-web"},
+              {"id":"e-2","establecimiento_id":"est-1","tipo":"carta","slug":"mi-bar-carta","estado":"activo","url_publica":"https://web.negocio.siberia.solutions/negocios/mi-bar-carta/carta"}
             ]
         """.trimIndent()
         val lista = LanJson.decodeFromString<List<IdentityEnlacePublico>>(json)
         assertEquals(2, lista.size)
-        assertEquals("ficha_negocio", lista[0].tipo)
+        assertEquals("web", lista[0].tipo)
         assertEquals("est-1", lista[0].establecimientoId)
-        assertEquals("https://ficha.siberia.solutions/negocio?slug=mi-bar-ficha", lista[0].urlPublica)
+        assertEquals("https://web.negocio.siberia.solutions/negocios/mi-bar-web", lista[0].urlPublica)
         assertEquals("carta", lista[1].tipo)
-        assertEquals("https://carta.siberia.solutions/carta?slug=mi-bar-carta", lista[1].urlPublica)
+        assertEquals("https://web.negocio.siberia.solutions/negocios/mi-bar-carta/carta", lista[1].urlPublica)
+    }
+
+    @Test
+    fun enlacesListaDecodificaAliasLegadoFichaNegocio() {
+        val json = """
+            [{"id":"e-1","establecimiento_id":"est-1","tipo":"ficha_negocio","slug":"mi-bar-ficha","estado":"activo","url_publica":"https://web.negocio.siberia.solutions/negocios/mi-bar-ficha"}]
+        """.trimIndent()
+        val lista = LanJson.decodeFromString<List<IdentityEnlacePublico>>(json)
+        assertEquals("ficha_negocio", lista[0].tipo)
+        assertEquals("https://web.negocio.siberia.solutions/negocios/mi-bar-ficha", lista[0].urlPublica)
     }
 
     @Test
