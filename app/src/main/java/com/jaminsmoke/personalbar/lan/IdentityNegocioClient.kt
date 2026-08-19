@@ -17,6 +17,7 @@ import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.CambioRemoto
 import com.jaminsmoke.personalbar.data.ConflictoRemoto
 import com.jaminsmoke.personalbar.data.Mesa
+import com.jaminsmoke.personalbar.data.NotificacionRemoto
 import com.jaminsmoke.personalbar.data.OperacionCatalogo
 import com.jaminsmoke.personalbar.data.ProductoRemoto
 import com.jaminsmoke.personalbar.data.Sala
@@ -317,6 +318,21 @@ internal fun mapearResultadoResolucion(code: Int, text: String): ResultadoResolu
     }
 }
 
+/**
+ * Mapea la respuesta de `POST /notificaciones/{id}/leer` a [ResultadoMarcarLeida].
+ * 2xx → [ResultadoMarcarLeida.Leida]; 404 `identity.notificacion_no_encontrada` →
+ * [ResultadoMarcarLeida.NoEncontrada]; 404/410 fantasma → EstablecimientoFantasma.
+ */
+internal fun mapearResultadoMarcarLeida(code: Int, text: String): ResultadoMarcarLeida {
+    if (esEstablecimientoFantasma(code, text)) return ResultadoMarcarLeida.EstablecimientoFantasma
+    if (code in 200..299) return ResultadoMarcarLeida.Leida
+    val error = runCatching { LanJson.decodeFromString<IdentityError>(text) }.getOrNull()
+    if (code == 404 && error?.code == "identity.notificacion_no_encontrada") {
+        return ResultadoMarcarLeida.NoEncontrada
+    }
+    return ResultadoMarcarLeida.Error
+}
+
 /** Producto de `GET /catalogo` (snapshot completo). */
 @Serializable
 data class ProductoCatalogoDto(
@@ -427,6 +443,45 @@ sealed interface ResultadoResolucion {
     data object YaResuelta : ResultadoResolucion        // 409 identity.conflicto_sync_ya_resuelto
     data object EstablecimientoFantasma : ResultadoResolucion
     data object Error : ResultadoResolucion
+}
+
+/** Notificación de `GET /notificaciones` (bandeja durable del negocio). */
+@Serializable
+data class NotificacionNegocioDto(
+    val id: String = "",
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    @SerialName("conflicto_id") val conflictoId: String? = null,
+    val tipo: String = "",
+    val titulo: String = "",
+    val mensaje: String = "",
+    val payload: Map<String, String> = emptyMap(),
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("read_at") val readAt: String? = null,
+) {
+    fun toRemoto(): NotificacionRemoto = NotificacionRemoto(
+        id = id,
+        conflictoId = conflictoId,
+        tipo = tipo,
+        titulo = titulo,
+        mensaje = mensaje,
+        deepLink = payload["deep_link"],
+        leida = readAt != null,
+    )
+}
+
+/** Resultado de `GET /notificaciones`. */
+sealed interface ResultadoNotificaciones {
+    data class Lista(val notificaciones: List<NotificacionRemoto>) : ResultadoNotificaciones
+    data object EstablecimientoFantasma : ResultadoNotificaciones
+    data object Error : ResultadoNotificaciones
+}
+
+/** Resultado de `POST /notificaciones/{id}/leer`. */
+sealed interface ResultadoMarcarLeida {
+    data object Leida : ResultadoMarcarLeida
+    data object NoEncontrada : ResultadoMarcarLeida        // 404 identity.notificacion_no_encontrada
+    data object EstablecimientoFantasma : ResultadoMarcarLeida
+    data object Error : ResultadoMarcarLeida
 }
 
 @Serializable
@@ -978,5 +1033,43 @@ object IdentityNegocioClient {
                 body = body, token = negocioToken,
             )
             mapearResultadoResolucion(code, text)
+        }
+
+    // ── Notificaciones de negocio (bandeja durable) ─────────────────────────
+
+    /**
+     * `GET /v1/establecimientos/{id}/notificaciones?solo_no_leidas=` → bandeja
+     * durable de avisos del negocio. [soloNoLeidas] filtra las pendientes de
+     * lectura (lo usa el badge de la campana del header); false devuelve todas
+     * ordenadas por fecha descendente.
+     */
+    suspend fun listarNotificaciones(soloNoLeidas: Boolean = false): ResultadoNotificaciones =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext ResultadoNotificaciones.Error
+            val (code, text) = IdentityHttp.request(
+                baseUrl, "GET", "/v1/establecimientos/$id/notificaciones?solo_no_leidas=$soloNoLeidas",
+                token = negocioToken,
+            )
+            if (esEstablecimientoFantasma(code, text)) return@withContext ResultadoNotificaciones.EstablecimientoFantasma
+            if (code !in 200..299) return@withContext ResultadoNotificaciones.Error
+            val resp = runCatching { LanJson.decodeFromString<List<NotificacionNegocioDto>>(text) }.getOrNull()
+                ?: return@withContext ResultadoNotificaciones.Error
+            ResultadoNotificaciones.Lista(resp.map { it.toRemoto() })
+        }
+
+    /**
+     * `POST /v1/establecimientos/{id}/notificaciones/{id}/leer` → marca leída
+     * (idempotente en server). 404 `identity.notificacion_no_encontrada` →
+     * [ResultadoMarcarLeida.NoEncontrada] (ya no existe; el contador se corrige
+     * en el siguiente pull).
+     */
+    suspend fun marcarNotificacionLeida(notificacionId: String): ResultadoMarcarLeida =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext ResultadoMarcarLeida.Error
+            val (code, text) = IdentityHttp.request(
+                baseUrl, "POST", "/v1/establecimientos/$id/notificaciones/$notificacionId/leer",
+                token = negocioToken,
+            )
+            mapearResultadoMarcarLeida(code, text)
         }
 }

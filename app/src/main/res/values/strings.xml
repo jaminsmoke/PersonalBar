@@ -199,6 +199,18 @@
     <string name="conflictos_si">Sí</string>
     <string name="conflictos_no">No</string>
 
+    <!-- Notificaciones del negocio (bandeja) -->
+    <string name="notificaciones_campana">Notificaciones</string>
+    <string name="notificaciones_titulo">Notificaciones</string>
+    <string name="notificaciones_subtitulo">Avisos del negocio</string>
+    <string name="notificaciones_refrescar">Refrescar</string>
+    <string name="notificaciones_cerrar">Cerrar</string>
+    <string name="notificaciones_vacio_titulo">Sin notificaciones</string>
+    <string name="notificaciones_vacio_subtitulo">Aquí verás los avisos de cambios pendientes de decisión.</string>
+    <string name="notificaciones_error">No se pudo cargar las notificaciones</string>
+    <string name="notificaciones_reintentar">Reintentar</string>
+    <string name="notificaciones_abrir_conflicto">Revisar conflicto</string>
+
     <!-- Enlaces del negocio (QR públicos) -->
     <string name="enlaces_titulo">Enlaces del negocio</string>
     <string name="enlaces_subtitulo">QR públicos de la ficha y la carta para distribuir a clientes</string>

@@ -2,10 +2,12 @@ package com.jaminsmoke.personalbar.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.ConflictoRemoto
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import com.jaminsmoke.personalbar.lan.ResultadoConflictos
+import com.jaminsmoke.personalbar.lan.ResultadoNotificaciones
 import com.jaminsmoke.personalbar.lan.ResultadoResolucion
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,6 +77,7 @@ class ConflictosViewModel : ViewModel() {
             when (resultado) {
                 ResultadoResolucion.Resuelta -> {
                     _uiState.value = _uiState.value.copy(resolviendo = sinResolviendo, aviso = avisoOk)
+                    sincronizarNotificacionResuelta(conflicto.id)
                     refrescar()
                 }
                 ResultadoResolucion.Obsoleta -> {
@@ -89,12 +92,32 @@ class ConflictosViewModel : ViewModel() {
                         resolviendo = sinResolviendo,
                         aviso = R.string.conflictos_ya_resuelta,
                     )
+                    sincronizarNotificacionResuelta(conflicto.id)
                     refrescar()
                 }
                 ResultadoResolucion.EstablecimientoFantasma,
                 ResultadoResolucion.Error,
                 -> _uiState.value = _uiState.value.copy(resolviendo = sinResolviendo, error = true)
             }
+        }
+    }
+
+    /**
+     * Tras resolver un conflicto, la notificación asociada queda sin marcar en el
+     * server (`resolve_conflict` no toca `read_at`). Best-effort: la marca leída
+     * por `conflicto_id` y refresca el badge de la campana.
+     */
+    private fun sincronizarNotificacionResuelta(conflictoId: String) {
+        viewModelScope.launch {
+            when (val r = IdentityNegocioClient.listarNotificaciones(soloNoLeidas = true)) {
+                is ResultadoNotificaciones.Lista -> r.notificaciones
+                    .firstOrNull { it.conflictoId == conflictoId }
+                    ?.let { IdentityNegocioClient.marcarNotificacionLeida(it.id) }
+                ResultadoNotificaciones.EstablecimientoFantasma,
+                ResultadoNotificaciones.Error,
+                -> Unit
+            }
+            PersonalBarApp.get().refrescarNotificacionesNoLeidas()
         }
     }
 }

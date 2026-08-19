@@ -20,6 +20,7 @@ import com.jaminsmoke.personalbar.lan.Conectividad
 import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import com.jaminsmoke.personalbar.lan.PresenciaEmisor
+import com.jaminsmoke.personalbar.lan.ResultadoNotificaciones
 import com.jaminsmoke.personalbar.lan.ResultadoPullCatalogo
 import com.jaminsmoke.personalbar.lan.ResultadoSyncCatalogo
 import com.jaminsmoke.personalbar.lan.toInvitacion
@@ -150,6 +151,14 @@ class PersonalBarApp : Application() {
     private val syncCatalogoScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var syncCatalogoJob: Job? = null
 
+    /** Scope del proyector de notificaciones (badge de la campana del header). */
+    private val notificacionesScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var notificacionesJob: Job? = null
+
+    /** Notificaciones no-leídas del negocio (alimenta el badge de la campana del header). */
+    private val _notificacionesNoLeidas = MutableStateFlow(0)
+    val notificacionesNoLeidas: StateFlow<Int> = _notificacionesNoLeidas.asStateFlow()
+
     /** true = ya se decidió el seed/divergencia contra el server (evita re-snapshots). */
     private var catalogoSeedDecidido = false
 
@@ -168,6 +177,7 @@ class PersonalBarApp : Application() {
         startSessionTimeout()
         startProyeccionOficio()
         startSyncCatalogo()
+        startProyeccionNotificaciones()
         startRevalidacionSesion()
         if (ok) presenciaEmisor.start(presenciaScope)
         return ok
@@ -178,6 +188,7 @@ class PersonalBarApp : Application() {
         presenciaEmisor.stop(enviarAdios = true)
         stopProyeccionOficio()
         stopSyncCatalogo()
+        stopProyeccionNotificaciones()
         stopRevalidacionSesion()
         stopSessionTimeout()
         lanServer.stopServer()
@@ -315,6 +326,47 @@ class PersonalBarApp : Application() {
     private fun stopSyncCatalogo() {
         syncCatalogoJob?.cancel()
         syncCatalogoJob = null
+    }
+
+    /**
+     * Proyector de la bandeja de notificaciones: refresca el contador de
+     * no-leídas (badge de la campana del header) con
+     * `GET /notificaciones?solo_no_leidas=true` cada [NOTIFICACIONES_INTERVALO_MS].
+     * Best-effort: no bloquea la LAN ni el sync de catálogo.
+     */
+    private fun startProyeccionNotificaciones() {
+        notificacionesJob?.cancel()
+        notificacionesJob = notificacionesScope.launch {
+            while (isActive) {
+                delay(NOTIFICACIONES_INTERVALO_MS)
+                pullNoLeidas()
+            }
+        }
+    }
+
+    private fun stopProyeccionNotificaciones() {
+        notificacionesJob?.cancel()
+        notificacionesJob = null
+    }
+
+    /** Pull puntual del contador de no-leídas (tras marcar leída o resolver un conflicto). */
+    fun refrescarNotificacionesNoLeidas() {
+        notificacionesScope.launch { pullNoLeidas() }
+    }
+
+    private suspend fun pullNoLeidas() {
+        if (!IdentityNegocioClient.conectado) {
+            _notificacionesNoLeidas.value = 0
+            return
+        }
+        when (val resultado = IdentityNegocioClient.listarNotificaciones(soloNoLeidas = true)) {
+            is ResultadoNotificaciones.Lista -> _notificacionesNoLeidas.value = resultado.notificaciones.size
+            ResultadoNotificaciones.EstablecimientoFantasma -> {
+                marcarEstablecimientoFantasma()
+                _notificacionesNoLeidas.value = 0
+            }
+            ResultadoNotificaciones.Error -> Unit // reintento en el siguiente ciclo
+        }
     }
 
     /**
@@ -478,6 +530,7 @@ class PersonalBarApp : Application() {
         sessionScope.cancel()
         proyeccionScope.cancel()
         syncCatalogoScope.cancel()
+        notificacionesScope.cancel()
         super.onTerminate()
     }
 
@@ -493,6 +546,9 @@ class PersonalBarApp : Application() {
 
         /** Cada cuánto intenta drenar el outbox de catálogo (10 s). */
         const val SYNC_CATALOGO_INTERVALO_MS: Long = 10_000L
+
+        /** Cada cuánto se refresca el contador de notificaciones no-leídas (10 s). */
+        const val NOTIFICACIONES_INTERVALO_MS: Long = 10_000L
 
         /** Cada cuánto se revalida la sesión contra el VPS (24 h). */
         const val SESION_REVALIDACION_INTERVALO_MS: Long = 24 * 60 * 60 * 1000L

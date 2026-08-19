@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +42,6 @@ import androidx.compose.ui.unit.dp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.ui.CamarerosScreen
 import com.jaminsmoke.personalbar.ui.CartaScreen
-import com.jaminsmoke.personalbar.ui.ConflictosScreen
 import com.jaminsmoke.personalbar.ui.EnlacesNegocioScreen
 import com.jaminsmoke.personalbar.ui.PerfilEstablecimientoScreen
 
@@ -61,7 +59,6 @@ enum class GestionAcceso(
     PERFIL(R.string.gestion_perfil, Icons.Default.Storefront),
     JORNADAS(R.string.gestion_jornadas, Icons.Default.Schedule),
     HORARIO(R.string.gestion_horario, Icons.Default.AccessTime),
-    CONFLICTOS(R.string.gestion_conflictos, Icons.Default.Warning),
 }
 
 /**
@@ -125,12 +122,6 @@ fun GestionScreen(
             onVolver = { seleccion = null },
         ) {
             HorarioScreen()
-        }
-        GestionAcceso.CONFLICTOS -> GestionSubPantalla(
-            titulo = stringResource(R.string.gestion_conflictos),
-            onVolver = { seleccion = null },
-        ) {
-            ConflictosScreen()
         }
     }
 }
