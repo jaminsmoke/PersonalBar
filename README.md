@@ -109,6 +109,7 @@ Bar es el **host de sala** de la familia. Puerto fijo: **8787** (solo LAN privad
 | `/v1/tickets/{id}/recogido` | POST | Marca recogido; sale de la cola |
 | `/v1/estado` | GET | Estado completo (establecimiento, salas, colas, servidos, mesas) |
 | `/v1/eventos` | SSE | Push de eventos `ticket.preparado` / `ticket.recogido` |
+| UDP **8788** | Beacon | Presencia al activar/cortar Local activo (`phbar1`; Commander confirma con `/health`) |
 
 El **ciclo del ticket** en Bar: `PENDIENTE → PREPARADO → RECOGIDO`. «Preparado» registra quién lo preparó; «Recogido» lo saca de la cola. El cierre del ciclo (SERVIDO, ronda finalizada en mesa) vive en Commander.
 

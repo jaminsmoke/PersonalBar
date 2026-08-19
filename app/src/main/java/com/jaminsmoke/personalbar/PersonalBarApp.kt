@@ -18,6 +18,7 @@ import com.jaminsmoke.personalbar.lan.BarLanServer
 import com.jaminsmoke.personalbar.lan.Conectividad
 import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
+import com.jaminsmoke.personalbar.lan.PresenciaEmisor
 import com.jaminsmoke.personalbar.lan.toInvitacion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -136,6 +137,11 @@ class PersonalBarApp : Application() {
     private val proyeccionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var proyeccionJob: Job? = null
 
+    private val presenciaScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val presenciaEmisor by lazy {
+        PresenciaEmisor(this) { repository.establecimiento.value.nombre }
+    }
+
     /** Arranca el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
     fun startLocal(): Boolean {
         val ok = lanServer.startServer()
@@ -146,11 +152,13 @@ class PersonalBarApp : Application() {
         startSessionTimeout()
         startProyeccionOficio()
         startRevalidacionSesion()
+        if (ok) presenciaEmisor.start(presenciaScope)
         return ok
     }
 
     /** Para el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
     fun stopLocal() {
+        presenciaEmisor.stop(enviarAdios = true)
         stopProyeccionOficio()
         stopRevalidacionSesion()
         stopSessionTimeout()
