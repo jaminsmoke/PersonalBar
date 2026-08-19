@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Storefront
@@ -43,7 +43,8 @@ import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.ui.CamarerosScreen
 import com.jaminsmoke.personalbar.ui.CartaScreen
 import com.jaminsmoke.personalbar.ui.EnlacesNegocioScreen
-import com.jaminsmoke.personalbar.ui.PerfilEstablecimientoScreen
+import com.jaminsmoke.personalbar.ui.LocalScreen
+import com.jaminsmoke.personalbar.ui.PerfilCuentaScreen
 
 /**
  * Acceso del hub de Gestión: icono + nombre de contexto debajo.
@@ -56,9 +57,9 @@ enum class GestionAcceso(
     CAMAREROS(R.string.gestion_camareros, Icons.Default.People),
     CARTA(R.string.gestion_carta, Icons.Default.RestaurantMenu),
     ENLACES(R.string.gestion_enlaces, Icons.Default.QrCode),
-    PERFIL(R.string.gestion_perfil, Icons.Default.Storefront),
+    LOCAL(R.string.gestion_local, Icons.Default.Storefront),
+    PERFIL(R.string.gestion_perfil, Icons.Default.ManageAccounts),
     JORNADAS(R.string.gestion_jornadas, Icons.Default.Schedule),
-    HORARIO(R.string.gestion_horario, Icons.Default.AccessTime),
 }
 
 /**
@@ -105,23 +106,23 @@ fun GestionScreen(
         ) {
             EnlacesNegocioScreen()
         }
+        GestionAcceso.LOCAL -> GestionSubPantalla(
+            titulo = stringResource(R.string.gestion_local),
+            onVolver = { seleccion = null },
+        ) {
+            LocalScreen()
+        }
         GestionAcceso.PERFIL -> GestionSubPantalla(
             titulo = stringResource(R.string.gestion_perfil),
             onVolver = { seleccion = null },
         ) {
-            PerfilEstablecimientoScreen()
+            PerfilCuentaScreen()
         }
         GestionAcceso.JORNADAS -> GestionSubPantalla(
             titulo = stringResource(R.string.gestion_jornadas),
             onVolver = { seleccion = null },
         ) {
             JornadasScreen()
-        }
-        GestionAcceso.HORARIO -> GestionSubPantalla(
-            titulo = stringResource(R.string.gestion_horario),
-            onVolver = { seleccion = null },
-        ) {
-            HorarioScreen()
         }
     }
 }

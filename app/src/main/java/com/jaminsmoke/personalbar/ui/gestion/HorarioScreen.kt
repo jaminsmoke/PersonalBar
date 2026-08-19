@@ -20,9 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringArrayResource
@@ -34,6 +31,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.HorarioLocal
+import com.jaminsmoke.personalbar.data.horarioLocalARemoto
+import com.jaminsmoke.personalbar.data.horarioRemotoALocal
+import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
+import com.jaminsmoke.personalbar.lan.IdentityTurnoHorario
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,7 +48,7 @@ data class DiaHorario(
     var cierra: String,
 )
 
-/** Edición del horario del establecimiento: carga de Room, valida y persiste local. */
+/** Edición del horario: Identity es canónico; Room es espejo offline. */
 class HorarioViewModel : ViewModel() {
     private val repository = PersonalBarApp.get().repository
 
@@ -57,20 +58,37 @@ class HorarioViewModel : ViewModel() {
     private val _guardado = MutableStateFlow(false)
     val guardado: StateFlow<Boolean> = _guardado.asStateFlow()
 
-    /** Mensaje de validación (null = sin error). */
+    /** Mensaje de validación o sync (null = sin error). */
     private val _error = MutableStateFlow<Int?>(null)
     val error: StateFlow<Int?> = _error.asStateFlow()
 
+    /** Turnos extra del remoto (ISO 1–7) que la UI no edita y el PATCH reenvía. */
+    private var extras: Map<Int, List<IdentityTurnoHorario>> = emptyMap()
+
     init {
-        val actual = repository.horario.value.associateBy { it.diaSemana }
-        _dias.value = (1..7).map { dia ->
-            val diaBd = actual[dia]
-            DiaHorario(
-                dia = dia,
-                abierto = diaBd?.abierto == true,
-                abre = diaBd?.abre ?: "10:00",
-                cierra = diaBd?.cierra ?: "22:00",
-            )
+        viewModelScope.launch { cargar() }
+    }
+
+    private suspend fun cargar() {
+        val remoto = IdentityNegocioClient.obtenerHorario()
+        if (remoto != null) {
+            if (remoto.dias.isEmpty() && repository.horario.value.any { it.abierto }) {
+                extras = emptyMap()
+                _dias.value = diasDesdeLocal(repository.horario.value)
+            } else {
+                val mapeado = horarioRemotoALocal(remoto.dias)
+                extras = mapeado.extras
+                repository.guardarHorario(mapeado.locales)
+                _dias.value = diasDesdeLocal(mapeado.locales)
+            }
+        } else {
+            extras = emptyMap()
+            _dias.value = diasDesdeLocal(repository.horario.value)
+            if (IdentityNegocioClient.conectado) {
+                _error.value = R.string.horario_sync_error
+            } else {
+                _error.value = R.string.horario_offline
+            }
         }
     }
 
@@ -89,7 +107,7 @@ class HorarioViewModel : ViewModel() {
         }
     }
 
-    /** Valida (`abre < cierra` en los días abiertos) y persiste en Room. */
+    /** Valida (`abre < cierra` en los días abiertos), persiste en Room y PATCH Identity. */
     fun guardar() {
         val diasAbiertos = _dias.value.filter { it.abierto }
         val invalido = diasAbiertos.any { dia ->
@@ -101,17 +119,45 @@ class HorarioViewModel : ViewModel() {
             _error.value = R.string.horario_invalido
             return
         }
-        val horario = _dias.value.mapNotNull { dia ->
+        val horario = _dias.value.map { dia ->
             if (dia.abierto) {
-                val abre = dia.abre.padStart(5, '0')
-                val cierra = dia.cierra.padStart(5, '0')
-                HorarioLocal(diaSemana = dia.dia, abre = abre, cierra = cierra)
+                HorarioLocal(
+                    diaSemana = dia.dia,
+                    abre = dia.abre.padStart(5, '0'),
+                    cierra = dia.cierra.padStart(5, '0'),
+                )
             } else {
                 HorarioLocal(diaSemana = dia.dia, abre = null, cierra = null)
             }
         }
         repository.guardarHorario(horario)
-        _guardado.value = true
+        viewModelScope.launch {
+            val remoto = IdentityNegocioClient.guardarHorario(horarioLocalARemoto(horario, extras))
+            if (remoto != null) {
+                _guardado.value = true
+                _error.value = null
+            } else {
+                _guardado.value = true
+                _error.value = if (IdentityNegocioClient.conectado) {
+                    R.string.horario_sync_error
+                } else {
+                    R.string.horario_offline
+                }
+            }
+        }
+    }
+}
+
+private fun diasDesdeLocal(locales: List<HorarioLocal>): List<DiaHorario> {
+    val actual = locales.associateBy { it.diaSemana }
+    return (1..7).map { dia ->
+        val diaBd = actual[dia]
+        DiaHorario(
+            dia = dia,
+            abierto = diaBd?.abierto == true,
+            abre = diaBd?.abre ?: "10:00",
+            cierra = diaBd?.cierra ?: "22:00",
+        )
     }
 }
 
@@ -125,7 +171,7 @@ private fun String.toMinuto(): Int? {
     return h * 60 + m
 }
 
-/** Editor de horario del establecimiento (local, Room v11; sin sync a Identity aún). */
+/** Editor de horario del establecimiento (Identity canónico; Room espejo). */
 @Composable
 fun HorarioScreen(
     viewModel: HorarioViewModel = viewModel(),

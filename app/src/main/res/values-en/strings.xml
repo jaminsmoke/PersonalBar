@@ -14,9 +14,9 @@
     <string name="gestion_camareros">Waiters</string>
     <string name="gestion_carta">Menu</string>
     <string name="gestion_enlaces">QR codes</string>
+    <string name="gestion_local">Venue</string>
     <string name="gestion_perfil">Profile</string>
     <string name="gestion_jornadas">Shifts</string>
-    <string name="gestion_horario">Opening hours</string>
     <string name="gestion_conflictos">Conflicts</string>
     <string name="jornadas_titulo">Staff shifts</string>
     <string name="jornadas_vacio">No shifts in this period</string>
@@ -31,6 +31,8 @@
     <string name="horario_guardado">Opening hours saved</string>
     <string name="horario_guardar">Save opening hours</string>
     <string name="horario_invalido">Opening time must be before closing time</string>
+    <string name="horario_sync_error">Could not sync opening hours with Identity</string>
+    <string name="horario_offline">Offline: hours stay on this station until you reconnect</string>
     <string-array name="dias_semana_corto">
         <item>Mon</item>
         <item>Tue</item>
@@ -321,9 +323,9 @@
     <string name="sesion_tipo_pub">Pub</string>
     <string name="sesion_tipo_copas">Cocktail bar</string>
 
-    <!-- Venue profile -->
-    <string name="perfil_titulo">Venue profile</string>
-    <string name="perfil_subtitulo">Venue name, type and logo. Identity is the source of truth</string>
+    <!-- Business account profile -->
+    <string name="perfil_titulo">Profile</string>
+    <string name="perfil_subtitulo">Email and password of the business account</string>
     <string name="perfil_logo">Logo</string>
     <string name="perfil_cambiar_logo">Change logo</string>
     <string name="perfil_borrar_logo">Remove logo</string>
@@ -351,6 +353,40 @@
     <string name="perfil_password_corta">The password must be at least 8 characters</string>
     <string name="perfil_password_no_coincide">Passwords do not match</string>
     <string name="perfil_password_error">Could not change the password</string>
+
+    <!-- Venue (establishment): identity, website, photos, hours, appearance -->
+    <string name="local_seccion_identidad">Identity</string>
+    <string name="local_seccion_web">Website</string>
+    <string name="local_seccion_fotos">Photos</string>
+    <string name="local_seccion_horario">Hours</string>
+    <string name="local_seccion_apariencia">Appearance</string>
+    <string name="local_eslogan">Tagline</string>
+    <string name="local_descripcion">Description</string>
+    <string name="local_direccion">Address</string>
+    <string name="local_ciudad">City</string>
+    <string name="local_telefono">Phone</string>
+    <string name="local_email_contacto">Contact email</string>
+    <string name="local_web">Own website</string>
+    <string name="local_instagram">Instagram</string>
+    <string name="local_facebook">Facebook</string>
+    <string name="local_tiktok">TikTok</string>
+    <string name="local_guardar_web">Save website</string>
+    <string name="local_hero">Cover image</string>
+    <string name="local_cambiar_hero">Change cover</string>
+    <string name="local_quitar_hero">Remove cover</string>
+    <string name="local_galeria">Gallery</string>
+    <string name="local_anadir_foto">Add photo</string>
+    <string name="local_quitar_foto">Remove</string>
+    <string name="local_fotos_error">Could not update the image</string>
+    <string name="local_color">Primary color (hex)</string>
+    <string name="local_tz">Time zone</string>
+    <string name="local_plantilla">Template: %1$s</string>
+    <string name="local_web_publica">Public website</string>
+    <string name="local_web_publica_aviso">If off, the site answers unavailable (the logo stays public)</string>
+    <string name="local_mostrar_equipo">Show staff on the website</string>
+    <string name="local_mostrar_equipo_aviso">Only waiters who opted in appear on the site</string>
+    <string name="local_guardar_apariencia">Save appearance</string>
+    <string name="local_guardado">Saved to Identity</string>
 
     <!-- Voice in queues -->
     <string name="voz_escuchar">Listen</string>
