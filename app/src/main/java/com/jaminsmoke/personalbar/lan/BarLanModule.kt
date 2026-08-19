@@ -88,7 +88,10 @@ fun Application.barModule(repository: BarRepository) {
     routing {
         get("/health") {
             call.respondText(
-                HealthPayload.json(establecimiento = repository.establecimiento.value.nombre),
+                HealthPayload.json(
+                    establecimiento = repository.establecimiento.value.nombre,
+                    establecimientoId = repository.identityConfig.value.establecimientoUuid,
+                ),
                 ContentType.Application.Json,
             )
         }

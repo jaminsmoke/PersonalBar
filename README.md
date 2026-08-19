@@ -102,7 +102,7 @@ Bar es el **host de sala** de la familia. Puerto fijo: **8787** (solo LAN privad
 
 | Endpoint | Método | Descripción |
 |---|---|---|
-| `/health` | GET | Estado del nodo |
+| `/health` | GET | Estado del nodo (`establecimiento_id` = UUID Identity cuando está vinculado) |
 | `/v1/sesion` | POST | Consulta de lista blanca para el candado UX de Commander |
 | `/v1/rondas` | POST | Recibe una ronda (idempotente por `id`) → tickets BARRA/COCINA |
 | `/v1/tickets/{id}/preparado` | POST | Marca preparado (con `preparado_por`) |
