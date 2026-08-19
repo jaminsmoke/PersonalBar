@@ -34,15 +34,15 @@ class CartaViewModel : ViewModel() {
     val error: StateFlow<Int?> = _error.asStateFlow()
 
     /** @return true si se creó; false si los campos obligatorios quedan vacíos. */
-    fun crear(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean): Boolean {
-        val ok = repository.crearProducto(nombre, categoria, precio, subfamilia, permiteNota)
+    fun crear(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean, descripcion: String?): Boolean {
+        val ok = repository.crearProducto(nombre, categoria, precio, subfamilia, permiteNota, descripcion)
         _error.value = if (ok) null else R.string.carta_error_nombre_categoria
         return ok
     }
 
     /** @return true si se actualizó; false si no existe o los campos quedan vacíos. */
-    fun editar(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String?, permiteNota: Boolean): Boolean {
-        val ok = repository.editarProducto(id, nombre, categoria, precio, disponible, subfamilia, permiteNota)
+    fun editar(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String?, permiteNota: Boolean, descripcion: String?): Boolean {
+        val ok = repository.editarProducto(id, nombre, categoria, precio, disponible, subfamilia, permiteNota, descripcion)
         _error.value = if (ok) null else R.string.carta_error_nombre_categoria
         return ok
     }

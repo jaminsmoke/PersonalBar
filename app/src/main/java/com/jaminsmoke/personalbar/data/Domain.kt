@@ -47,6 +47,16 @@ fun destinoSyncDesdeCategoria(categoria: String): String = when (destinoDesdeCat
     Destino.COCINA -> "cocina"
 }
 
+/** Techo de Identity (`ProductoPayload.descripcion`, max_length=800). */
+const val DESCRIPCION_PRODUCTO_MAX: Int = 800
+
+/** Copy público del plato: trim, vacío → null, recorte a [DESCRIPCION_PRODUCTO_MAX]. */
+fun normalizarDescripcionProducto(raw: String?): String? {
+    val texto = raw?.trim().orEmpty()
+    if (texto.isEmpty()) return null
+    return texto.take(DESCRIPCION_PRODUCTO_MAX)
+}
+
 /**
  * Producto canónico remoto (snapshot/delta de Identity) para aplicar al mirror
  * local. [precio] en euros (el server devuelve `precio_centimos`); [revision]
@@ -59,6 +69,7 @@ data class ProductoRemoto(
     val precio: Double,
     val disponible: Boolean,
     val revision: Int,
+    val descripcion: String? = null,
 )
 
 /** Cambio de catálogo (delta) del server. [producto] null = archivado (tombstone). */

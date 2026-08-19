@@ -42,6 +42,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
+import com.jaminsmoke.personalbar.data.DESCRIPCION_PRODUCTO_MAX
 import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.GrupoModificador
 import com.jaminsmoke.personalbar.data.OpcionModificador
@@ -139,6 +140,7 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
                                 disponible = !producto.disponible,
                                 subfamilia = producto.subfamilia,
                                 permiteNota = producto.permiteNota,
+                                descripcion = producto.descripcion,
                             )
                         },
                     )
@@ -151,6 +153,7 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
         CartaDialogo(
             titulo = stringResource(R.string.carta_nuevo_producto),
             nombreInicial = "",
+            descripcionInicial = "",
             categoriaInicial = CATEGORIAS.first().first,
             precioInicial = "",
             subfamiliaInicial = "",
@@ -159,8 +162,8 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
             grupos = grupos,
             asignados = emptySet(),
             onToggleGrupo = {},
-            onConfirm = { nombre, categoria, precio, subfamilia, permiteNota, disponible ->
-                if (viewModel.crear(nombre, categoria, precio, subfamilia, permiteNota)) creando = false
+            onConfirm = { nombre, descripcion, categoria, precio, subfamilia, permiteNota, disponible ->
+                if (viewModel.crear(nombre, categoria, precio, subfamilia, permiteNota, descripcion)) creando = false
             },
             onDismiss = { creando = false },
         )
@@ -174,6 +177,7 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
         CartaDialogo(
             titulo = stringResource(R.string.carta_editar),
             nombreInicial = producto.nombre,
+            descripcionInicial = producto.descripcion.orEmpty(),
             categoriaInicial = producto.categoria,
             precioInicial = precioTexto(producto.precio, conSimbolo = false),
             subfamiliaInicial = producto.subfamilia.orEmpty(),
@@ -185,8 +189,8 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
                 if (grupoId in asignados) viewModel.desasignarGrupo(producto.id, grupoId)
                 else viewModel.asignarGrupo(producto.id, grupoId)
             },
-            onConfirm = { nombre, categoria, precio, subfamilia, permiteNota, disponible ->
-                if (viewModel.editar(producto.id, nombre, categoria, precio, disponible, subfamilia, permiteNota)) {
+            onConfirm = { nombre, descripcion, categoria, precio, subfamilia, permiteNota, disponible ->
+                if (viewModel.editar(producto.id, nombre, categoria, precio, disponible, subfamilia, permiteNota, descripcion)) {
                     editando = null
                 }
             },
@@ -298,6 +302,7 @@ private fun CartaFila(
 private fun CartaDialogo(
     titulo: String,
     nombreInicial: String,
+    descripcionInicial: String,
     categoriaInicial: String,
     precioInicial: String,
     subfamiliaInicial: String,
@@ -306,10 +311,11 @@ private fun CartaDialogo(
     grupos: List<GrupoModificador>,
     asignados: Set<String>,
     onToggleGrupo: (String) -> Unit,
-    onConfirm: (nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean, disponible: Boolean) -> Unit,
+    onConfirm: (nombre: String, descripcion: String?, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean, disponible: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var nombre by remember { mutableStateOf(nombreInicial) }
+    var descripcion by remember { mutableStateOf(descripcionInicial) }
     var categoria by remember { mutableStateOf(categoriaInicial) }
     var precio by remember { mutableStateOf(precioInicial) }
     var subfamilia by remember { mutableStateOf(subfamiliaInicial) }
@@ -327,6 +333,15 @@ private fun CartaDialogo(
                     label = { Text(stringResource(R.string.carta_campo_nombre)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it.take(DESCRIPCION_PRODUCTO_MAX) },
+                    label = { Text(stringResource(R.string.carta_campo_descripcion)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -412,6 +427,7 @@ private fun CartaDialogo(
                 onClick = {
                     onConfirm(
                         nombre,
+                        descripcion,
                         categoria,
                         precio.toDoubleOrNull() ?: 0.0,
                         subfamilia.trim().takeIf { it.isNotEmpty() },

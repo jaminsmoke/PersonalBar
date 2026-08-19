@@ -51,14 +51,14 @@ import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 
 /**
  * Perfil del establecimiento (local): nombre, tipo y logo editables contra Identity
- * (fuente de verdad), más email/UUID informativos y enlace a la ficha web pública.
+ * (fuente de verdad), más email/UUID informativos y enlace a la web pública.
  */
 @Composable
 fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = viewModel()) {
     val establecimiento by viewModel.establecimiento.collectAsState()
     val sesion by viewModel.sesion.collectAsState()
     val logoBytes by viewModel.logoBytes.collectAsState()
-    val fichaUrl by viewModel.fichaUrl.collectAsState()
+    val webUrl by viewModel.webUrl.collectAsState()
     val visibleDirectorio by viewModel.visibleDirectorio.collectAsState()
     val trabajando by viewModel.trabajando.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
@@ -339,15 +339,15 @@ fun PerfilEstablecimientoScreen(viewModel: PerfilEstablecimientoViewModel = view
         }
         Spacer(Modifier.height(12.dp))
 
-        // Ficha web pública
+        // Web pública del establecimiento
         Button(
-            onClick = { fichaUrl?.let { uriHandler.openUri(it) } },
-            enabled = fichaUrl != null,
+            onClick = { webUrl?.let { uriHandler.openUri(it) } },
+            enabled = webUrl != null,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
                 text = stringResource(
-                    if (fichaUrl != null) R.string.perfil_abrir_ficha else R.string.perfil_sin_ficha
+                    if (webUrl != null) R.string.perfil_abrir_web else R.string.perfil_sin_web
                 )
             )
         }

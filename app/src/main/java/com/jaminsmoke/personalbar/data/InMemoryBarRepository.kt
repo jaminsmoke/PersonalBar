@@ -188,9 +188,12 @@ class InMemoryBarRepository(
             precioCentimos = producto?.let { (it.precio.coerceAtLeast(0.0) * 100).roundToInt() },
             moneda = "EUR",
             disponible = producto?.disponible ?: true,
+            descripcion = producto?.descripcion,
         )
         _operacionesCatalogo.update { it + op }
-    }    override fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean): Boolean {
+    }
+
+    override fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean, descripcion: String?): Boolean {
         val n = nombre.trim()
         val c = categoria.trim()
         if (n.isEmpty() || c.isEmpty()) return false
@@ -201,13 +204,14 @@ class InMemoryBarRepository(
             precio = precio.coerceAtLeast(0.0),
             subfamilia = subfamilia?.trim()?.takeIf { it.isNotEmpty() },
             permiteNota = permiteNota,
+            descripcion = normalizarDescripcionProducto(descripcion),
         )
         _catalogo.update { it + producto }
         encolarOperacionCatalogo(producto.id, "crear", producto)
         return true
     }
 
-    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String?, permiteNota: Boolean): Boolean {
+    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String?, permiteNota: Boolean, descripcion: String?): Boolean {
         val n = nombre.trim()
         val c = categoria.trim()
         if (n.isEmpty() || c.isEmpty()) return false
@@ -219,6 +223,7 @@ class InMemoryBarRepository(
             disponible = disponible,
             subfamilia = subfamilia?.trim()?.takeIf { it.isNotEmpty() },
             permiteNota = permiteNota,
+            descripcion = normalizarDescripcionProducto(descripcion),
         )
         _catalogo.update { list -> list.map { if (it.id == id) editado else it } }
         encolarOperacionCatalogo(id, "actualizar", editado)
@@ -787,7 +792,8 @@ class InMemoryBarRepository(
                     categoria = p.categoria,
                     precio = p.precio,
                     disponible = p.disponible,
-                ) ?: Producto(p.id, p.nombre, p.categoria, p.precio, p.disponible)
+                    descripcion = p.descripcion,
+                ) ?: Producto(p.id, p.nombre, p.categoria, p.precio, p.disponible, descripcion = p.descripcion)
                 catalogo = if (existente != null) {
                     catalogo.map { if (it.id == p.id) local else it }
                 } else {

@@ -55,7 +55,28 @@ class SyncCatalogoClientTest {
         assertTrue(json.contains("\"action\":\"crear\""))
         assertTrue(json.contains("\"base_revision\":0"))
         assertTrue(json.contains("\"precio_centimos\":250"))
+        assertTrue(json.contains("\"descripcion\":null"))
         assertTrue(json.contains("\"client_created_at\":\"2026-08-19T12:00:00.000+00:00\""))
+    }
+
+    @Test
+    fun operacionSyncRequestSerializaDescripcion() {
+        val req = OperacionSyncRequest(
+            operationId = "op-1",
+            deviceId = "bar-tablet-01",
+            aggregateId = "agg-1",
+            action = "crear",
+            payload = ProductoPayload(
+                nombre = "Negroni",
+                categoria = "Bebida",
+                descripcion = "Gin, vermut y Campari",
+                destino = "barra",
+                precioCentimos = 800,
+            ),
+            clientCreatedAt = "2026-08-19T12:00:00.000+00:00",
+        )
+        val json = LanJson.encodeToString(req)
+        assertTrue(json.contains("\"descripcion\":\"Gin, vermut y Campari\""))
     }
 
     @Test
@@ -63,12 +84,14 @@ class SyncCatalogoClientTest {
         val snap = ProductoSnapshot(
             id = "p1", nombre = "Caña", categoria = "Bebida", destino = "barra",
             precioCentimos = 250, moneda = "EUR", disponible = true, revision = 1,
+            descripcion = "Caña de barril",
         )
         val remoto = snap.toRemoto()
         assertEquals("p1", remoto.id)
         assertEquals("Caña", remoto.nombre)
         assertEquals(2.5, remoto.precio, 0.0)
         assertEquals(1, remoto.revision)
+        assertEquals("Caña de barril", remoto.descripcion)
         assertFalse(snap.esArchivado)
     }
 

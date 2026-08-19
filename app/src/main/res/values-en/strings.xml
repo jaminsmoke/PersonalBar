@@ -162,6 +162,7 @@
     <string name="carta_subtitulo">Bar product catalog</string>
     <string name="carta_nuevo_producto">New product</string>
     <string name="carta_campo_nombre">Name</string>
+    <string name="carta_campo_descripcion">Description (optional, shown on the public menu)</string>
     <string name="carta_campo_categoria">Category</string>
     <string name="carta_campo_precio">Price</string>
     <string name="carta_campo_disponible">Available</string>
@@ -236,9 +237,11 @@
 
     <!-- Venue links (public QR) -->
     <string name="enlaces_titulo">Venue links</string>
-    <string name="enlaces_subtitulo">Public QR codes for the profile and menu to share with customers</string>
-    <string name="enlaces_tipo_ficha">Venue profile</string>
+    <string name="enlaces_subtitulo">Public QR codes for the venue website and the menu</string>
+    <string name="enlaces_tipo_web">Venue website</string>
+    <string name="enlaces_tipo_web_ayuda">For business cards, flyers and promotional print</string>
     <string name="enlaces_tipo_carta">Menu</string>
+    <string name="enlaces_tipo_carta_ayuda">For tables, napkin holders and room displays</string>
     <string name="enlaces_sin_identity">Connect to Identity to manage links</string>
     <string name="enlaces_sin_enlace">No link of this type yet</string>
     <string name="enlaces_crear">Create QR</string>
@@ -247,6 +250,7 @@
     <string name="enlaces_revocar_titulo">Revoke link?</string>
     <string name="enlaces_revocar_mensaje">The link will stop working and printed QR codes will become invalid.</string>
     <string name="enlaces_estado_activo">Active</string>
+    <string name="enlaces_abrir">Open link</string>
     <string name="enlaces_qr_desc">QR for %1$s</string>
 
 
@@ -331,8 +335,8 @@
     <string name="perfil_tipo">Type</string>
     <string name="perfil_email">Email</string>
     <string name="perfil_uuid">Venue ID</string>
-    <string name="perfil_abrir_ficha">Open web profile</string>
-    <string name="perfil_sin_ficha">No web profile: create it in Links</string>
+    <string name="perfil_abrir_web">Open website</string>
+    <string name="perfil_sin_web">No public website: create it in Links</string>
     <string name="perfil_guardar_error">Could not save to Identity</string>
     <string name="perfil_logo_error">Could not update the logo</string>
     <string name="perfil_visible_directorio">Visible in the directory</string>

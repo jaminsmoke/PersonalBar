@@ -23,8 +23,8 @@ import kotlinx.coroutines.withContext
 /**
  * Perfil del establecimiento (local) contra Identity, fuente de verdad. Muestra
  * nombre, tipo, logo, email y UUID; edita nombre+tipo vía `PATCH /v1/establecimientos/{id}`
- * y el logo del local (`POST/GET/DELETE .../logo`). La ficha web pública se enlaza con el
- * `url_publica` del enlace `ficha_negocio` (ya disponible desde #80).
+ * y el logo del local (`POST/GET/DELETE .../logo`). La web pública se enlaza con el
+ * `url_publica` del enlace `web` (o el alias legado `ficha_negocio`).
  */
 class PerfilEstablecimientoViewModel : ViewModel() {
     private val app = PersonalBarApp.get()
@@ -43,9 +43,9 @@ class PerfilEstablecimientoViewModel : ViewModel() {
     private val _logoBytes = MutableStateFlow<ByteArray?>(null)
     val logoBytes: StateFlow<ByteArray?> = _logoBytes.asStateFlow()
 
-    /** URL pública de la ficha del negocio (del enlace `ficha_negocio`; null si no hay). */
-    private val _fichaUrl = MutableStateFlow<String?>(null)
-    val fichaUrl: StateFlow<String?> = _fichaUrl.asStateFlow()
+    /** URL pública de la web del negocio (enlace `web` o alias `ficha_negocio`; null si no hay). */
+    private val _webUrl = MutableStateFlow<String?>(null)
+    val webUrl: StateFlow<String?> = _webUrl.asStateFlow()
 
     /** Opt-in del dueño para aparecer en el directorio de establecimientos (sin PII). */
     private val _visibleDirectorio = MutableStateFlow(false)
@@ -62,13 +62,13 @@ class PerfilEstablecimientoViewModel : ViewModel() {
         cargar()
     }
 
-    /** Carga la sesión persistida, el logo, la URL de la ficha y el opt-in del directorio. */
+    /** Carga la sesión persistida, el logo, la URL de la web y el opt-in del directorio. */
     fun cargar() {
         viewModelScope.launch {
             _sesion.value = app.db.barDao().getSesionNegocio()
             _logoBytes.value = IdentityNegocioClient.obtenerLogoEstablecimiento()
-            _fichaUrl.value = IdentityNegocioClient.listarEnlacesPublicos()
-                .firstOrNull { it.tipo == "ficha_negocio" && it.estado.equals("activo", ignoreCase = true) }
+            _webUrl.value = IdentityNegocioClient.listarEnlacesPublicos()
+                .firstOrNull { it.cubreTipo(TipoEnlacePublico.WEB) }
                 ?.urlPublica
             _visibleDirectorio.value = IdentityNegocioClient.obtenerEstablecimiento()?.visibleDirectorio ?: false
         }
