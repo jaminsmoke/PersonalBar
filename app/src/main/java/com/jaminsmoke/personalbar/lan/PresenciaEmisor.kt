@@ -69,11 +69,7 @@ class PresenciaEmisor(
         socket.send(DatagramPacket(cuerpo, cuerpo.size, destino, PresenciaLan.PUERTO))
     }
 
-    // `dhcpInfo` está deprecado en API 33+ pero sigue funcionando en todas las APIs y
-    // es la vía más simple para la dirección de broadcast; la alternativa (LinkProperties
-    // de ConnectivityManager) añade parsing de prefijos sin beneficio para un beacon
-    // best-effort con fallback a 255.255.255.255.
-    @Suppress("DEPRECATION")
+    // `dhcpInfo` está deprecado en API 33+; el fallback es 255.255.255.255.
     @Suppress("DEPRECATION")
     private fun destinoBroadcast(): InetAddress {
         return try {
