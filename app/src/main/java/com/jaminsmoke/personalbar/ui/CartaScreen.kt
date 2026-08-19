@@ -61,6 +61,7 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
     val catalogo by viewModel.catalogo.collectAsState()
     val grupos by viewModel.gruposModificador.collectAsState()
     val error by viewModel.error.collectAsState()
+    val pendingWeb by viewModel.operacionesCatalogo.collectAsState()
 
     var creando by remember { mutableStateOf(false) }
     var editando by remember { mutableStateOf<Producto?>(null) }
@@ -99,6 +100,14 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
                 text = stringResource(res),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        if (pendingWeb.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.carta_sync_pendiente),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 8.dp),
             )
         }

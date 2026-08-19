@@ -479,8 +479,10 @@ class InMemoryBarRepositoryTest {
         val repo = InMemoryBarRepository()
         assertTrue(repo.crearProducto("Caña", "Bebida", 2.0))
         val id = repo.catalogo.value.single().id
+        repo.actualizarRevisionProducto(id, 1)
+        repo.eliminarOperacionCatalogo(repo.operacionesCatalogo.value.single().operationId)
         assertTrue(repo.borrarProducto(id))
-        val archivar = repo.operacionesCatalogo.value.last()
+        val archivar = repo.operacionesCatalogo.value.single()
         assertEquals("archivar", archivar.action)
         assertEquals(id, archivar.aggregateId)
         assertNull(archivar.nombre)
@@ -499,8 +501,54 @@ class InMemoryBarRepositoryTest {
     }
 
     @Test
+    fun crearProductoPrecioCeroNoEncolaEnOutbox() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 0.0))
+        assertTrue(repo.operacionesCatalogo.value.isEmpty())
+        assertEquals(1, repo.catalogo.value.size)
+    }
+
+    @Test
+    fun editarProductoSinRevisionYConPrecioEncolaCrear() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 0.0))
+        val id = repo.catalogo.value.single().id
+        assertTrue(repo.editarProducto(id, "Caña", "Bebida", 2.5, true))
+        val op = repo.operacionesCatalogo.value.single()
+        assertEquals("crear", op.action)
+        assertEquals(250, op.precioCentimos)
+    }
+
+    @Test
+    fun borrarProductoNuncaSincronizadoQuitaCrearYNoEncolaArchivar() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 2.0))
+        val id = repo.catalogo.value.single().id
+        assertEquals(1, repo.operacionesCatalogo.value.size)
+        assertTrue(repo.borrarProducto(id))
+        assertTrue(repo.operacionesCatalogo.value.isEmpty())
+    }
+
+    @Test
+    fun encolarSeedCatalogoOmitePrecioCero() {
+        val repo = InMemoryBarRepository(
+            catalogoInicial = listOf(
+                Producto("cana", "Caña", "Bebida", precio = 0.0),
+                Producto("tinto", "Tinto", "Bebida", precio = 3.0),
+            ),
+        )
+        repo.encolarSeedCatalogo()
+        assertEquals(listOf("tinto"), repo.operacionesCatalogo.value.map { it.aggregateId })
+    }
+
+    @Test
     fun encolarSeedCatalogoEncolaCrearSoloParaNoSincronizados() {
-        val repo = repo() // catálogo inicial: cana + croquetas, sin revisiones
+        val repo = InMemoryBarRepository(
+            catalogoInicial = listOf(
+                Producto("cana", "Caña", "Bebida", precio = 2.0),
+                Producto("croquetas", "Croquetas", "Comida", precio = 4.0),
+            ),
+        )
         repo.encolarSeedCatalogo()
         assertEquals(2, repo.operacionesCatalogo.value.size)
         assertTrue(repo.operacionesCatalogo.value.all { it.action == "crear" })

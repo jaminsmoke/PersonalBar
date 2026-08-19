@@ -134,10 +134,9 @@ class PersonalBarApp : Application() {
         _sesionEstado.value = sesionEstadoDe(_sesion.value, System.currentTimeMillis())
     }
 
-    /** Scope del timer de revalidación de la sesión (24 h). Vive ligado al proceso;
-     *  se arranca/para con el ciclo del nodo ([startLocal]/[stopLocal]), igual que
-     *  el timeout de sesiones: con el FGS activo el proceso sigue vivo en segundo
-     *  plano y la revalidación continúa. */
+    /** Scope del timer de revalidación de la sesión (24 h). Vive con la **sesión**
+     *  Identity (login / Recuérdame), no con Ktor: el VPS se revalida con Sala
+     *  encendida o apagada. */
     private val revalidacionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var revalidacionJob: Job? = null
 
@@ -146,8 +145,8 @@ class PersonalBarApp : Application() {
     private val proyeccionScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var proyeccionJob: Job? = null
 
-    /** Scope del proyector del sync de catálogo (outbox → Identity). Vive ligado al
-     *  proceso; se arranca/para con el ciclo del nodo ([startLocal]/[stopLocal]). */
+    /** Scope del proyector del sync de catálogo (outbox → Identity). Vive con la
+     *  sesión, no con el nodo LAN: la carta pública no espera a Sala activa. */
     private val syncCatalogoScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var syncCatalogoJob: Job? = null
 
@@ -176,18 +175,16 @@ class PersonalBarApp : Application() {
         _lanError.value = if (ok) null else R.string.local_error_arranque
         startSessionTimeout()
         startProyeccionOficio()
-        startSyncCatalogo()
-        startRevalidacionSesion()
         if (ok) presenciaEmisor.start(presenciaScope)
         return ok
     }
 
-    /** Para el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService. */
+    /** Para el nodo LAN y sincroniza [roomActive]. Lo invoca BarLanService.
+     *  No corta el puente Identity/VPS (catálogo, revalidación, notificaciones):
+     *  eso vive con la sesión, con o sin Ktor. */
     fun stopLocal() {
         presenciaEmisor.stop(enviarAdios = true)
         stopProyeccionOficio()
-        stopSyncCatalogo()
-        stopRevalidacionSesion()
         stopSessionTimeout()
         lanServer.stopServer()
         _roomActive.value = false
@@ -245,22 +242,23 @@ class PersonalBarApp : Application() {
     }
 
     /**
-     * Proyector del sync de catálogo (pull + push, best-effort, sin bloquear la LAN).
+     * Proyector del sync de catálogo (pull + push, best-effort). Independiente de
+     * Ktor: si hay sesión y red, corre; si no hay conectividad, el nodo LAN sigue
+     * y este loop reintenta. Primer ciclo inmediato (el delay va al final).
      *
      * Primer contacto: `GET /catalogo` (snapshot) para decidir el seed — si el server
-     * está en revisión 0, encola el catálogo local como `crear`; si ya tiene datos,
-     * marca divergencia (revisión manual) sin machacar. Después: `GET /sync/cambios`
-     * para aplicar deltas y avanzar el cursor. Push: drena el outbox con
-     * `POST /sync/operaciones`; `aplicada` → actualiza revisión y borra la fila,
-     * `conflicto`/`rechazada` → se conserva, `establecimiento fantasma` (404) →
-     * desvincula sin tocar el outbox.
+     * está en revisión 0, encola el catálogo local publicable (`precio > 0`) como
+     * `crear`; si ya tiene datos, marca divergencia (revisión manual) sin machacar.
+     * Después: `GET /sync/cambios`. Push: drena el outbox con `POST /sync/operaciones`.
      */
     private fun startSyncCatalogo() {
         syncCatalogoJob?.cancel()
         syncCatalogoJob = syncCatalogoScope.launch {
             while (isActive) {
-                delay(SYNC_CATALOGO_INTERVALO_MS)
-                if (!IdentityNegocioClient.conectado) continue
+                if (!IdentityNegocioClient.conectado) {
+                    delay(SYNC_CATALOGO_INTERVALO_MS)
+                    continue
+                }
 
                 // 1. PULL: snapshot en el primer contacto; deltas después.
                 if (!catalogoSeedDecidido) {
@@ -277,6 +275,7 @@ class PersonalBarApp : Application() {
                         }
                         ResultadoPullCatalogo.EstablecimientoFantasma -> {
                             marcarEstablecimientoFantasma()
+                            delay(SYNC_CATALOGO_INTERVALO_MS)
                             continue
                         }
                         ResultadoPullCatalogo.Error -> Unit // reintento
@@ -288,6 +287,7 @@ class PersonalBarApp : Application() {
                             repository.aplicarCambiosCatalogo(pull.cambios, pull.revisionActual)
                         ResultadoPullCatalogo.EstablecimientoFantasma -> {
                             marcarEstablecimientoFantasma()
+                            delay(SYNC_CATALOGO_INTERVALO_MS)
                             continue
                         }
                         ResultadoPullCatalogo.Error -> Unit // reintento
@@ -317,6 +317,7 @@ class PersonalBarApp : Application() {
                         ResultadoSyncCatalogo.Error -> Unit // reintento en el siguiente ciclo
                     }
                 }
+                delay(SYNC_CATALOGO_INTERVALO_MS)
             }
         }
     }
@@ -393,8 +394,8 @@ class PersonalBarApp : Application() {
 
     // ── Sesión de negocio: restauración, alta y validez ─────────────────────
 
-    /** Restaura la sesión persistida («Recuérdame») y su validez local. No revalida
-     *  aquí: el timer ([startRevalidacionSesion]) lo hace al arrancar el nodo. */
+    /** Restaura la sesión persistida («Recuérdame») y su validez local. Arranca el
+     *  puente VPS (revalidación, catálogo, notificaciones) aunque Sala esté apagada. */
     fun restaurarSesion() {
         sessionScope.launch {
             val guardada = db.barDao().getSesionNegocio()
@@ -404,7 +405,7 @@ class PersonalBarApp : Application() {
                 _sesionEstado.value = sesionEstadoDe(guardada, System.currentTimeMillis())
                 sessionScope.launch { _logoBytes.value = IdentityNegocioClient.obtenerLogo() }
                 sincronizarDesdeIdentity()
-                startProyeccionNotificaciones()
+                arrancarPuenteIdentity()
             }
         }
     }
@@ -424,14 +425,14 @@ class PersonalBarApp : Application() {
         }
         sessionScope.launch { _logoBytes.value = IdentityNegocioClient.obtenerLogo() }
         sincronizarDesdeIdentity()
-        startProyeccionNotificaciones()
+        arrancarPuenteIdentity()
     }
 
     /** Cierra la sesión (logout): desconecta Identity y limpia sesión + flag local. */
     fun cerrarSesion() {
         // Conservar `baseUrl` (config estática): si `desconectar()` la anulase, el
         // siguiente `loginNegocio` fallaría (IdentityHttp devuelve -1 con baseUrl null).
-        stopProyeccionNotificaciones()
+        pararPuenteIdentity()
         _notificacionesNoLeidas.value = 0
         IdentityNegocioClient.desconectarConservandoBaseUrl()
         _sesion.value = null
@@ -441,6 +442,20 @@ class PersonalBarApp : Application() {
         catalogoSeedDecidido = false
         repository.setIdentityConfig(IdentityConfig())
         sessionScope.launch { db.barDao().clearSesionNegocio() }
+    }
+
+    /** Puente Identity/VPS ligado a la sesión: catálogo, revalidación y notificaciones.
+     *  Independiente de Ktor (Sala activa). */
+    private fun arrancarPuenteIdentity() {
+        startRevalidacionSesion()
+        startSyncCatalogo()
+        startProyeccionNotificaciones()
+    }
+
+    private fun pararPuenteIdentity() {
+        stopRevalidacionSesion()
+        stopSyncCatalogo()
+        stopProyeccionNotificaciones()
     }
 
     /**
@@ -477,7 +492,7 @@ class PersonalBarApp : Application() {
         }
     }
 
-    /** Timer de revalidación: al arrancar el nodo y cada 24 h, si hay sesión con token. */
+    /** Timer de revalidación: al hidratar la sesión y cada 24 h, si hay token. */
     private fun startRevalidacionSesion() {
         revalidacionJob?.cancel()
         revalidacionJob = revalidacionScope.launch {
@@ -531,6 +546,7 @@ class PersonalBarApp : Application() {
     }
 
     override fun onTerminate() {
+        pararPuenteIdentity()
         stopLocal()
         sessionScope.cancel()
         proyeccionScope.cancel()
@@ -607,10 +623,8 @@ private fun posicionX(indice: Int): Float = 120f + (indice - 1) * 480f
 private fun posicionY(salaOrden: Int): Float = 120f + salaOrden * 640f
 
 /**
- * Catálogo canónico por defecto del nodo (v0.1). No es «datos demo»: mientras no
- * exista el editor de carta, el nodo necesita al menos un producto de Bebida y otro
- * de Comida para partir las rondas por destino. Se sustituirá por el catálogo
- * gestionado cuando aterrice el editor (ítem de seguimiento).
+ * Catálogo canónico por defecto del nodo (v0.1). Precio 0: sirve para partir
+ * rondas LAN; no se publica en la web hasta que el operador ponga un precio.
  */
 private fun catalogoPorDefecto(): List<Producto> = listOf(
     Producto(id = UUID.randomUUID().toString(), nombre = "Caña", categoria = "Bebida"),
