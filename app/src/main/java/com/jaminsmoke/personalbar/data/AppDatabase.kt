@@ -18,7 +18,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * (cola persistente de eventos por emitir a Identity); v10 añade
  * `sesion_negocio.validaHasta` (validez local de la sesión para login offline,
  * renovada +7 días en cada contacto con el VPS); v11 añade `horario_local`
- * (apertura/cierre del establecimiento por día, fuente local del puesto).
+ * (apertura/cierre del establecimiento por día, fuente local del puesto); v12
+ * reasigna `productos.id` de slug a UUID (migración de datos; el esquema no cambia);
+ * v13 añade `operaciones_catalogo` (outbox del sync de carta) y `producto_sync`
+ * (revisión canónica por producto); v14 añade `catalogo_sync_estado`
+ * (cursor global del pull de deltas `GET /sync/cambios`).
  * Schema exportado a `app/schemas/` para versionar migraciones futuras igual
  * que Commander.
  */
@@ -40,8 +44,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         JornadaLocal::class,
         ServicioPendiente::class,
         HorarioLocal::class,
+        OperacionCatalogo::class,
+        ProductoSync::class,
+        CatalogoSyncEstado::class,
     ],
-    version = 11,
+    version = 14,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -209,6 +216,68 @@ abstract class AppDatabase : RoomDatabase() {
                         "diaSemana INTEGER NOT NULL PRIMARY KEY, " +
                         "abre TEXT, " +
                         "cierra TEXT)"
+                )
+            }
+        }
+
+        /**
+         * v11→v12: reasigna `productos.id` de slug a un UUID (formato 8-4-4-4-12).
+         * Migración de datos sin cambio de esquema: `randomblob()` se evalúa por fila,
+         * así cada producto recibe un id único estable. Los tickets/rondas históricos
+         * conservan el slug antiguo en `lineas.productoId` (dead data tras el split).
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "UPDATE productos SET id = " +
+                        "lower(hex(randomblob(4))) || '-' || " +
+                        "lower(hex(randomblob(2))) || '-' || " +
+                        "lower(hex(randomblob(2))) || '-' || " +
+                        "lower(hex(randomblob(2))) || '-' || " +
+                        "lower(hex(randomblob(6)))"
+                )
+            }
+        }
+
+        /**
+         * v12→v13: outbox del sync de carta (`operaciones_catalogo`) y revisión
+         * canónica por producto (`producto_sync`). Tablas nuevas, arrancan vacías.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS operaciones_catalogo (" +
+                        "operationId TEXT NOT NULL PRIMARY KEY, " +
+                        "aggregateId TEXT NOT NULL, " +
+                        "action TEXT NOT NULL, " +
+                        "baseRevision INTEGER NOT NULL, " +
+                        "nombre TEXT, " +
+                        "categoria TEXT, " +
+                        "destino TEXT, " +
+                        "precioCentimos INTEGER, " +
+                        "moneda TEXT NOT NULL, " +
+                        "disponible INTEGER NOT NULL, " +
+                        "creadaEn INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS producto_sync (" +
+                        "aggregateId TEXT NOT NULL PRIMARY KEY, " +
+                        "revision INTEGER NOT NULL, " +
+                        "actualizadaEn INTEGER NOT NULL)"
+                )
+            }
+        }
+
+        /**
+         * v13→v14: `catalogo_sync_estado` (cursor global del pull de deltas,
+         * `GET /sync/cambios?desde=N`). Tabla nueva singleton, arranca vacía.
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS catalogo_sync_estado (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "desdeRevision INTEGER NOT NULL)"
                 )
             }
         }

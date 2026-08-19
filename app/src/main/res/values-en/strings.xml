@@ -250,6 +250,8 @@
     <string name="sesion_login_fallido">Incorrect email or password</string>
     <string name="sesion_registro_fallido">Could not create the account (email already registered?)</string>
     <string name="sesion_vincular_fallido">Could not link the venue</string>
+    <string name="sesion_establecimiento_desvinculado">The linked venue no longer exists on the server. Re-link to keep syncing.</string>
+    <string name="sesion_revincular">Re-link</string>
     <string name="sesion_tipo_bar">Bar</string>
     <string name="sesion_tipo_restaurante">Restaurant</string>
     <string name="sesion_tipo_cafeteria">Café</string>

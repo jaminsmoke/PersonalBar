@@ -1,6 +1,8 @@
 package com.jaminsmoke.personalbar.data
 
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -38,6 +40,9 @@ class InMemoryBarRepository(
     jornadasIniciales: List<JornadaLocal> = emptyList(),
     horarioInicial: List<HorarioLocal> = emptyList(),
     serviciosPendientesIniciales: List<ServicioPendiente> = emptyList(),
+    operacionesCatalogoIniciales: List<OperacionCatalogo> = emptyList(),
+    revisionesProductoIniciales: Map<String, Int> = emptyMap(),
+    catalogoSyncDesdeInicial: Int = 0,
 ) : BarRepository {
 
     private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>().also { it.addAll(rondasIniciales.map { r -> r.id }) }
@@ -64,6 +69,9 @@ class InMemoryBarRepository(
     private val _altasPendientes = MutableStateFlow(altasPendientesIniciales)
     private val _jornadas = MutableStateFlow(jornadasIniciales)
     private val _serviciosPendientes = MutableStateFlow(serviciosPendientesIniciales)
+    private val _operacionesCatalogo = MutableStateFlow(operacionesCatalogoIniciales)
+    private val _revisionesProducto = MutableStateFlow(revisionesProductoIniciales)
+    private val _catalogoSyncDesde = MutableStateFlow(catalogoSyncDesdeInicial)
     private val _horario = MutableStateFlow(horarioInicial)
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
@@ -93,6 +101,9 @@ class InMemoryBarRepository(
     override val altasPendientes: StateFlow<List<AltaPendiente>> = _altasPendientes.asStateFlow()
     override val jornadas: StateFlow<List<JornadaLocal>> = _jornadas.asStateFlow()
     override val serviciosPendientes: StateFlow<List<ServicioPendiente>> = _serviciosPendientes.asStateFlow()
+    override val operacionesCatalogo: StateFlow<List<OperacionCatalogo>> = _operacionesCatalogo.asStateFlow()
+    override val revisionesProducto: StateFlow<Map<String, Int>> = _revisionesProducto.asStateFlow()
+    override val catalogoSyncDesde: StateFlow<Int> = _catalogoSyncDesde.asStateFlow()
     override val horario: StateFlow<List<HorarioLocal>> = _horario.asStateFlow()
     override val eventos: SharedFlow<SalaEvent> = _eventos.asSharedFlow()
 
@@ -154,18 +165,30 @@ class InMemoryBarRepository(
 
     // ── Productos (catálogo) ─────────────────────────────────────────────────
 
+    /** Encola una operación de catálogo en el outbox (base_revision desde el mirror local). */
+    private fun encolarOperacionCatalogo(aggregateId: String, action: String, producto: Producto?) {
+        val op = OperacionCatalogo(
+            operationId = UUID.randomUUID().toString(),
+            aggregateId = aggregateId,
+            action = action,
+            baseRevision = _revisionesProducto.value[aggregateId] ?: 0,
+            nombre = producto?.nombre,
+            categoria = producto?.categoria,
+            destino = producto?.categoria?.let { destinoSyncDesdeCategoria(it) },
+            precioCentimos = producto?.let { (it.precio.coerceAtLeast(0.0) * 100).roundToInt() },
+            moneda = "EUR",
+            disponible = producto?.disponible ?: true,
+        )
+        _operacionesCatalogo.update { it + op }
+    }
+
     override fun crearProducto(nombre: String, categoria: String, precio: Double): Boolean {
         val n = nombre.trim()
         val c = categoria.trim()
         if (n.isEmpty() || c.isEmpty()) return false
-        val base = slugProducto(n).ifEmpty { "producto" }
-        var id = base
-        var sufijo = 2
-        while (_catalogo.value.any { it.id == id }) {
-            id = "$base-$sufijo"
-            sufijo++
-        }
-        _catalogo.update { it + Producto(id = id, nombre = n, categoria = c, precio = precio.coerceAtLeast(0.0)) }
+        val producto = Producto(id = UUID.randomUUID().toString(), nombre = n, categoria = c, precio = precio.coerceAtLeast(0.0))
+        _catalogo.update { it + producto }
+        encolarOperacionCatalogo(producto.id, "crear", producto)
         return true
     }
 
@@ -173,20 +196,19 @@ class InMemoryBarRepository(
         val n = nombre.trim()
         val c = categoria.trim()
         if (n.isEmpty() || c.isEmpty()) return false
-        if (_catalogo.value.none { it.id == id }) return false
-        _catalogo.update { list ->
-            list.map {
-                if (it.id == id) it.copy(nombre = n, categoria = c, precio = precio.coerceAtLeast(0.0), disponible = disponible)
-                else it
-            }
-        }
+        val existente = _catalogo.value.firstOrNull { it.id == id } ?: return false
+        val editado = existente.copy(nombre = n, categoria = c, precio = precio.coerceAtLeast(0.0), disponible = disponible)
+        _catalogo.update { list -> list.map { if (it.id == id) editado else it } }
+        encolarOperacionCatalogo(id, "actualizar", editado)
         return true
     }
 
     override fun borrarProducto(id: String): Boolean {
         val antes = _catalogo.value.size
         _catalogo.update { it.filterNot { p -> p.id == id } }
-        return _catalogo.value.size < antes
+        val borrado = _catalogo.value.size < antes
+        if (borrado) encolarOperacionCatalogo(id, "archivar", null)
+        return borrado
     }
 
     override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
@@ -626,5 +648,54 @@ class InMemoryBarRepository(
 
     override fun eliminarServicioPendiente(eventoId: String) {
         _serviciosPendientes.update { it.filterNot { s -> s.eventoId == eventoId } }
+    }
+
+    override fun eliminarOperacionCatalogo(operationId: String) {
+        _operacionesCatalogo.update { it.filterNot { op -> op.operationId == operationId } }
+    }
+
+    override fun actualizarRevisionProducto(aggregateId: String, revision: Int) {
+        _revisionesProducto.update { it + (aggregateId to revision) }
+    }
+
+    override fun quitarRevisionProducto(aggregateId: String) {
+        _revisionesProducto.update { it - aggregateId }
+    }
+
+    override fun encolarSeedCatalogo() {
+        val pendientes = _operacionesCatalogo.value.map { it.aggregateId }.toSet()
+        _catalogo.value.forEach { producto ->
+            // Solo productos sin revisión canónica y sin operación ya encolada.
+            if (producto.id !in _revisionesProducto.value && producto.id !in pendientes) {
+                encolarOperacionCatalogo(producto.id, "crear", producto)
+            }
+        }
+    }
+
+    override fun aplicarCambiosCatalogo(cambios: List<CambioRemoto>, revisionActual: Int) {
+        var catalogo = _catalogo.value
+        var revisiones = _revisionesProducto.value
+        cambios.forEach { cambio ->
+            if (cambio.action == "archivar" || cambio.producto == null) {
+                catalogo = catalogo.filterNot { it.id == cambio.aggregateId }
+                revisiones = revisiones - cambio.aggregateId
+            } else {
+                val p = cambio.producto
+                val local = Producto(p.id, p.nombre, p.categoria, p.precio, p.disponible)
+                catalogo = if (catalogo.any { it.id == p.id }) {
+                    catalogo.map { if (it.id == p.id) local else it }
+                } else {
+                    catalogo + local
+                }
+                revisiones = revisiones + (p.id to p.revision)
+            }
+        }
+        _catalogo.value = catalogo
+        _revisionesProducto.value = revisiones
+        _catalogoSyncDesde.value = revisionActual
+    }
+
+    override fun fijarCursorCatalogo(revision: Int) {
+        _catalogoSyncDesde.value = revision
     }
 }

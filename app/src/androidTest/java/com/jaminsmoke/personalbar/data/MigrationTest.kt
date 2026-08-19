@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -265,6 +266,79 @@ class MigrationTest {
                 c.moveToFirst()
                 assertEquals("10:00", c.getString(0))
                 assertEquals("22:00", c.getString(1))
+            }
+        }
+    }
+
+    @Test
+    fun migracion_v11_a_v12_reasigna_ids_a_uuid() {
+        // 1. BD en v11 con productos con id slug
+        helper.createDatabase(TEST_DB, 11).use { db ->
+            db.execSQL(
+                "INSERT INTO productos (id, nombre, categoria, precio, disponible) " +
+                    "VALUES ('cana', 'Caña', 'Bebida', 2.0, 1)"
+            )
+            db.execSQL(
+                "INSERT INTO productos (id, nombre, categoria, precio, disponible) " +
+                    "VALUES ('croquetas', 'Croquetas', 'Comida', 6.0, 1)"
+            )
+        }
+
+        // 2. Migrar a v12: los ids pasan a UUID (36 chars), el resto se conserva
+        val db = helper.runMigrationsAndValidate(TEST_DB, 12, true, AppDatabase.MIGRATION_11_12)
+        db.use {
+            val cursor = it.query("SELECT id, nombre FROM productos ORDER BY nombre")
+            cursor.use { c ->
+                c.moveToFirst()
+                val idCana = c.getString(0)
+                assertEquals("Caña", c.getString(1))
+                assertEquals(36, idCana.length)
+                c.moveToNext()
+                val idCroquetas = c.getString(0)
+                assertEquals("Croquetas", c.getString(1))
+                assertEquals(36, idCroquetas.length)
+                assertTrue(idCana != idCroquetas)
+            }
+        }
+    }
+
+    @Test
+    fun migracion_v12_a_v13_crea_outbox_y_revisiones() {
+        helper.createDatabase(TEST_DB, 12).close()
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 13, true, AppDatabase.MIGRATION_12_13)
+        db.use {
+            it.execSQL(
+                "INSERT INTO operaciones_catalogo (operationId, aggregateId, action, baseRevision, nombre, categoria, destino, precioCentimos, moneda, disponible, creadaEn) " +
+                    "VALUES ('op-1', 'p-1', 'crear', 0, 'Caña', 'Bebida', 'barra', 250, 'EUR', 1, 0)"
+            )
+            it.execSQL(
+                "INSERT INTO producto_sync (aggregateId, revision, actualizadaEn) VALUES ('p-1', 1, 0)"
+            )
+            val cursor = it.query("SELECT aggregateId FROM operaciones_catalogo WHERE operationId = 'op-1'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("p-1", c.getString(0))
+            }
+            val cursor2 = it.query("SELECT revision FROM producto_sync WHERE aggregateId = 'p-1'")
+            cursor2.use { c ->
+                c.moveToFirst()
+                assertEquals(1, c.getInt(0))
+            }
+        }
+    }
+
+    @Test
+    fun migracion_v13_a_v14_crea_catalogo_sync_estado() {
+        helper.createDatabase(TEST_DB, 13).close()
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 14, true, AppDatabase.MIGRATION_13_14)
+        db.use {
+            it.execSQL("INSERT INTO catalogo_sync_estado (id, desdeRevision) VALUES ('local', 3)")
+            val cursor = it.query("SELECT desdeRevision FROM catalogo_sync_estado WHERE id = 'local'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals(3, c.getInt(0))
             }
         }
     }

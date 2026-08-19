@@ -195,6 +195,39 @@ interface BarRepository {
     /** Elimina un evento de la cola (tras subirlo a Identity). */
     fun eliminarServicioPendiente(eventoId: String)
 
+    // ── Sync de catálogo (outbox → Identity) ─────────────────────────────────
+
+    /** Operaciones de catálogo pendientes de subir a Identity (outbox persistente). */
+    val operacionesCatalogo: StateFlow<List<OperacionCatalogo>>
+
+    /** Revisión canónica por producto (aggregateId → revision), mirror del sync. */
+    val revisionesProducto: StateFlow<Map<String, Int>>
+
+    /** Elimina una operación del outbox (tras entregarla a Identity). */
+    fun eliminarOperacionCatalogo(operationId: String)
+
+    /** Guarda/actualiza la revisión canónica de un producto (respuesta del server). */
+    fun actualizarRevisionProducto(aggregateId: String, revision: Int)
+
+    /** Quita la revisión de un producto (archivado en el server). */
+    fun quitarRevisionProducto(aggregateId: String)
+
+    /** Cursor del pull de deltas (revisión global del establecimiento ya vista). */
+    val catalogoSyncDesde: StateFlow<Int>
+
+    /**
+     * Encola una operación `crear` por cada producto local aún sin sincronizar
+     * (seed inicial). Idempotente: no re-encola productos con revisión canónica
+     * o con una operación ya pendiente en el outbox.
+     */
+    fun encolarSeedCatalogo()
+
+    /** Aplica deltas del server (`GET /sync/cambios`) y avanza el cursor a [revisionActual]. */
+    fun aplicarCambiosCatalogo(cambios: List<CambioRemoto>, revisionActual: Int)
+
+    /** Fija el cursor global sin aplicar cambios (decisión de seed o divergencia). */
+    fun fijarCursorCatalogo(revision: Int)
+
     // ── Sesión de trabajo (jornada concedida por Bar) ────────────────────────
 
     /** @return true si el camarero ACTIVA pasa a sesión activa (Bar concede la jornada). */

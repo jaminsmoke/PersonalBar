@@ -4,8 +4,10 @@ import android.graphics.BitmapFactory
 import java.text.DateFormat
 import java.util.Date
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -135,18 +137,40 @@ private fun SesionDialog(
     val mensaje by viewModel.mensaje.collectAsState()
 
     if (sesion != null) {
+        val desvinculado = sesion.establecimientoUuid == null
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(stringResource(R.string.sesion_cuenta_negocio)) },
-            text = { Text(sesion.nombreMostrar ?: sesion.email ?: "") },
+            text = {
+                if (desvinculado) {
+                    Column {
+                        Text(stringResource(R.string.sesion_establecimiento_desvinculado))
+                        mensaje?.let { id ->
+                            Spacer(Modifier.height(8.dp))
+                            Text(stringResource(id), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                } else {
+                    Text(sesion.nombreMostrar ?: sesion.email ?: "")
+                }
+            },
             confirmButton = {
-                Button(
-                    onClick = {
-                        onDismiss()
-                        onAbrirPerfil()
-                    },
-                ) {
-                    Text(stringResource(R.string.sesion_ir_al_perfil))
+                if (desvinculado) {
+                    Button(
+                        onClick = { viewModel.revincular() },
+                        enabled = !trabajando,
+                    ) {
+                        Text(stringResource(R.string.sesion_revincular))
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            onDismiss()
+                            onAbrirPerfil()
+                        },
+                    ) {
+                        Text(stringResource(R.string.sesion_ir_al_perfil))
+                    }
                 }
             },
             dismissButton = {

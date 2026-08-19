@@ -353,3 +353,48 @@ data class Camarero(
      */
     val sesionActiva: Boolean = false,
 )
+
+/**
+ * Operación de catálogo pendiente de subir a Identity (outbox del sync de carta).
+ * [operationId] es la PK y la clave de idempotencia del server (`POST /sync/operaciones`):
+ * reintentar no duplica. El proyector drena la cola al reconectar; éxito borra la fila.
+ * Los campos de payload son null cuando [action] = `archivar`.
+ */
+@Entity(tableName = "operaciones_catalogo")
+data class OperacionCatalogo(
+    @PrimaryKey val operationId: String,
+    val aggregateId: String,
+    val action: String,          // crear|actualizar|archivar
+    val baseRevision: Int = 0,
+    val nombre: String? = null,
+    val categoria: String? = null,
+    val destino: String? = null, // barra|cocina
+    val precioCentimos: Int? = null,
+    val moneda: String = "EUR",
+    val disponible: Boolean = true,
+    val creadaEn: Long = System.currentTimeMillis(),
+)
+
+/**
+ * Revisión canónica por producto (espejo del sync). Fuente del `base_revision` de las
+ * operaciones `actualizar`/`archivar`; se actualiza con `result_snapshot.revision` de la
+ * respuesta del server. Sin fila = nunca sincronizado (base_revision 0).
+ */
+@Entity(tableName = "producto_sync")
+data class ProductoSync(
+    @PrimaryKey val aggregateId: String,
+    val revision: Int,
+    val actualizadaEn: Long = System.currentTimeMillis(),
+)
+
+/**
+ * Cursor del pull de deltas del sync de carta: última revisión global del
+ * establecimiento vista por Bar (`GET /sync/cambios?desde=N`). Tabla singleton
+ * (PK fija «local»). La revisión global del server es distinta de la revisión por
+ * producto (`producto_sync.revision`): aquella avanza por operación aplicada.
+ */
+@Entity(tableName = "catalogo_sync_estado")
+data class CatalogoSyncEstado(
+    @PrimaryKey val id: String = "local",
+    val desdeRevision: Int = 0,
+)

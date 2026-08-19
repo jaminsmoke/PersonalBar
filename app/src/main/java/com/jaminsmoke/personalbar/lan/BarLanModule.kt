@@ -71,8 +71,18 @@ data class EstadoResponse(
 /** Carta/catálogo canónico para `GET /v1/carta` (Commander espeja ids de producto). */
 @Serializable
 data class CartaResponse(
+    /**
+     * Esquema del contrato de carta. 2 = ids UUID (migración v11→v12). 1 era
+     * ids slug (legacy): Commander reconstruye su espejo al detectar el cambio
+     * (re-apunta `codigoBar` por nombre sin borrar líneas históricas).
+     */
+    val schema: Int = CARTA_SCHEMA,
     val productos: List<Producto>,
-)
+) {
+    companion object {
+        const val CARTA_SCHEMA: Int = 2
+    }
+}
 
 /** Resumen de jornadas para `GET /v1/sesion/jornadas` (Commander pinta el panel). */
 @Serializable

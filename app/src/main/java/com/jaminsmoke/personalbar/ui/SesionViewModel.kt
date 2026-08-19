@@ -164,6 +164,33 @@ class SesionViewModel : ViewModel() {
         app.cerrarSesion()
     }
 
+    /**
+     * Re-vincula el establecimiento tras un «fantasma» (el UUID ya no existe en
+     * Identity, 404 en el sync). Reutiliza el flujo de vínculo por nombre; conserva
+     * el token de la cuenta. El outbox de catálogo se mantiene intacto para volver
+     * a drenar contra el establecimiento re-vinculado.
+     */
+    fun revincular() {
+        _trabajando.value = true
+        _mensaje.value = null
+        viewModelScope.launch {
+            val uuid = IdentityNegocioClient.vincularEstablecimiento(
+                app.repository.establecimiento.value.nombre
+            )
+            if (uuid == null) {
+                _trabajando.value = false
+                _mensaje.value = R.string.sesion_vincular_fallido
+                return@launch
+            }
+            val sesion = app.sesion.value
+            if (sesion != null) {
+                app.setSesion(sesion.copy(establecimientoUuid = uuid), recordar = true)
+            }
+            marcarConectado(uuid)
+            _trabajando.value = false
+        }
+    }
+
     /** Refleja en el repo que hay una cuenta de negocio vinculada (lo usa Camareros). */
     private fun marcarConectado(uuid: String) {
         app.repository.setIdentityConfig(
