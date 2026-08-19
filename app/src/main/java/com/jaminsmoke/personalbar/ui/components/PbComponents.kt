@@ -95,8 +95,8 @@ fun PbRoomStatus(
     fgsOk: Boolean,
     conectados: Int,
     onToggle: () -> Unit,
-    error: Int? = null,
     modifier: Modifier = Modifier,
+    error: Int? = null,
 ) {
     // Nodo activo pero sin FGS (permiso revocado/transitorio): degradado, con aviso.
     val degradado = active && !fgsOk
