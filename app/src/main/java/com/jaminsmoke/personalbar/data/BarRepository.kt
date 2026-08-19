@@ -33,10 +33,17 @@ interface BarRepository {
     val servidos: StateFlow<List<Ticket>>
 
     /** Rondas recibidas. */
-    val rondas: StateFlow<List<Ronda>>
-
-    /** Catálogo canónico del nodo. */
+    val rondas: StateFlow<List<Ronda>>    /** Catálogo canónico del nodo. */
     val catalogo: StateFlow<List<Producto>>
+
+    /** Grupos de modificadores de carta (locales del nodo; no sincronizan con Identity). */
+    val gruposModificador: StateFlow<List<GrupoModificador>>
+
+    /** Opciones de los grupos de modificadores. */
+    val opcionesModificador: StateFlow<List<OpcionModificador>>
+
+    /** Asignación N:M producto ↔ grupo de modificadores. */
+    val productoGrupo: StateFlow<List<ProductoGrupo>>
 
     /** Lista blanca de camareros del establecimiento (mirror de Identity). */
     val camareros: StateFlow<List<Camarero>>
@@ -63,17 +70,38 @@ interface BarRepository {
     /** @return true si la ronda se procesó; false si ya existía (idempotente). */
     fun crearRonda(ronda: Ronda): Boolean
 
-    /**
-     * @return true si se creó el producto con id auto-slug inmutable; false si el
-     * nombre o la categoría están vacíos. El id se genera desde el nombre.
-     */
-    fun crearProducto(nombre: String, categoria: String, precio: Double): Boolean
+    /** @return true si se creó el producto con id UUID; false si el nombre o la categoría están vacíos. */
+    fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String? = null, permiteNota: Boolean = false): Boolean
 
     /** @return true si se actualizó; false si no existe o los campos quedan vacíos. No cambia el id. */
-    fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean): Boolean
+    fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String? = null, permiteNota: Boolean = false): Boolean
 
     /** @return true si se borró; false si no existe. */
     fun borrarProducto(id: String): Boolean
+
+    /** @return true si se creó el grupo; false si el nombre queda vacío. */
+    fun crearGrupoModificador(nombre: String, multiple: Boolean, obligatorio: Boolean): Boolean
+
+    /** @return true si se actualizó; false si no existe o el nombre queda vacío. */
+    fun editarGrupoModificador(id: String, nombre: String, multiple: Boolean, obligatorio: Boolean): Boolean
+
+    /** @return true si se borró el grupo (y sus opciones y asignaciones); false si no existe. */
+    fun borrarGrupoModificador(id: String): Boolean
+
+    /** @return true si se creó la opción; false si el grupo no existe o el nombre queda vacío. */
+    fun crearOpcionModificador(grupoId: String, nombre: String, deltaPrecio: Double, alias: String): Boolean
+
+    /** @return true si se actualizó; false si no existe o el nombre queda vacío. */
+    fun editarOpcionModificador(id: String, nombre: String, deltaPrecio: Double, alias: String): Boolean
+
+    /** @return true si se borró; false si no existe. */
+    fun borrarOpcionModificador(id: String): Boolean
+
+    /** @return true si se asignó; false si el producto o el grupo no existen. */
+    fun asignarGrupoProducto(productoId: String, grupoId: String): Boolean
+
+    /** @return true si se quitó la asignación; false si no existía. */
+    fun desasignarGrupoProducto(productoId: String, grupoId: String): Boolean
 
     /** @return true si el ticket estaba PENDIENTE y se marcó PREPARADO con el preparador. */
     fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean

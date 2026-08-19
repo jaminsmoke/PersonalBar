@@ -295,4 +295,55 @@ interface BarDao {
 
     @Upsert
     suspend fun upsertCatalogoSyncEstado(estado: CatalogoSyncEstado)
+
+    // ── Grupos de modificadores (carta) ─────────────────────────────────────
+
+    @Query("SELECT * FROM grupos_modificador ORDER BY nombre")
+    suspend fun getGruposModificador(): List<GrupoModificador>
+
+    @Transaction
+    suspend fun replaceGruposModificador(grupos: List<GrupoModificador>) {
+        deleteGruposModificador()
+        insertGruposModificador(grupos)
+    }
+
+    @Query("DELETE FROM grupos_modificador")
+    suspend fun deleteGruposModificador()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGruposModificador(grupos: List<GrupoModificador>)
+
+    // ── Opciones de modificador ────────────────────────────────────────────
+
+    @Query("SELECT * FROM opciones_modificador ORDER BY grupoId, nombre")
+    suspend fun getOpcionesModificador(): List<OpcionModificador>
+
+    @Transaction
+    suspend fun replaceOpcionesModificador(opciones: List<OpcionModificador>) {
+        deleteOpcionesModificador()
+        insertOpcionesModificador(opciones)
+    }
+
+    @Query("DELETE FROM opciones_modificador")
+    suspend fun deleteOpcionesModificador()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOpcionesModificador(opciones: List<OpcionModificador>)
+
+    // ── Asignación producto ↔ grupo (N:M) ────────────────────────────────
+
+    @Query("SELECT * FROM producto_grupo")
+    suspend fun getProductoGrupo(): List<ProductoGrupo>
+
+    @Transaction
+    suspend fun replaceProductoGrupo(asignaciones: List<ProductoGrupo>) {
+        deleteProductoGrupo()
+        insertProductoGrupo(asignaciones)
+    }
+
+    @Query("DELETE FROM producto_grupo")
+    suspend fun deleteProductoGrupo()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProductoGrupo(asignaciones: List<ProductoGrupo>)
 }

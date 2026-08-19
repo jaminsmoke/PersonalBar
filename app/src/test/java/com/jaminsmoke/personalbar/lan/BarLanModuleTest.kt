@@ -4,6 +4,7 @@ import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.CamareroEstado
 import com.jaminsmoke.personalbar.data.InMemoryBarRepository
 import com.jaminsmoke.personalbar.data.Linea
+import com.jaminsmoke.personalbar.data.ModificadorLinea
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Ticket
@@ -239,6 +240,69 @@ class BarLanModuleTest {
         assertEquals(setOf("cana", "croquetas"), carta.productos.map { it.id }.toSet())
         // Incluye el flag `disponible` que Commander cachea para ocultar en comanda.
         assertTrue(carta.productos.all { it.disponible })
+    }
+
+    @Test
+    fun cartaDevuelveGruposModificadorYSubfamilia() = testApplication {
+        val repository = InMemoryBarRepository(
+            catalogoInicial = listOf(
+                Producto("cana", "Caña", "Bebida", subfamilia = "Zero", permiteNota = true),
+            )
+        )
+        assertTrue(repository.crearGrupoModificador("Punto", multiple = false, obligatorio = true))
+        val grupoId = repository.gruposModificador.value.single().id
+        assertTrue(repository.crearOpcionModificador(grupoId, "Al punto", 0.0, "al punto"))
+        assertTrue(repository.asignarGrupoProducto("cana", grupoId))
+        application { barModule(repository) }
+
+        val carta = LanJson.decodeFromString<CartaResponse>(
+            client.get("/v1/carta").bodyAsText()
+        )
+        val producto = carta.productos.single()
+        assertEquals("Zero", producto.subfamilia)
+        assertTrue(producto.permiteNota)
+        assertEquals(listOf(grupoId), producto.grupos)
+
+        val grupo = carta.gruposModificador.single()
+        assertEquals("Punto", grupo.nombre)
+        assertTrue(grupo.obligatorio)
+        assertFalse(grupo.multiple)
+        assertEquals(1, grupo.opciones.size)
+        assertEquals("Al punto", grupo.opciones.single().nombre)
+        assertEquals("al punto", grupo.opciones.single().alias)
+    }
+
+    @Test
+    fun postRondaPersisteNotaYModificadores() = testApplication {
+        val repository = repo()
+        application { barModule(repository) }
+        val ronda = Ronda(
+            "r-nota", "T3", 1,
+            lineas = listOf(
+                Linea(
+                    "cana", "Caña", 1,
+                    nota = "sin espuma",
+                    modificadores = listOf(ModificadorLinea("Punto", "Al punto", 0.0)),
+                )
+            ),
+        )
+
+        val resp = client.post("/v1/rondas") {
+            contentType(ContentType.Application.Json)
+            setBody(LanJson.encodeToString(ronda))
+        }
+        assertEquals(HttpStatusCode.Created, resp.status)
+
+        val persistida = repository.rondas.value.single()
+        val linea = persistida.lineas.single()
+        assertEquals("sin espuma", linea.nota)
+        assertEquals(1, linea.modificadores.size)
+        assertEquals("Punto", linea.modificadores.single().grupo)
+        assertEquals("Al punto", linea.modificadores.single().opcion)
+        // La línea llega al ticket BARRA conservando nota + modificadores.
+        val ticket = repository.bebidaQueue.value.single()
+        assertEquals("sin espuma", ticket.lineas.single().nota)
+        assertEquals("Al punto", ticket.lineas.single().modificadores.single().opcion)
     }
 
     @Test

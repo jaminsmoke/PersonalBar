@@ -9,8 +9,10 @@ import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.JornadasResumen
 import com.jaminsmoke.personalbar.data.CamareroEstado
 import com.jaminsmoke.personalbar.data.Destino
+import com.jaminsmoke.personalbar.data.Linea
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Ticket
+
 import com.jaminsmoke.personalbar.data.TicketEstado
 import com.jaminsmoke.personalbar.lan.BarLanService
 import com.jaminsmoke.personalbar.ui.voz.OrdenColaVoz
@@ -286,7 +288,27 @@ private fun Ticket.toExpoTicket(rondas: Map<String, Ronda>): ExpoTicket {
         preparadoPor = preparadoPor,
         estado = estado,
         numeroCola = numeroCola,
-        destino = destino,
-        lineas = lineas.map { "${it.cantidad}x ${it.nombreProducto}" },
+        destino = destino,        lineas = lineas.map { formatoLineaExpo(it) },
     )
 }
+
+/**
+ * Línea de expo en claro: `cantidad × nombre · opción · nota`. El delta de la
+ * opción se muestra solo cuando ≠ 0 («+0,50 €»). Dos variantes de un mismo SKU
+ * (distinto modificador) ya llegan como dos líneas separadas desde Commander.
+ */
+internal fun formatoLineaExpo(linea: Linea): String {
+    val extras = mutableListOf<String>()
+    linea.modificadores.forEach { m ->
+        val nombre = m.opcion.trim()
+        if (nombre.isEmpty()) return@forEach
+        extras.add(if (m.delta != 0.0) "$nombre +${precioTextoDelta(m.delta)}" else nombre)
+    }
+    linea.nota?.trim()?.takeIf { it.isNotEmpty() }?.let { extras.add(it) }
+    val base = "${linea.cantidad}x ${linea.nombreProducto}"
+    return if (extras.isEmpty()) base else "$base · ${extras.joinToString(" · ")}"
+}
+
+/** Formatea un delta de precio en euros (separador decimal según el locale del dispositivo). */
+private fun precioTextoDelta(delta: Double): String =
+    java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(delta)

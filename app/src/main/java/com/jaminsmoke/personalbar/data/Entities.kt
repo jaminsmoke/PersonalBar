@@ -64,6 +64,10 @@ data class Producto(
     val categoria: String,
     val precio: Double = 0.0,
     val disponible: Boolean = true,
+    /** Subfamilia visual dentro de la categoría (p. ej. «Zero», «Light»); null = sin subfamilia. */
+    val subfamilia: String? = null,
+    /** El producto admite nota libre en la línea (p. ej. «sin cebolla»). */
+    val permiteNota: Boolean = false,
 )
 
 /** Línea de una ronda/ticket: producto + cantidad. */
@@ -73,6 +77,55 @@ data class Linea(
     val nombreProducto: String,
     val cantidad: Int,
     val estado: LineaEstado = LineaEstado.PENDIENTE,
+    /** Nota libre del camarero (snapshot; solo si el producto la permite). */
+    val nota: String? = null,
+    /** Modificadores elegidos (snapshot en claro: grupo/opción/delta). */
+    val modificadores: List<ModificadorLinea> = emptyList(),
+)
+
+/**
+ * Modificador elegido en una línea (snapshot para historial y expo). Es el
+ * espejo en claro de `ModificadorRondaLan` del contrato Commander: grupo/opción
+ * van como nombres (no ids) y [delta] es el delta de precio de la opción.
+ */
+@Serializable
+data class ModificadorLinea(
+    val grupo: String = "",
+    val opcion: String = "",
+    val delta: Double = 0.0,
+)
+
+/**
+ * Grupo de modificadores de carta (p. ej. «Punto», «Extras»). Es la fuente del
+ * contrato LAN `gruposModificador`; los modificadores son locales del nodo por
+ * ahora (no sincronizan con Identity).
+ */
+@Serializable
+@Entity(tableName = "grupos_modificador")
+data class GrupoModificador(
+    @PrimaryKey val id: String,
+    val nombre: String,
+    val multiple: Boolean = false,
+    val obligatorio: Boolean = false,
+)
+
+/** Opción de un [GrupoModificador] (p. ej. «Al punto», con delta y alias de voz). */
+@Serializable
+@Entity(tableName = "opciones_modificador")
+data class OpcionModificador(
+    @PrimaryKey val id: String,
+    val grupoId: String,
+    val nombre: String,
+    val deltaPrecio: Double = 0.0,
+    val alias: String = "",
+)
+
+/** Asignación de un [GrupoModificador] a un [Producto] (N:M, tabla puente). */
+@Serializable
+@Entity(tableName = "producto_grupo", primaryKeys = ["productoId", "grupoId"])
+data class ProductoGrupo(
+    val productoId: String,
+    val grupoId: String,
 )
 
 /**

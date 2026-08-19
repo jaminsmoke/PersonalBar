@@ -343,6 +343,57 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v14_a_v15_crea_modificadores() {
+        // 1. BD en v14 con un producto (sin subfamilia/permiteNota)
+        helper.createDatabase(TEST_DB, 14).use { db ->
+            db.execSQL(
+                "INSERT INTO productos (id, nombre, categoria, precio, disponible) " +
+                    "VALUES ('p-1', 'Caña', 'Bebida', 2.0, 1)"
+            )
+        }
+
+        // 2. Migrar a v15: columnas nuevas + tablas de modificadores vacías
+        val db = helper.runMigrationsAndValidate(TEST_DB, 15, true, AppDatabase.MIGRATION_14_15)
+        db.use {
+            val cursor = it.query("SELECT nombre, subfamilia, permiteNota FROM productos WHERE id = 'p-1'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("Caña", c.getString(0))
+                assertEquals("subfamilia arranca null", null, c.getString(1))
+                assertEquals("permiteNota default 0", 0, c.getInt(2))
+            }
+
+            // Tablas nuevas operativas
+            it.execSQL(
+                "INSERT INTO grupos_modificador (id, nombre, multiple, obligatorio) " +
+                    "VALUES ('g-1', 'Punto', 0, 1)"
+            )
+            it.execSQL(
+                "INSERT INTO opciones_modificador (id, grupoId, nombre, deltaPrecio, alias) " +
+                    "VALUES ('o-1', 'g-1', 'Al punto', 0.0, 'al punto')"
+            )
+            it.execSQL("INSERT INTO producto_grupo (productoId, grupoId) VALUES ('p-1', 'g-1')")
+
+            val grupo = it.query("SELECT obligatorio FROM grupos_modificador WHERE id = 'g-1'")
+            grupo.use { c ->
+                c.moveToFirst()
+                assertEquals(1, c.getInt(0))
+            }
+            val opcion = it.query("SELECT alias FROM opciones_modificador WHERE id = 'o-1'")
+            opcion.use { c ->
+                c.moveToFirst()
+                assertEquals("al punto", c.getString(0))
+            }
+            val asignacion = it.query("SELECT productoId, grupoId FROM producto_grupo")
+            asignacion.use { c ->
+                c.moveToFirst()
+                assertEquals("p-1", c.getString(0))
+                assertEquals("g-1", c.getString(1))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }
