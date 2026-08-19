@@ -175,6 +175,28 @@
     <string name="carta_categoria_bebida">Drinks</string>
     <string name="carta_categoria_comida">Food</string>
     <string name="carta_no_disponible">Unavailable</string>
+    <string name="carta_campo_subfamilia">Subfamily (optional)</string>
+    <string name="carta_campo_permite_nota">Allows free note</string>
+    <string name="carta_asignar_grupos">Assigned modifiers</string>
+    <string name="carta_grupos_titulo">Modifiers</string>
+    <string name="carta_grupos_vacio">No modifier groups. Create one to add options (cooking point, extras…).</string>
+    <string name="carta_grupo_nuevo">New group</string>
+    <string name="carta_grupo_editar">Edit group</string>
+    <string name="carta_grupo_borrar">Delete group?</string>
+    <string name="carta_grupo_borrar_mensaje">“%1$s” and its options will be deleted.</string>
+    <string name="carta_grupo_campo_nombre">Group name</string>
+    <string name="carta_grupo_multiple">Multiple selection</string>
+    <string name="carta_grupo_obligatorio">Required</string>
+    <string name="carta_opcion_nueva">New option</string>
+    <string name="carta_opcion_editar">Edit option</string>
+    <string name="carta_opcion_borrar">Delete option?</string>
+    <string name="carta_opcion_borrar_mensaje">“%1$s” will be deleted from the group.</string>
+    <string name="carta_opcion_campo_nombre">Option name</string>
+    <string name="carta_opcion_campo_delta">Price delta (optional)</string>
+    <string name="carta_opcion_campo_alias">Voice alias (optional)</string>
+    <string name="carta_error_grupo_vacio">The group name is required</string>
+    <string name="carta_error_opcion_vacia">The option name is required</string>
+    <string name="carta_cerrar">Close</string>
 
     <!-- Catalog conflicts (resolution surface) -->
     <string name="conflictos_titulo">Catalog conflicts</string>

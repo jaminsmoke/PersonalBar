@@ -43,6 +43,9 @@ class InMemoryBarRepository(
     operacionesCatalogoIniciales: List<OperacionCatalogo> = emptyList(),
     revisionesProductoIniciales: Map<String, Int> = emptyMap(),
     catalogoSyncDesdeInicial: Int = 0,
+    gruposModificadorIniciales: List<GrupoModificador> = emptyList(),
+    opcionesModificadorIniciales: List<OpcionModificador> = emptyList(),
+    productoGrupoIniciales: List<ProductoGrupo> = emptyList(),
 ) : BarRepository {
 
     private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>().also { it.addAll(rondasIniciales.map { r -> r.id }) }
@@ -73,6 +76,9 @@ class InMemoryBarRepository(
     private val _revisionesProducto = MutableStateFlow(revisionesProductoIniciales)
     private val _catalogoSyncDesde = MutableStateFlow(catalogoSyncDesdeInicial)
     private val _horario = MutableStateFlow(horarioInicial)
+    private val _gruposModificador = MutableStateFlow(gruposModificadorIniciales)
+    private val _opcionesModificador = MutableStateFlow(opcionesModificadorIniciales)
+    private val _productoGrupo = MutableStateFlow(productoGrupoIniciales)
     private val _eventos = MutableSharedFlow<SalaEvent>(extraBufferCapacity = 16)
 
     /** Derivado síncrono de [Camarero.deServicio]: se recalcula en cada mutación de camareros. */
@@ -105,6 +111,10 @@ class InMemoryBarRepository(
     override val revisionesProducto: StateFlow<Map<String, Int>> = _revisionesProducto.asStateFlow()
     override val catalogoSyncDesde: StateFlow<Int> = _catalogoSyncDesde.asStateFlow()
     override val horario: StateFlow<List<HorarioLocal>> = _horario.asStateFlow()
+    override val gruposModificador: StateFlow<List<GrupoModificador>> = _gruposModificador.asStateFlow()
+    override val opcionesModificador: StateFlow<List<OpcionModificador>> = _opcionesModificador.asStateFlow()
+    override val productoGrupo: StateFlow<List<ProductoGrupo>> = _productoGrupo.asStateFlow()
+
     override val eventos: SharedFlow<SalaEvent> = _eventos.asSharedFlow()
 
     override fun guardarHorario(horario: List<HorarioLocal>) {
@@ -180,24 +190,36 @@ class InMemoryBarRepository(
             disponible = producto?.disponible ?: true,
         )
         _operacionesCatalogo.update { it + op }
-    }
-
-    override fun crearProducto(nombre: String, categoria: String, precio: Double): Boolean {
+    }    override fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean): Boolean {
         val n = nombre.trim()
         val c = categoria.trim()
         if (n.isEmpty() || c.isEmpty()) return false
-        val producto = Producto(id = UUID.randomUUID().toString(), nombre = n, categoria = c, precio = precio.coerceAtLeast(0.0))
+        val producto = Producto(
+            id = UUID.randomUUID().toString(),
+            nombre = n,
+            categoria = c,
+            precio = precio.coerceAtLeast(0.0),
+            subfamilia = subfamilia?.trim()?.takeIf { it.isNotEmpty() },
+            permiteNota = permiteNota,
+        )
         _catalogo.update { it + producto }
         encolarOperacionCatalogo(producto.id, "crear", producto)
         return true
     }
 
-    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean): Boolean {
+    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String?, permiteNota: Boolean): Boolean {
         val n = nombre.trim()
         val c = categoria.trim()
         if (n.isEmpty() || c.isEmpty()) return false
         val existente = _catalogo.value.firstOrNull { it.id == id } ?: return false
-        val editado = existente.copy(nombre = n, categoria = c, precio = precio.coerceAtLeast(0.0), disponible = disponible)
+        val editado = existente.copy(
+            nombre = n,
+            categoria = c,
+            precio = precio.coerceAtLeast(0.0),
+            disponible = disponible,
+            subfamilia = subfamilia?.trim()?.takeIf { it.isNotEmpty() },
+            permiteNota = permiteNota,
+        )
         _catalogo.update { list -> list.map { if (it.id == id) editado else it } }
         encolarOperacionCatalogo(id, "actualizar", editado)
         return true
@@ -207,9 +229,85 @@ class InMemoryBarRepository(
         val antes = _catalogo.value.size
         _catalogo.update { it.filterNot { p -> p.id == id } }
         val borrado = _catalogo.value.size < antes
-        if (borrado) encolarOperacionCatalogo(id, "archivar", null)
+        if (borrado) {
+            _productoGrupo.update { it.filterNot { a -> a.productoId == id } }
+            encolarOperacionCatalogo(id, "archivar", null)
+        }
         return borrado
     }
+
+    // ── Grupos de modificadores (carta) ─────────────────────────────────────
+
+    override fun crearGrupoModificador(nombre: String, multiple: Boolean, obligatorio: Boolean): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        val grupo = GrupoModificador(id = UUID.randomUUID().toString(), nombre = n, multiple = multiple, obligatorio = obligatorio)
+        _gruposModificador.update { it + grupo }
+        return true
+    }
+
+    override fun editarGrupoModificador(id: String, nombre: String, multiple: Boolean, obligatorio: Boolean): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        if (_gruposModificador.value.none { it.id == id }) return false
+        _gruposModificador.update { list -> list.map { if (it.id == id) it.copy(nombre = n, multiple = multiple, obligatorio = obligatorio) else it } }
+        return true
+    }
+
+    override fun borrarGrupoModificador(id: String): Boolean {
+        val antes = _gruposModificador.value.size
+        _gruposModificador.update { it.filterNot { g -> g.id == id } }
+        val borrado = _gruposModificador.value.size < antes
+        if (borrado) {
+            _opcionesModificador.update { it.filterNot { o -> o.grupoId == id } }
+            _productoGrupo.update { it.filterNot { a -> a.grupoId == id } }
+        }
+        return borrado
+    }
+
+    override fun crearOpcionModificador(grupoId: String, nombre: String, deltaPrecio: Double, alias: String): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        if (_gruposModificador.value.none { it.id == grupoId }) return false
+        val opcion = OpcionModificador(
+            id = UUID.randomUUID().toString(),
+            grupoId = grupoId,
+            nombre = n,
+            deltaPrecio = deltaPrecio,
+            alias = alias.trim(),
+        )
+        _opcionesModificador.update { it + opcion }
+        return true
+    }
+
+    override fun editarOpcionModificador(id: String, nombre: String, deltaPrecio: Double, alias: String): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        if (_opcionesModificador.value.none { it.id == id }) return false
+        _opcionesModificador.update { list -> list.map { if (it.id == id) it.copy(nombre = n, deltaPrecio = deltaPrecio, alias = alias.trim()) else it } }
+        return true
+    }
+
+    override fun borrarOpcionModificador(id: String): Boolean {
+        val antes = _opcionesModificador.value.size
+        _opcionesModificador.update { it.filterNot { o -> o.id == id } }
+        return _opcionesModificador.value.size < antes
+    }
+
+    override fun asignarGrupoProducto(productoId: String, grupoId: String): Boolean {
+        if (_catalogo.value.none { it.id == productoId }) return false
+        if (_gruposModificador.value.none { it.id == grupoId }) return false
+        if (_productoGrupo.value.any { it.productoId == productoId && it.grupoId == grupoId }) return false
+        _productoGrupo.update { it + ProductoGrupo(productoId, grupoId) }
+        return true
+    }
+
+    override fun desasignarGrupoProducto(productoId: String, grupoId: String): Boolean {
+        val antes = _productoGrupo.value.size
+        _productoGrupo.update { it.filterNot { a -> a.productoId == productoId && a.grupoId == grupoId } }
+        return _productoGrupo.value.size < antes
+    }
+
 
     override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
         val pendiente = _bebidaQueue.value.any { it.id == ticketId && it.estado == TicketEstado.PENDIENTE } ||
@@ -681,8 +779,16 @@ class InMemoryBarRepository(
                 revisiones = revisiones - cambio.aggregateId
             } else {
                 val p = cambio.producto
-                val local = Producto(p.id, p.nombre, p.categoria, p.precio, p.disponible)
-                catalogo = if (catalogo.any { it.id == p.id }) {
+                // Identity no conoce subfamilia/permiteNota (locales del nodo): al
+                // aplicar un delta se conservan los campos locales del SKU existente.
+                val existente = catalogo.firstOrNull { it.id == p.id }
+                val local = existente?.copy(
+                    nombre = p.nombre,
+                    categoria = p.categoria,
+                    precio = p.precio,
+                    disponible = p.disponible,
+                ) ?: Producto(p.id, p.nombre, p.categoria, p.precio, p.disponible)
+                catalogo = if (existente != null) {
                     catalogo.map { if (it.id == p.id) local else it }
                 } else {
                     catalogo + local

@@ -47,8 +47,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         OperacionCatalogo::class,
         ProductoSync::class,
         CatalogoSyncEstado::class,
+        GrupoModificador::class,
+        OpcionModificador::class,
+        ProductoGrupo::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -278,6 +281,40 @@ abstract class AppDatabase : RoomDatabase() {
                     "CREATE TABLE IF NOT EXISTS catalogo_sync_estado (" +
                         "id TEXT NOT NULL PRIMARY KEY, " +
                         "desdeRevision INTEGER NOT NULL)"
+                )
+            }
+        }
+
+        /**
+         * v14→v15: modificadores y subfamilias de carta. `productos` gana
+         * `subfamilia` (nullable) y `permiteNota` (0 por defecto); tablas nuevas
+         * para grupos de modificadores, sus opciones y la asignación N:M a SKUs.
+         * Aditiva: sin datos previos que migrar (los grupos arrancan vacíos).
+         */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE productos ADD COLUMN subfamilia TEXT")
+                db.execSQL("ALTER TABLE productos ADD COLUMN permiteNota INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS grupos_modificador (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "nombre TEXT NOT NULL, " +
+                        "multiple INTEGER NOT NULL, " +
+                        "obligatorio INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS opciones_modificador (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "grupoId TEXT NOT NULL, " +
+                        "nombre TEXT NOT NULL, " +
+                        "deltaPrecio REAL NOT NULL, " +
+                        "alias TEXT NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS producto_grupo (" +
+                        "productoId TEXT NOT NULL, " +
+                        "grupoId TEXT NOT NULL, " +
+                        "PRIMARY KEY (productoId, grupoId))"
                 )
             }
         }

@@ -256,6 +256,136 @@ class InMemoryBarRepositoryTest {
         assertFalse(repo().editarProducto("no-existe", "X", "Bebida", 1.0, true))
     }
 
+    // ── Modificadores y subfamilias (carta) ────────────────────────────────
+
+    @Test
+    fun crearProductoGuardaSubfamiliaYPermiteNota() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Coca-Cola", "Bebida", 2.0, subfamilia = "Zero", permiteNota = true))
+        val p = repo.catalogo.value.single()
+        assertEquals("Zero", p.subfamilia)
+        assertTrue(p.permiteNota)
+    }
+
+    @Test
+    fun crearProductoSubfamiliaVaciaSeNormalizaANull() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Caña", "Bebida", 2.0, subfamilia = "   "))
+        assertNull(repo.catalogo.value.single().subfamilia)
+    }
+
+    @Test
+    fun editarProductoActualizaSubfamiliaYPermiteNota() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearProducto("Coca-Cola", "Bebida", 2.0))
+        val id = repo.catalogo.value.single().id
+        assertTrue(repo.editarProducto(id, "Coca-Cola", "Bebida", 2.0, true, subfamilia = "Light", permiteNota = true))
+        assertEquals("Light", repo.catalogo.value.single().subfamilia)
+        assertTrue(repo.catalogo.value.single().permiteNota)
+    }
+
+    @Test
+    fun crudGrupoModificador() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearGrupoModificador("Punto", multiple = false, obligatorio = true))
+        val grupo = repo.gruposModificador.value.single()
+        assertEquals("Punto", grupo.nombre)
+        assertTrue(grupo.obligatorio)
+        assertEquals(grupo.id, UUID.fromString(grupo.id).toString())
+
+        assertTrue(repo.editarGrupoModificador(grupo.id, "Punto de carne", multiple = true, obligatorio = false))
+        val editado = repo.gruposModificador.value.single()
+        assertEquals("Punto de carne", editado.nombre)
+        assertTrue(editado.multiple)
+        assertFalse(editado.obligatorio)
+
+        assertTrue(repo.borrarGrupoModificador(grupo.id))
+        assertTrue(repo.gruposModificador.value.isEmpty())
+    }
+
+    @Test
+    fun crearGrupoModificadorNombreVacioDevuelveFalse() {
+        val repo = InMemoryBarRepository()
+        assertFalse(repo.crearGrupoModificador("  ", false, false))
+        assertTrue(repo.gruposModificador.value.isEmpty())
+    }
+
+    @Test
+    fun crudOpcionModificador() {
+        val repo = InMemoryBarRepository()
+        assertTrue(repo.crearGrupoModificador("Extras", false, false))
+        val grupoId = repo.gruposModificador.value.single().id
+
+        assertTrue(repo.crearOpcionModificador(grupoId, "Doble", 1.5, "doble de"))
+        val opcion = repo.opcionesModificador.value.single()
+        assertEquals(grupoId, opcion.grupoId)
+        assertEquals("Doble", opcion.nombre)
+        assertEquals(1.5, opcion.deltaPrecio, 0.0)
+        assertEquals("doble de", opcion.alias)
+
+        assertTrue(repo.editarOpcionModificador(opcion.id, "Doble ración", 2.0, "doble racion"))
+        assertEquals("Doble ración", repo.opcionesModificador.value.single().nombre)
+        assertEquals(2.0, repo.opcionesModificador.value.single().deltaPrecio, 0.0)
+
+        assertTrue(repo.borrarOpcionModificador(opcion.id))
+        assertTrue(repo.opcionesModificador.value.isEmpty())
+    }
+
+    @Test
+    fun crearOpcionSinGrupoDevuelveFalse() {
+        val repo = InMemoryBarRepository()
+        assertFalse(repo.crearOpcionModificador("no-existe", "Doble", 1.0, "doble"))
+        assertTrue(repo.opcionesModificador.value.isEmpty())
+    }
+
+    @Test
+    fun asignarYDesasignarGrupoProducto() {
+        val repo = InMemoryBarRepository(catalogoInicial = listOf(Producto("cana", "Caña", "Bebida")))
+        assertTrue(repo.crearGrupoModificador("Punto", false, false))
+        val grupoId = repo.gruposModificador.value.single().id
+
+        assertTrue(repo.asignarGrupoProducto("cana", grupoId))
+        assertEquals(1, repo.productoGrupo.value.size)
+        // duplicado: no se re-asigna
+        assertFalse(repo.asignarGrupoProducto("cana", grupoId))
+
+        assertTrue(repo.desasignarGrupoProducto("cana", grupoId))
+        assertTrue(repo.productoGrupo.value.isEmpty())
+        assertFalse(repo.desasignarGrupoProducto("cana", grupoId))
+    }
+
+    @Test
+    fun asignarGrupoProductoInexistenteDevuelveFalse() {
+        val repo = InMemoryBarRepository(catalogoInicial = listOf(Producto("cana", "Caña", "Bebida")))
+        assertFalse(repo.asignarGrupoProducto("cana", "grupo-no-existe"))
+        assertFalse(repo.asignarGrupoProducto("producto-no-existe", "grupo-no-existe"))
+    }
+
+    @Test
+    fun borrarGrupoModificadorCascadeaOpcionesYAsignaciones() {
+        val repo = InMemoryBarRepository(catalogoInicial = listOf(Producto("cana", "Caña", "Bebida")))
+        assertTrue(repo.crearGrupoModificador("Punto", false, false))
+        val grupoId = repo.gruposModificador.value.single().id
+        assertTrue(repo.crearOpcionModificador(grupoId, "Al punto", 0.0, "al punto"))
+        assertTrue(repo.asignarGrupoProducto("cana", grupoId))
+
+        assertTrue(repo.borrarGrupoModificador(grupoId))
+        assertTrue(repo.gruposModificador.value.isEmpty())
+        assertTrue(repo.opcionesModificador.value.isEmpty())
+        assertTrue(repo.productoGrupo.value.isEmpty())
+    }
+
+    @Test
+    fun borrarProductoQuitaSusAsignaciones() {
+        val repo = InMemoryBarRepository(catalogoInicial = listOf(Producto("cana", "Caña", "Bebida")))
+        assertTrue(repo.crearGrupoModificador("Punto", false, false))
+        val grupoId = repo.gruposModificador.value.single().id
+        assertTrue(repo.asignarGrupoProducto("cana", grupoId))
+
+        assertTrue(repo.borrarProducto("cana"))
+        assertTrue(repo.productoGrupo.value.isEmpty())
+    }
+
     // ── Outbox de catálogo (sync → Identity) ───────────────────────────────
 
     @Test

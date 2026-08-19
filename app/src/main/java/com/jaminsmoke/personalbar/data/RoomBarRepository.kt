@@ -95,9 +95,11 @@ class RoomBarRepository(
                 jornadasIniciales = dao.getJornadas(),
                 serviciosPendientesIniciales = dao.getServiciosPendientes(),
                 operacionesCatalogoIniciales = dao.getOperacionesCatalogo(),
-                revisionesProductoIniciales = dao.getProductosSync().associate { it.aggregateId to it.revision },
-                catalogoSyncDesdeInicial = dao.getCatalogoSyncEstado()?.desdeRevision ?: 0,
+                revisionesProductoIniciales = dao.getProductosSync().associate { it.aggregateId to it.revision },                catalogoSyncDesdeInicial = dao.getCatalogoSyncEstado()?.desdeRevision ?: 0,
                 horarioInicial = dao.getHorario(),
+                gruposModificadorIniciales = dao.getGruposModificador(),
+                opcionesModificadorIniciales = dao.getOpcionesModificador(),
+                productoGrupoIniciales = dao.getProductoGrupo(),
             )
         }
     }
@@ -125,7 +127,12 @@ class RoomBarRepository(
     override val operacionesCatalogo: StateFlow<List<OperacionCatalogo>> get() = inner.operacionesCatalogo
     override val revisionesProducto: StateFlow<Map<String, Int>> get() = inner.revisionesProducto
     override val catalogoSyncDesde: StateFlow<Int> get() = inner.catalogoSyncDesde
+
     override val horario: StateFlow<List<HorarioLocal>> get() = inner.horario
+    override val gruposModificador: StateFlow<List<GrupoModificador>> get() = inner.gruposModificador
+    override val opcionesModificador: StateFlow<List<OpcionModificador>> get() = inner.opcionesModificador
+    override val productoGrupo: StateFlow<List<ProductoGrupo>> get() = inner.productoGrupo
+
     override fun resumenJornadas(desde: Long?, hasta: Long?): JornadasResumen = inner.resumenJornadas(desde, hasta)
 
     override fun guardarHorario(horario: List<HorarioLocal>) {
@@ -140,10 +147,8 @@ class RoomBarRepository(
         val ok = inner.crearRonda(ronda)
         if (ok) persist { dao.replaceRondas(inner.rondas.value); dao.replaceTickets(ticketsActuales()) }
         return ok
-    }
-
-    override fun crearProducto(nombre: String, categoria: String, precio: Double): Boolean {
-        val ok = inner.crearProducto(nombre, categoria, precio)
+    }    override fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean): Boolean {
+        val ok = inner.crearProducto(nombre, categoria, precio, subfamilia, permiteNota)
         if (ok) persist {
             dao.replaceProductos(inner.catalogo.value)
             dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value)
@@ -151,8 +156,8 @@ class RoomBarRepository(
         return ok
     }
 
-    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean): Boolean {
-        val ok = inner.editarProducto(id, nombre, categoria, precio, disponible)
+    override fun editarProducto(id: String, nombre: String, categoria: String, precio: Double, disponible: Boolean, subfamilia: String?, permiteNota: Boolean): Boolean {
+        val ok = inner.editarProducto(id, nombre, categoria, precio, disponible, subfamilia, permiteNota)
         if (ok) persist {
             dao.replaceProductos(inner.catalogo.value)
             dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value)
@@ -165,9 +170,63 @@ class RoomBarRepository(
         if (ok) persist {
             dao.replaceProductos(inner.catalogo.value)
             dao.replaceOperacionesCatalogo(inner.operacionesCatalogo.value)
+            dao.replaceProductoGrupo(inner.productoGrupo.value)
         }
         return ok
     }
+
+    override fun crearGrupoModificador(nombre: String, multiple: Boolean, obligatorio: Boolean): Boolean {
+        val ok = inner.crearGrupoModificador(nombre, multiple, obligatorio)
+        if (ok) persist { dao.replaceGruposModificador(inner.gruposModificador.value) }
+        return ok
+    }
+
+    override fun editarGrupoModificador(id: String, nombre: String, multiple: Boolean, obligatorio: Boolean): Boolean {
+        val ok = inner.editarGrupoModificador(id, nombre, multiple, obligatorio)
+        if (ok) persist { dao.replaceGruposModificador(inner.gruposModificador.value) }
+        return ok
+    }
+
+    override fun borrarGrupoModificador(id: String): Boolean {
+        val ok = inner.borrarGrupoModificador(id)
+        if (ok) persist {
+            dao.replaceGruposModificador(inner.gruposModificador.value)
+            dao.replaceOpcionesModificador(inner.opcionesModificador.value)
+            dao.replaceProductoGrupo(inner.productoGrupo.value)
+        }
+        return ok
+    }
+
+    override fun crearOpcionModificador(grupoId: String, nombre: String, deltaPrecio: Double, alias: String): Boolean {
+        val ok = inner.crearOpcionModificador(grupoId, nombre, deltaPrecio, alias)
+        if (ok) persist { dao.replaceOpcionesModificador(inner.opcionesModificador.value) }
+        return ok
+    }
+
+    override fun editarOpcionModificador(id: String, nombre: String, deltaPrecio: Double, alias: String): Boolean {
+        val ok = inner.editarOpcionModificador(id, nombre, deltaPrecio, alias)
+        if (ok) persist { dao.replaceOpcionesModificador(inner.opcionesModificador.value) }
+        return ok
+    }
+
+    override fun borrarOpcionModificador(id: String): Boolean {
+        val ok = inner.borrarOpcionModificador(id)
+        if (ok) persist { dao.replaceOpcionesModificador(inner.opcionesModificador.value) }
+        return ok
+    }
+
+    override fun asignarGrupoProducto(productoId: String, grupoId: String): Boolean {
+        val ok = inner.asignarGrupoProducto(productoId, grupoId)
+        if (ok) persist { dao.replaceProductoGrupo(inner.productoGrupo.value) }
+        return ok
+    }
+
+    override fun desasignarGrupoProducto(productoId: String, grupoId: String): Boolean {
+        val ok = inner.desasignarGrupoProducto(productoId, grupoId)
+        if (ok) persist { dao.replaceProductoGrupo(inner.productoGrupo.value) }
+        return ok
+    }
+
 
     override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
         val ok = inner.marcarPreparado(ticketId, preparadoPor)
@@ -503,6 +562,10 @@ class RoomBarRepository(
             dao.replaceInvitaciones(seed.invitaciones.value)
             dao.upsertIdentityConfig(seed.identityConfig.value)
             dao.replaceHorario(seed.horario.value)
+            dao.replaceGruposModificador(seed.gruposModificador.value)
+            dao.replaceOpcionesModificador(seed.opcionesModificador.value)
+            dao.replaceProductoGrupo(seed.productoGrupo.value)
         }
+
     }
 }

@@ -66,9 +66,7 @@ data class EstadoResponse(
     val comida: List<Ticket>,
     val servidos: List<Ticket>,
     val mesas: List<Mesa>,
-)
-
-/** Carta/catálogo canónico para `GET /v1/carta` (Commander espeja ids de producto). */
+)/** Carta/catálogo canónico para `GET /v1/carta` (Commander espeja ids de producto). */
 @Serializable
 data class CartaResponse(
     /**
@@ -77,12 +75,46 @@ data class CartaResponse(
      * (re-apunta `codigoBar` por nombre sin borrar líneas históricas).
      */
     val schema: Int = CARTA_SCHEMA,
-    val productos: List<Producto>,
+    val productos: List<ProductoCarta>,
+    val gruposModificador: List<GrupoModificadorCarta> = emptyList(),
 ) {
     companion object {
         const val CARTA_SCHEMA: Int = 2
     }
 }
+
+/** Producto del contrato `GET /v1/carta` (con los grupos de modificadores asignados). */
+@Serializable
+data class ProductoCarta(
+    val id: String,
+    val nombre: String,
+    val categoria: String,
+    val precio: Double,
+    val disponible: Boolean,
+    val subfamilia: String? = null,
+    val permiteNota: Boolean = false,
+    val grupos: List<String> = emptyList(),
+)
+
+/** Grupo de modificadores del contrato `GET /v1/carta` (espejo de Commander `GrupoModificadorLan`). */
+@Serializable
+data class GrupoModificadorCarta(
+    val id: String,
+    val nombre: String,
+    val multiple: Boolean = false,
+    val obligatorio: Boolean = false,
+    val opciones: List<OpcionModificadorCarta> = emptyList(),
+)
+
+/** Opción de un grupo de modificadores (espejo de Commander `OpcionModificadorLan`). */
+@Serializable
+data class OpcionModificadorCarta(
+    val id: String,
+    val nombre: String,
+    val deltaPrecio: Double = 0.0,
+    val alias: String = "",
+)
+
 
 /** Resumen de jornadas para `GET /v1/sesion/jornadas` (Commander pinta el panel). */
 @Serializable
@@ -208,13 +240,48 @@ fun Application.barModule(repository: BarRepository) {
                     mesas = mesas.map { m ->
                         convertidas[m.id]?.let { (x, y) -> m.copy(posX = x, posY = y) } ?: m
                     },
+                )            )
+        }
+
+        get("/v1/carta") {
+
+            val asignaciones = repository.productoGrupo.value
+            val grupos = repository.gruposModificador.value
+            val opciones = repository.opcionesModificador.value
+            call.respond(
+                CartaResponse(
+                    productos = repository.catalogo.value.map { p ->
+                        ProductoCarta(
+                            id = p.id,
+                            nombre = p.nombre,
+                            categoria = p.categoria,
+                            precio = p.precio,
+                            disponible = p.disponible,
+                            subfamilia = p.subfamilia,
+                            permiteNota = p.permiteNota,
+                            grupos = asignaciones.filter { it.productoId == p.id }.map { it.grupoId },
+                        )
+                    },
+                    gruposModificador = grupos.map { g ->
+                        GrupoModificadorCarta(
+                            id = g.id,
+                            nombre = g.nombre,
+                            multiple = g.multiple,
+                            obligatorio = g.obligatorio,
+                            opciones = opciones.filter { it.grupoId == g.id }.map { o ->
+                                OpcionModificadorCarta(
+                                    id = o.id,
+                                    nombre = o.nombre,
+                                    deltaPrecio = o.deltaPrecio,
+                                    alias = o.alias,
+                                )
+                            },
+                        )
+                    },
                 )
             )
         }
 
-        get("/v1/carta") {
-            call.respond(CartaResponse(productos = repository.catalogo.value))
-        }
 
         get("/v1/sesion/jornadas") {
             // Historial de jornadas + resumen por camarero (horas y mesas distintas
