@@ -207,7 +207,9 @@ class InMemoryBarRepository(
             descripcion = normalizarDescripcionProducto(descripcion),
         )
         _catalogo.update { it + producto }
-        encolarOperacionCatalogo(producto.id, "crear", producto)
+        if (producto.esPublicableEnWeb()) {
+            encolarOperacionCatalogo(producto.id, "crear", producto)
+        }
         return true
     }
 
@@ -226,7 +228,11 @@ class InMemoryBarRepository(
             descripcion = normalizarDescripcionProducto(descripcion),
         )
         _catalogo.update { list -> list.map { if (it.id == id) editado else it } }
-        encolarOperacionCatalogo(id, "actualizar", editado)
+        val sincronizado = id in _revisionesProducto.value
+        when {
+            sincronizado -> encolarOperacionCatalogo(id, "actualizar", editado)
+            editado.esPublicableEnWeb() -> encolarOperacionCatalogo(id, "crear", editado)
+        }
         return true
     }
 
@@ -236,7 +242,13 @@ class InMemoryBarRepository(
         val borrado = _catalogo.value.size < antes
         if (borrado) {
             _productoGrupo.update { it.filterNot { a -> a.productoId == id } }
-            encolarOperacionCatalogo(id, "archivar", null)
+            val teniaCrearPendiente = _operacionesCatalogo.value.any { it.aggregateId == id && it.action == "crear" }
+            _operacionesCatalogo.update { ops -> ops.filterNot { it.aggregateId == id && it.action == "crear" } }
+            if (id in _revisionesProducto.value) {
+                encolarOperacionCatalogo(id, "archivar", null)
+            } else if (teniaCrearPendiente) {
+                // Nunca llegó al server: basta con quitar el crear del outbox.
+            }
         }
         return borrado
     }
@@ -769,7 +781,10 @@ class InMemoryBarRepository(
         val pendientes = _operacionesCatalogo.value.map { it.aggregateId }.toSet()
         _catalogo.value.forEach { producto ->
             // Solo productos sin revisión canónica y sin operación ya encolada.
-            if (producto.id !in _revisionesProducto.value && producto.id !in pendientes) {
+            if (producto.esPublicableEnWeb() &&
+                producto.id !in _revisionesProducto.value &&
+                producto.id !in pendientes
+            ) {
                 encolarOperacionCatalogo(producto.id, "crear", producto)
             }
         }

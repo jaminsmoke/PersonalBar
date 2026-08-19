@@ -20,6 +20,9 @@ class CartaViewModel : ViewModel() {
     /** Catálogo canónico del nodo (StateFlow del repositorio). */
     val catalogo: StateFlow<List<Producto>> = repository.catalogo
 
+    /** Outbox de carta pendiente de Identity (banner «publicando en la web»). */
+    val operacionesCatalogo = repository.operacionesCatalogo
+
     /** Grupos de modificadores (locales del nodo). */
     val gruposModificador: StateFlow<List<GrupoModificador>> = repository.gruposModificador
 

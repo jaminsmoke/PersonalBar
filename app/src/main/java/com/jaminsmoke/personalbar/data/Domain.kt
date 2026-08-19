@@ -57,6 +57,9 @@ fun normalizarDescripcionProducto(raw: String?): String? {
     return texto.take(DESCRIPCION_PRODUCTO_MAX)
 }
 
+/** La web pública no lista platos a 0 € (el seed LAN puede quedar solo en Room). */
+fun Producto.esPublicableEnWeb(): Boolean = precio > 0.0
+
 /**
  * Producto canónico remoto (snapshot/delta de Identity) para aplicar al mirror
  * local. [precio] en euros (el server devuelve `precio_centimos`); [revision]

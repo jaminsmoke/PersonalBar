@@ -244,9 +244,9 @@ interface BarRepository {
     val catalogoSyncDesde: StateFlow<Int>
 
     /**
-     * Encola una operación `crear` por cada producto local aún sin sincronizar
-     * (seed inicial). Idempotente: no re-encola productos con revisión canónica
-     * o con una operación ya pendiente en el outbox.
+     * Encola una operación `crear` por cada producto local publicable (`precio > 0`)
+     * aún sin sincronizar (seed inicial). Idempotente: no re-encola productos con
+     * revisión canónica, outbox pendiente o precio 0 (solo LAN).
      */
     fun encolarSeedCatalogo()
 

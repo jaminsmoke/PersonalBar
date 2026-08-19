@@ -162,6 +162,7 @@
     <!-- Menu (catalog) -->
     <string name="carta_titulo">Menu</string>
     <string name="carta_subtitulo">Bar product catalog</string>
+    <string name="carta_sync_pendiente">Menu changes are waiting to be published on the website.</string>
     <string name="carta_nuevo_producto">New product</string>
     <string name="carta_campo_nombre">Name</string>
     <string name="carta_campo_descripcion">Description (optional, shown on the public menu)</string>

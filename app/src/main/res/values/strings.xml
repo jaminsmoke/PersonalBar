@@ -161,6 +161,7 @@
     <!-- Carta (catálogo) -->
     <string name="carta_titulo">Carta</string>
     <string name="carta_subtitulo">Catálogo de productos del bar</string>
+    <string name="carta_sync_pendiente">Hay cambios de carta pendientes de publicar en la web.</string>
     <string name="carta_nuevo_producto">Nuevo producto</string>
     <string name="carta_campo_nombre">Nombre</string>
     <string name="carta_campo_descripcion">Descripción (opcional, se ve en la carta web)</string>
