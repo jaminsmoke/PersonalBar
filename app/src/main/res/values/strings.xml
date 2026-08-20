@@ -387,6 +387,20 @@
     <string name="local_mostrar_equipo_aviso">Solo aparecen camareros que hayan aceptado salir en la web</string>
     <string name="local_guardar_apariencia">Guardar apariencia</string>
     <string name="local_guardado">Guardado en Identity</string>
+    <string name="local_fondos_titulo">Fondos de la web</string>
+    <string name="local_fondos_subtitulo">Elige el catálogo Estate o sube una foto por sección</string>
+    <string name="local_fondos_seccion_inicio">Inicio</string>
+    <string name="local_fondos_seccion_horario">Horario</string>
+    <string name="local_fondos_seccion_carta">Carta</string>
+    <string name="local_fondos_seccion_equipo">Equipo</string>
+    <string name="local_fondos_seccion_contacto">Contacto</string>
+    <string name="local_fondos_subir">Subir foto</string>
+    <string name="local_fondos_default">Volver al default</string>
+    <string name="local_fondos_default_etiqueta">Fondo por defecto</string>
+    <string name="local_fondos_actual">Fondo actual de %1$s</string>
+    <string name="local_fondos_elegir">Elegir %1$s</string>
+    <string name="local_fondos_ver_web">Ver la web</string>
+    <string name="local_fondos_error">No se pudo guardar el fondo</string>
 
     <!-- Voz en colas -->
     <string name="voz_escuchar">Escuchar</string>

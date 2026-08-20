@@ -173,6 +173,57 @@ class SerializationTest {
     }
 
     @Test
+    fun fondoUpdateBodyAsignaCatalogo() {
+        val json = fondoUpdateBody(FondoSeccion.HORARIO, "estate-horario-1")
+        assertEquals(
+            """{"horario": {"fuente": "catalogo", "id": "estate-horario-1"}}""",
+            json,
+        )
+    }
+
+    @Test
+    fun fondoUpdateBodyConNullVuelveAlDefault() {
+        val json = fondoUpdateBody(FondoSeccion.CARTA, null)
+        assertEquals("""{"carta": null}""", json)
+    }
+
+    @Test
+    fun fondosAsignadosDecodificaContrato() {
+        // Respuesta real del contrato Identity #140 (snake_case no aplica: los
+        // slots son claves planas; `fuente`/`id`/`url` tal cual).
+        val json = """
+            {
+              "inicio": {"fuente": "catalogo", "id": "estate-inicio-1", "url": "https://web.example/stubs/fondos/estate-inicio-1.webp"},
+              "horario": {"fuente": "upload", "id": "img-1", "url": "/v1/establecimientos/e1/fondos/horario"},
+              "carta": {"fuente": "catalogo", "id": "estate-carta-2", "url": "https://web.example/stubs/fondos/estate-carta-2.webp"},
+              "equipo": {"fuente": "catalogo", "id": "estate-equipo-1", "url": "https://web.example/stubs/fondos/estate-equipo-1.webp"},
+              "contacto": {"fuente": "catalogo", "id": "estate-contacto-1", "url": "https://web.example/stubs/fondos/estate-contacto-1.webp"}
+            }
+        """.trimIndent()
+        val asignados = LanJson.decodeFromString<FondosAsignadosResponse>(json)
+        assertEquals("catalogo", asignados.inicio.fuente)
+        assertEquals("estate-inicio-1", asignados.inicio.id)
+        assertEquals("upload", asignados.horario.fuente)
+        assertEquals("estate-carta-2", asignados.carta.id)
+        assertEquals("estate-carta-2", asignados.de(FondoSeccion.CARTA).id)
+        assertNull(asignados.contacto.id?.takeIf { it.isEmpty() })
+    }
+
+    @Test
+    fun catalogoFondosDecodificaMiniaturas() {
+        val json = """
+            [
+              {"id": "estate-inicio-1", "seccion": "inicio", "url": "https://web.example/stubs/fondos/estate-inicio-1.webp"},
+              {"id": "estate-inicio-2", "seccion": "inicio", "url": "https://web.example/stubs/fondos/estate-inicio-2.webp"}
+            ]
+        """.trimIndent()
+        val catalogo = LanJson.decodeFromString<List<CatalogoFondoItem>>(json)
+        assertEquals(2, catalogo.size)
+        assertEquals("inicio", catalogo.first().seccion)
+        assertEquals("estate-inicio-1", catalogo.first().id)
+    }
+
+    @Test
     fun estadoResponseRoundTrip() {
         val estado = EstadoResponse(
             version = "0.1",

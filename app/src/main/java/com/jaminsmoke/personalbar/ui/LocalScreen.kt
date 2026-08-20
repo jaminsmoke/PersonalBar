@@ -1,10 +1,14 @@
 package com.jaminsmoke.personalbar.ui
 
 import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
@@ -47,6 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
+import com.jaminsmoke.personalbar.lan.CatalogoFondoItem
+import com.jaminsmoke.personalbar.lan.FondoAsignado
+import com.jaminsmoke.personalbar.lan.FondoSeccion
 import com.jaminsmoke.personalbar.ui.components.PbPestanasMenu
 import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 import com.jaminsmoke.personalbar.ui.gestion.HorarioScreen
@@ -545,8 +554,193 @@ private fun LocalApariencia(viewModel: LocalViewModel) {
         ) {
             Text(stringResource(R.string.local_guardar_apariencia))
         }
+        Spacer(Modifier.height(24.dp))
+
+        // Fondos de la web pública: elige catálogo Estate o sube foto por sección.
+        // Vive en Apariencia (decisión de Debate #128): sin 6ª pestaña nueva.
+        LocalFondos(viewModel)
         Spacer(Modifier.height(16.dp))
     }
+}
+
+/** Bloque «Fondos de la web»: un slot por sección, con miniaturas y acciones. */
+@Composable
+private fun LocalFondos(viewModel: LocalViewModel) {
+    val catalogo by viewModel.catalogoFondos.collectAsState()
+    val fondos by viewModel.fondos.collectAsState()
+    val miniaturas by viewModel.fondoMiniaturas.collectAsState()
+    val webUrl by viewModel.webUrl.collectAsState()
+    val trabajando by viewModel.trabajando.collectAsState()
+    val uriHandler = LocalUriHandler.current
+
+    // Precarga las miniaturas (catálogo + slots actuales) al abrir el bloque.
+    LaunchedEffect(Unit) { viewModel.precargarFondos() }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = stringResource(R.string.local_fondos_titulo),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.local_fondos_subtitulo),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FondoSeccion.TODAS.forEach { seccion ->
+            val asignado = fondos?.de(seccion)
+            val itemsSeccion = catalogo.filter { it.seccion == seccion.apiValor }
+            FondoSlotCard(
+                seccion = seccion,
+                asignado = asignado,
+                items = itemsSeccion,
+                miniaturas = miniaturas,
+                trabajando = trabajando,
+                onElegir = { viewModel.elegirFondo(seccion, it) },
+                onSubir = { uri -> viewModel.subirFondo(seccion, uri) },
+                onDefault = { viewModel.volverFondoDefault(seccion) },
+            )
+        }
+        if (webUrl != null) {
+            Button(
+                onClick = { uriHandler.openUri(webUrl!!) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.local_fondos_ver_web))
+            }
+        }
+    }
+}
+
+/** Tarjeta de un slot de fondo: miniatura actual + miniaturas de catálogo + acciones. */
+@Composable
+private fun FondoSlotCard(
+    seccion: FondoSeccion,
+    asignado: FondoAsignado?,
+    items: List<CatalogoFondoItem>,
+    miniaturas: Map<String, ByteArray?>,
+    trabajando: Boolean,
+    onElegir: (String) -> Unit,
+    onSubir: (Uri) -> Unit,
+    onDefault: () -> Unit,
+) {
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) onSubir(uri)
+    }
+    val actualUrl = asignado?.url
+    val actualBitmap = remember(actualUrl, miniaturas) {
+        actualUrl?.let { url ->
+            miniaturas[url]?.let { bytes ->
+                runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
+            }
+        }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(fondoSeccionLabel(seccion)),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(8.dp))
+
+            // Miniatura actual (catálogo elegido, upload propio o placeholder).
+            if (actualBitmap != null) {
+                Image(
+                    bitmap = actualBitmap,
+                    contentDescription = stringResource(R.string.local_fondos_actual, stringResource(fondoSeccionLabel(seccion))),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(72.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+                Spacer(Modifier.height(8.dp))
+            } else {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = stringResource(R.string.local_fondos_default_etiqueta),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            // Miniaturas de catálogo (2 por sección), la activa con borde.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items.forEach { item ->
+                    val bmp = remember(item.url, miniaturas) {
+                        miniaturas[item.url]?.let { bytes ->
+                            runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
+                        }
+                    }
+                    val activa = asignado?.fuente == "catalogo" && asignado.id == item.id
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(enabled = !trabajando) { onElegir(item.id) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        border = if (activa) BorderStroke(2.dp, MaterialTheme.colorScheme.tertiary) else null,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (bmp != null) {
+                                Image(
+                                    bitmap = bmp,
+                                    contentDescription = stringResource(R.string.local_fondos_elegir, item.id),
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                )
+                            } else {
+                                Text(
+                                    text = item.id,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { picker.launch("image/*") }, enabled = !trabajando) {
+                    Text(stringResource(R.string.local_fondos_subir))
+                }
+                OutlinedButton(onClick = onDefault, enabled = !trabajando && asignado != null) {
+                    Text(stringResource(R.string.local_fondos_default))
+                }
+            }
+        }
+    }
+}
+
+/** Recurso de texto de la etiqueta de una sección de fondo. */
+private fun fondoSeccionLabel(seccion: FondoSeccion): Int = when (seccion) {
+    FondoSeccion.INICIO -> R.string.local_fondos_seccion_inicio
+    FondoSeccion.HORARIO -> R.string.local_fondos_seccion_horario
+    FondoSeccion.CARTA -> R.string.local_fondos_seccion_carta
+    FondoSeccion.EQUIPO -> R.string.local_fondos_seccion_equipo
+    FondoSeccion.CONTACTO -> R.string.local_fondos_seccion_contacto
 }
 
 private fun tipoLabel(tipo: TipoEstablecimiento): Int = when (tipo) {

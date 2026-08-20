@@ -389,6 +389,20 @@
     <string name="local_mostrar_equipo_aviso">Only waiters who opted in appear on the site</string>
     <string name="local_guardar_apariencia">Save appearance</string>
     <string name="local_guardado">Saved to Identity</string>
+    <string name="local_fondos_titulo">Website backgrounds</string>
+    <string name="local_fondos_subtitulo">Pick from the Estate catalog or upload a photo per section</string>
+    <string name="local_fondos_seccion_inicio">Home</string>
+    <string name="local_fondos_seccion_horario">Hours</string>
+    <string name="local_fondos_seccion_carta">Menu</string>
+    <string name="local_fondos_seccion_equipo">Team</string>
+    <string name="local_fondos_seccion_contacto">Contact</string>
+    <string name="local_fondos_subir">Upload photo</string>
+    <string name="local_fondos_default">Back to default</string>
+    <string name="local_fondos_default_etiqueta">Default background</string>
+    <string name="local_fondos_actual">Current background of %1$s</string>
+    <string name="local_fondos_elegir">Pick %1$s</string>
+    <string name="local_fondos_ver_web">View website</string>
+    <string name="local_fondos_error">Could not save the background</string>
 
     <!-- Voice in queues -->
     <string name="voz_escuchar">Listen</string>

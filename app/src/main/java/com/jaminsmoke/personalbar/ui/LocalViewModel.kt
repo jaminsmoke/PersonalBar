@@ -11,6 +11,9 @@ import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.SesionNegocio
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
 import com.jaminsmoke.personalbar.data.apiValor
+import com.jaminsmoke.personalbar.lan.CatalogoFondoItem
+import com.jaminsmoke.personalbar.lan.FondoSeccion
+import com.jaminsmoke.personalbar.lan.FondosAsignadosResponse
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import com.jaminsmoke.personalbar.lan.IdentityPerfilWebUpdate
 import kotlinx.coroutines.Dispatchers
@@ -84,6 +87,16 @@ class LocalViewModel : ViewModel() {
     private val _galeria = MutableStateFlow<List<GaleriaItem>>(emptyList())
     val galeria: StateFlow<List<GaleriaItem>> = _galeria.asStateFlow()
 
+    private val _catalogoFondos = MutableStateFlow<List<CatalogoFondoItem>>(emptyList())
+    val catalogoFondos: StateFlow<List<CatalogoFondoItem>> = _catalogoFondos.asStateFlow()
+
+    private val _fondos = MutableStateFlow<FondosAsignadosResponse?>(null)
+    val fondos: StateFlow<FondosAsignadosResponse?> = _fondos.asStateFlow()
+
+    /** Bytes de miniaturas de fondos por URL (catálogo absoluta o upload relativa). */
+    private val _fondoMiniaturas = MutableStateFlow<Map<String, ByteArray?>>(emptyMap())
+    val fondoMiniaturas: StateFlow<Map<String, ByteArray?>> = _fondoMiniaturas.asStateFlow()
+
     private val _trabajando = MutableStateFlow(false)
     val trabajando: StateFlow<Boolean> = _trabajando.asStateFlow()
     private val _mensaje = MutableStateFlow<Int?>(null)
@@ -105,7 +118,39 @@ class LocalViewModel : ViewModel() {
             if (perfil != null) aplicarPerfil(perfil)
             _heroBytes.value = IdentityNegocioClient.obtenerHero()
             recargarGaleria()
+            recargarFondos()
         }
+    }
+
+    private suspend fun recargarFondos() {
+        _catalogoFondos.value = IdentityNegocioClient.listarCatalogoFondos()
+        _fondos.value = IdentityNegocioClient.obtenerFondos()
+    }
+
+    /**
+     * Descarga las miniaturas del catálogo (10) y de los slots actuales para
+     * pintar el picker. Idempotente: las URLs ya cargadas no se re-descargan.
+     * Se invoca al mostrar el bloque de fondos (no al abrir Local).
+     */
+    fun precargarFondos() {
+        viewModelScope.launch {
+            val urls = mutableSetOf<String>()
+            _catalogoFondos.value.forEach { urls.add(it.url) }
+            _fondos.value?.let { asignados ->
+                FondoSeccion.TODAS.forEach { seccion ->
+                    asignados.de(seccion).url.takeIf { it.isNotBlank() }?.let { urls.add(it) }
+                }
+            }
+            urls.removeAll(_fondoMiniaturas.value.keys)
+            if (urls.isEmpty()) return@launch
+            val cargadas = urls.associateWith { url -> bytesFondoUrl(url) }
+            _fondoMiniaturas.value = _fondoMiniaturas.value + cargadas
+        }
+    }
+
+    /** Limpia las miniaturas cacheadas (p. ej. tras un upload: el slot cambia de URL). */
+    private fun invalidarMiniaturas() {
+        _fondoMiniaturas.value = emptyMap()
     }
 
     private fun aplicarPerfil(perfil: com.jaminsmoke.personalbar.lan.IdentityPerfilWeb) {
@@ -339,6 +384,58 @@ class LocalViewModel : ViewModel() {
             _trabajando.value = false
         }
     }
+
+    /** Asigna un fondo de catálogo a la sección y recarga la asignación. */
+    fun elegirFondo(seccion: FondoSeccion, catalogoId: String) {
+        _mensaje.value = null
+        _trabajando.value = true
+        viewModelScope.launch {
+            _fondos.value = IdentityNegocioClient.actualizarFondos(seccion, catalogoId)
+            _mensaje.value = if (_fondos.value != null) R.string.local_guardado else R.string.local_fondos_error
+            invalidarMiniaturas()
+            precargarFondos()
+            _trabajando.value = false
+        }
+    }
+
+    /** Sube una foto propia para la sección (sustituye el catálogo del slot). */
+    fun subirFondo(seccion: FondoSeccion, uri: Uri) {
+        _mensaje.value = null
+        _trabajando.value = true
+        viewModelScope.launch {
+            val (bytes, mimetype) = leerImagen(uri)
+            val resultado = if (bytes != null) {
+                IdentityNegocioClient.subirFondo(seccion, bytes, mimetype)
+            } else {
+                null
+            }
+            if (resultado != null) {
+                _fondos.value = resultado
+                _mensaje.value = R.string.local_guardado
+            } else {
+                _mensaje.value = R.string.local_fondos_error
+            }
+            invalidarMiniaturas()
+            precargarFondos()
+            _trabajando.value = false
+        }
+    }
+
+    /** Vuelve al fondo de catálogo por defecto de la sección. */
+    fun volverFondoDefault(seccion: FondoSeccion) {
+        _mensaje.value = null
+        _trabajando.value = true
+        viewModelScope.launch {
+            _fondos.value = IdentityNegocioClient.borrarFondo(seccion)
+            _mensaje.value = if (_fondos.value != null) R.string.local_guardado else R.string.local_fondos_error
+            invalidarMiniaturas()
+            precargarFondos()
+            _trabajando.value = false
+        }
+    }
+
+    /** Bytes de una miniatura de fondo por URL (catálogo absoluta o upload relativa). */
+    suspend fun bytesFondoUrl(url: String): ByteArray? = IdentityNegocioClient.obtenerBytesFondo(url)
 
     private suspend fun leerImagen(uri: Uri): Pair<ByteArray?, String> = withContext(Dispatchers.IO) {
         val resolver = app.contentResolver
