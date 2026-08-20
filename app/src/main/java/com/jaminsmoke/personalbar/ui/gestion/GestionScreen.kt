@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,7 +58,6 @@ enum class GestionAcceso(
     ENLACES(R.string.gestion_enlaces, Icons.Default.QrCode),
     LOCAL(R.string.gestion_local, Icons.Default.Storefront),
     PERFIL(R.string.gestion_perfil, Icons.Default.ManageAccounts),
-    JORNADAS(R.string.gestion_jornadas, Icons.Default.Schedule),
 }
 
 /**
@@ -117,12 +115,6 @@ fun GestionScreen(
             onVolver = { seleccion = null },
         ) {
             PerfilCuentaScreen()
-        }
-        GestionAcceso.JORNADAS -> GestionSubPantalla(
-            titulo = stringResource(R.string.gestion_jornadas),
-            onVolver = { seleccion = null },
-        ) {
-            JornadasScreen()
         }
     }
 }
