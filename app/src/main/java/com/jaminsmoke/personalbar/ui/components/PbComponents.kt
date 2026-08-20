@@ -20,7 +20,9 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Router
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.Destino
@@ -45,6 +48,41 @@ import com.jaminsmoke.personalbar.ui.theme.PbOnTicketPendiente
 import com.jaminsmoke.personalbar.ui.theme.PbOnTicketPreparado
 import com.jaminsmoke.personalbar.ui.theme.PbTicketPendiente
 import com.jaminsmoke.personalbar.ui.theme.PbTicketPreparado
+
+/**
+ * Pestañas de sección para menús de gestión: patrón reutilizable sobre
+ * [PrimaryTabRow] (precedente: selector de salas del Mapa). Cada título es una
+ * pestaña; [indice] marca la activa y [onSeleccionar] notifica el cambio.
+ * Pensado para 2-4 secciones fijas; si se supera el ancho, migrar a
+ * `PrimaryScrollableTabRow` (como el Mapa).
+ */
+@Composable
+fun PbPestanasMenu(
+    titulos: List<String>,
+    indice: Int,
+    onSeleccionar: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    PrimaryTabRow(
+        selectedTabIndex = indice,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        titulos.forEachIndexed { i, titulo ->
+            Tab(
+                selected = i == indice,
+                onClick = { onSeleccionar(i) },
+                text = {
+                    Text(
+                        text = titulo,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                },
+            )
+        }
+    }
+}
 
 /**
  * Gate de sesión para pantallas de gestión que dependen de la cuenta del
