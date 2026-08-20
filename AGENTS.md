@@ -277,7 +277,18 @@ Hasta que no exista Gradle: documentar en `Verificación` qué se comprobó (p. 
 4. Setear `Completado` (fecha) y `Completado exacto` (ISO-8601).
 5. Añadir ✅ al título del issue.
 6. Cerrar el issue (`gh issue close -r completed`).
-7. **Push** a la rama de trabajo (normalmente `main`).
+7. **Integrar por PR** (nunca push directo a `main` — `main` está protegida, ver «Protección de `main`»): rama → `gh pr create` → esperar checks verdes (incl. `Instrumented tests (GMD)` y `Workflow security`) → `gh pr merge --squash`.
+
+### Protección de `main`
+
+`main` está protegida por el ruleset **`main-protegida`** (ver `gh api repos/jaminsmoke/PersonalBar/rulesets`):
+
+- **PR obligatorio** para integrar (0 approvals requeridas; merge por squash recomendado).
+- **Required checks** (strict): `Lint`, `Unit tests`, `Assemble debug`, `Instrumented tests (GMD)`, `Workflow security`.
+- **Non-fast-forward** y **deletion** bloqueadas.
+- **Bypass solo el owner** (`jaminsmoke`), para emergencias — no es el flujo habitual.
+
+Consecuencias: el CI rojo **bloquea** el merge (nada de integrar con checks en fallo) y los required checks deben existir en el repo antes de añadirlos al ruleset.
 
 ### CLI (all commands from project root)
 
@@ -316,15 +327,20 @@ gh issue edit <N> --add-label "tipo:feature,area:android"
 ./gradlew test
 ./gradlew lint
 
-# Changelog: commit con SHA referenciable, cerrar, push
+# Changelog: rama → PR → checks verdes → merge squash → SHA → cerrar
+git checkout -b feature/<cambio>
 git add <files> && git commit -m "..."
+git push -u origin feature/<cambio>
+gh pr create --base main --title "..." --body "Closes #<N>"
+gh pr checks --watch   # esperar verdes (Lint, Unit, Assemble, GMD, Workflow security)
+gh pr merge --squash
 $KANBAN body <itemId> --append "Commit" --content "SHA: \`$(git rev-parse --short HEAD)\`"
 $KANBAN set-field <itemId> --field "Status" --option "Changelog"
 $KANBAN set-field <itemId> --field "Completado" --date "YYYY-MM-DD"
 $KANBAN set-field <itemId> --field "Completado exacto" --text "YYYY-MM-DDTHH:MM:SSZ"
 gh issue edit <N> --title "✅ ..."
 gh issue close <N> -r completed
-git push
+# main protegida: nunca git push directo a main
 
 # Delete (IRREVERSIBLE, requires --yes)
 $KANBAN delete <itemId> --yes
@@ -343,7 +359,7 @@ Each item's body evolves through the lifecycle. The CLI generates a template at 
 | **Roadmap** | + Decisión acordada, Plan aprobado, Criterios de aceptación, Plan de verificación, Riesgos y recuperación | Investigar a fondo. Añadir lo que falte al plan. |
 | **Ejecutando** | + Implementación (qué se hizo realmente, diferencias con el plan si las hay) | Convertir draft→issue al ENTRAR. Documentar cambios sobre el plan. |
 | **Verificando** | + Verificación (checklist de tests, typecheck, lint, comprobaciones específicas) | Ejecutar TODO lo aplicable. Arreglar errores preexistentes si se encuentran. |
-| **Changelog** | + Commit (SHA). Setear `Completado`, `Completado exacto`. ✅ en título. | Commit → SHA al body → cerrar issue → push a main. |
+| **Changelog** | + Commit (SHA). Setear `Completado`, `Completado exacto`. ✅ en título. | PR → checks verdes → merge squash → SHA al body → cerrar issue. |
 
 ### Fields reference
 
