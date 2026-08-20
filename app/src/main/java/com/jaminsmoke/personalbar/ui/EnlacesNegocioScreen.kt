@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
@@ -50,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.lan.IdentityEnlacePublico
+import com.jaminsmoke.personalbar.ui.components.PbPestanasMenu
 import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 
 /**
@@ -68,17 +67,16 @@ fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
 
     var revocando by remember { mutableStateOf<IdentityEnlacePublico?>(null) }
 
+    // Pestañas de sección: 0 = Web del negocio, 1 = Carta (una tarjeta por pestaña).
+    var seccion by remember { mutableStateOf(0) }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = stringResource(R.string.enlaces_titulo),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
         Text(
             text = stringResource(R.string.enlaces_subtitulo),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.height(12.dp))
 
         // Sin cuenta del establecimiento conectada (header): los enlaces viven en Identity.
         if (!identityConfig.conectado) {
@@ -88,6 +86,12 @@ fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
             )
             return
         }
+        PbPestanasMenu(
+            titulos = TipoEnlacePublico.entries.map { stringResource(it.labelRes) },
+            indice = seccion,
+            onSeleccionar = { seccion = it },
+        )
+        Spacer(Modifier.height(16.dp))
         mensaje?.let { res ->
             Text(
                 text = stringResource(res),
@@ -96,7 +100,6 @@ fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
-        Spacer(Modifier.height(16.dp))
 
         if (trabajando && enlaces.isEmpty()) {
             Row(
@@ -106,22 +109,16 @@ fun EnlacesNegocioScreen(viewModel: EnlacesNegocioViewModel = viewModel()) {
                 CircularProgressIndicator()
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                items(TipoEnlacePublico.entries, key = { it.apiValor }) { tipo ->
-                    EnlaceTarjeta(
-                        titulo = stringResource(tipo.labelRes),
-                        ayuda = stringResource(tipo.ayudaRes),
-                        enlace = enlaces.firstOrNull { it.cubreTipo(tipo) },
-                        trabajando = trabajando,
-                        onCrear = { viewModel.crear(tipo) },
-                        onRotar = { viewModel.rotar(it) },
-                        onRevocar = { revocando = it },
-                    )
-                }
-            }
+            val tipo = TipoEnlacePublico.entries[seccion]
+            EnlaceTarjeta(
+                titulo = stringResource(tipo.labelRes),
+                ayuda = stringResource(tipo.ayudaRes),
+                enlace = enlaces.firstOrNull { it.cubreTipo(tipo) },
+                trabajando = trabajando,
+                onCrear = { viewModel.crear(tipo) },
+                onRotar = { viewModel.rotar(it) },
+                onRevocar = { revocando = it },
+            )
         }
     }
 
