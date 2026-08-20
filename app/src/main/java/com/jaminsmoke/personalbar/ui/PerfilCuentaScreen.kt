@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
+import com.jaminsmoke.personalbar.data.SesionNegocio
+import com.jaminsmoke.personalbar.ui.components.PbPestanasMenu
 import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 
 /**
@@ -44,17 +46,15 @@ fun PerfilCuentaScreen(viewModel: PerfilCuentaViewModel = viewModel()) {
     var passwordNueva by remember { mutableStateOf("") }
     var passwordConfirmacion by remember { mutableStateOf("") }
 
+    // Pestañas de sección: 0 = Cuenta, 1 = Contraseña.
+    var seccion by remember { mutableStateOf(0) }
+
     if (!identityConfig.conectado) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
         ) {
-            Text(
-                text = stringResource(R.string.perfil_titulo),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
             Text(
                 text = stringResource(R.string.perfil_subtitulo),
                 style = MaterialTheme.typography.bodyMedium,
@@ -78,6 +78,86 @@ fun PerfilCuentaScreen(viewModel: PerfilCuentaViewModel = viewModel()) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.height(12.dp))
+        PbPestanasMenu(
+            titulos = listOf(
+                stringResource(R.string.perfil_pestana_cuenta),
+                stringResource(R.string.perfil_pestana_contrasena),
+            ),
+            indice = seccion,
+            onSeleccionar = { seccion = it },
+        )
+        Spacer(Modifier.height(16.dp))
+        when (seccion) {
+            0 -> PerfilCuentaSeccion(sesion = sesion)
+            else -> PerfilPasswordSeccion(
+                passwordActual = passwordActual,
+                onPasswordActual = { passwordActual = it },
+                passwordNueva = passwordNueva,
+                onPasswordNueva = { passwordNueva = it },
+                passwordConfirmacion = passwordConfirmacion,
+                onPasswordConfirmacion = { passwordConfirmacion = it },
+                trabajando = trabajando,
+                mensaje = mensaje,
+                onCambiar = {
+                    viewModel.cambiarPassword(passwordActual, passwordNueva, passwordConfirmacion)
+                },
+            )
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** Pestaña «Cuenta»: email y UUID del establecimiento vinculado. */
+@Composable
+private fun PerfilCuentaSeccion(sesion: SesionNegocio?) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.perfil_email),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = sesion?.email ?: "—",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.perfil_uuid),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = sesion?.establecimientoUuid ?: "—",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+/** Pestaña «Contraseña»: cambio de contraseña (3 campos + botón). */
+@Composable
+private fun PerfilPasswordSeccion(
+    passwordActual: String,
+    onPasswordActual: (String) -> Unit,
+    passwordNueva: String,
+    onPasswordNueva: (String) -> Unit,
+    passwordConfirmacion: String,
+    onPasswordConfirmacion: (String) -> Unit,
+    trabajando: Boolean,
+    mensaje: Int?,
+    onCambiar: () -> Unit,
+) {
+    Column {
         mensaje?.let { res ->
             Text(
                 text = stringResource(res),
@@ -87,44 +167,9 @@ fun PerfilCuentaScreen(viewModel: PerfilCuentaViewModel = viewModel()) {
                 } else {
                     MaterialTheme.colorScheme.error
                 },
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(bottom = 8.dp),
             )
         }
-        Spacer(Modifier.height(16.dp))
-
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = stringResource(R.string.perfil_email),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = sesion?.email ?: "—",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.perfil_uuid),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = sesion?.establecimientoUuid ?: "—",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
@@ -139,7 +184,7 @@ fun PerfilCuentaScreen(viewModel: PerfilCuentaViewModel = viewModel()) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = passwordActual,
-                    onValueChange = { passwordActual = it },
+                    onValueChange = onPasswordActual,
                     label = { Text(stringResource(R.string.perfil_password_actual)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
@@ -148,7 +193,7 @@ fun PerfilCuentaScreen(viewModel: PerfilCuentaViewModel = viewModel()) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = passwordNueva,
-                    onValueChange = { passwordNueva = it },
+                    onValueChange = onPasswordNueva,
                     label = { Text(stringResource(R.string.perfil_password_nueva)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
@@ -157,7 +202,7 @@ fun PerfilCuentaScreen(viewModel: PerfilCuentaViewModel = viewModel()) {
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = passwordConfirmacion,
-                    onValueChange = { passwordConfirmacion = it },
+                    onValueChange = onPasswordConfirmacion,
                     label = { Text(stringResource(R.string.perfil_password_confirmacion)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
@@ -165,9 +210,7 @@ fun PerfilCuentaScreen(viewModel: PerfilCuentaViewModel = viewModel()) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Button(
-                    onClick = {
-                        viewModel.cambiarPassword(passwordActual, passwordNueva, passwordConfirmacion)
-                    },
+                    onClick = onCambiar,
                     enabled = !trabajando,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -175,6 +218,5 @@ fun PerfilCuentaScreen(viewModel: PerfilCuentaViewModel = viewModel()) {
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
     }
 }

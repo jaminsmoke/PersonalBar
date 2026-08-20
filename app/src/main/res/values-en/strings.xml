@@ -326,6 +326,8 @@
     <!-- Business account profile -->
     <string name="perfil_titulo">Profile</string>
     <string name="perfil_subtitulo">Email and password of the business account</string>
+    <string name="perfil_pestana_cuenta">Account</string>
+    <string name="perfil_pestana_contrasena">Password</string>
     <string name="perfil_logo">Logo</string>
     <string name="perfil_cambiar_logo">Change logo</string>
     <string name="perfil_borrar_logo">Remove logo</string>
