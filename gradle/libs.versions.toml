@@ -15,7 +15,7 @@ lifecycleViewmodelCompose = "2.11.0"
 desugarJdkLibs = "2.1.5"
 ktor = "3.5.2"
 kotlinxSerialization = "1.11.0"
-tink = "1.15.0"
+tink = "1.23.0"
 zxing = "3.5.3"
 cyclonedx = "3.4.1"
 
