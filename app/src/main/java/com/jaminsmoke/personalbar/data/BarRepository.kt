@@ -97,6 +97,21 @@ interface BarRepository {
     /** @return true si se borró; false si no existe. */
     fun borrarOpcionModificador(id: String): Boolean
 
+    /**
+     * Guarda (crea o edita) un grupo y reemplaza sus opciones de forma atómica.
+     * [grupoId] null = alta; no nulo = edición (false si no existe). Cada borrador
+     * con `id` vacío crea una opción nueva; con `id` existente la edita. Las
+     * opciones que no vienen en [opciones] se eliminan. Devuelve false si el
+     * nombre queda vacío.
+     */
+    fun guardarGrupoConOpciones(
+        grupoId: String?,
+        nombre: String,
+        multiple: Boolean,
+        obligatorio: Boolean,
+        opciones: List<OpcionModificadorBorrador>,
+    ): Boolean
+
     /** @return true si se asignó; false si el producto o el grupo no existen. */
     fun asignarGrupoProducto(productoId: String, grupoId: String): Boolean
 

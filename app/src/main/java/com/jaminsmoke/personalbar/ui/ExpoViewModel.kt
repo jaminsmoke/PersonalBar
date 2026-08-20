@@ -6,6 +6,7 @@ import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Camarero
+import com.jaminsmoke.personalbar.data.CartaModificadores
 import com.jaminsmoke.personalbar.data.JornadasResumen
 import com.jaminsmoke.personalbar.data.CamareroEstado
 import com.jaminsmoke.personalbar.data.Destino
@@ -302,13 +303,11 @@ internal fun formatoLineaExpo(linea: Linea): String {
     linea.modificadores.forEach { m ->
         val nombre = m.opcion.trim()
         if (nombre.isEmpty()) return@forEach
-        extras.add(if (m.delta != 0.0) "$nombre +${precioTextoDelta(m.delta)}" else nombre)
+        extras.add(if (m.delta != 0.0) "$nombre +${CartaModificadores.formatoDelta(m.delta)}" else nombre)
     }
     linea.nota?.trim()?.takeIf { it.isNotEmpty() }?.let { extras.add(it) }
     val base = "${linea.cantidad}x ${linea.nombreProducto}"
     return if (extras.isEmpty()) base else "$base · ${extras.joinToString(" · ")}"
 }
 
-/** Formatea un delta de precio en euros (separador decimal según el locale del dispositivo). */
-private fun precioTextoDelta(delta: Double): String =
-    java.text.NumberFormat.getCurrencyInstance(java.util.Locale.getDefault()).format(delta)
+

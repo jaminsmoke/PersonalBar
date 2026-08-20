@@ -191,10 +191,9 @@
     <string name="carta_grupo_campo_nombre">Group name</string>
     <string name="carta_grupo_multiple">Multiple selection</string>
     <string name="carta_grupo_obligatorio">Required</string>
-    <string name="carta_opcion_nueva">New option</string>
-    <string name="carta_opcion_editar">Edit option</string>
-    <string name="carta_opcion_borrar">Delete option?</string>
-    <string name="carta_opcion_borrar_mensaje">“%1$s” will be deleted from the group.</string>
+    <string name="carta_opciones_titulo">Options</string>
+    <string name="carta_opcion_anadir">Add option</string>
+    <string name="carta_opcion_quitar">Remove option</string>
     <string name="carta_opcion_campo_nombre">Option name</string>
     <string name="carta_opcion_campo_delta">Price delta (optional)</string>
     <string name="carta_opcion_campo_alias">Voice alias (optional)</string>

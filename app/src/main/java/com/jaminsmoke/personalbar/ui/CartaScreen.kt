@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
@@ -45,7 +48,7 @@ import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.DESCRIPCION_PRODUCTO_MAX
 import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.GrupoModificador
-import com.jaminsmoke.personalbar.data.OpcionModificador
+import com.jaminsmoke.personalbar.data.OpcionModificadorBorrador
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.destinoDesdeCategoria
 
@@ -467,9 +470,6 @@ private fun ModificadoresDialog(
     var editandoGrupo by remember { mutableStateOf<GrupoModificador?>(null) }
     var borrandoGrupo by remember { mutableStateOf<GrupoModificador?>(null) }
     var creandoGrupo by remember { mutableStateOf(false) }
-    var editandoOpcion by remember { mutableStateOf<OpcionModificador?>(null) }
-    var borrandoOpcion by remember { mutableStateOf<OpcionModificador?>(null) }
-    var creandoOpcionEnGrupo by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -518,29 +518,12 @@ private fun ModificadoresDialog(
                                         Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.carta_grupo_borrar))
                                     }
                                 }
-                                opcionesGrupo.forEach { opcion ->
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = opcion.nombre,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        Text(
-                                            text = deltaTexto(opcion.deltaPrecio),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        IconButton(onClick = { editandoOpcion = opcion }) {
-                                            Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.carta_opcion_editar))
-                                        }
-                                        IconButton(onClick = { borrandoOpcion = opcion }) {
-                                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.carta_opcion_borrar))
-                                        }
-                                    }
-                                }
-                                TextButton(onClick = { creandoOpcionEnGrupo = grupo.id }) {
-                                    Text(stringResource(R.string.carta_opcion_nueva))
+                                if (opcionesGrupo.isNotEmpty()) {
+                                    Text(
+                                        text = opcionesGrupo.joinToString(" · ") { it.nombre },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                             }
                         }
@@ -559,21 +542,30 @@ private fun ModificadoresDialog(
             nombreInicial = "",
             multipleInicial = false,
             obligatorioInicial = false,
-            onConfirm = { nombre, multiple, obligatorio ->
-                if (viewModel.crearGrupo(nombre, multiple, obligatorio)) creandoGrupo = false
+            opcionesIniciales = emptyList(),
+            onConfirm = { nombre, multiple, obligatorio, opcionesGrupo ->
+                if (viewModel.guardarGrupoConOpciones(null, nombre, multiple, obligatorio, opcionesGrupo)) {
+                    creandoGrupo = false
+                }
             },
             onDismiss = { creandoGrupo = false },
         )
     }
 
     editandoGrupo?.let { grupo ->
+        val opcionesDelGrupo = opciones
+            .filter { it.grupoId == grupo.id }
+            .map { OpcionModificadorBorrador(it.id, it.nombre, it.deltaPrecio, it.alias) }
         GrupoDialogo(
             titulo = stringResource(R.string.carta_grupo_editar),
             nombreInicial = grupo.nombre,
             multipleInicial = grupo.multiple,
             obligatorioInicial = grupo.obligatorio,
-            onConfirm = { nombre, multiple, obligatorio ->
-                if (viewModel.editarGrupo(grupo.id, nombre, multiple, obligatorio)) editandoGrupo = null
+            opcionesIniciales = opcionesDelGrupo,
+            onConfirm = { nombre, multiple, obligatorio, opcionesGrupo ->
+                if (viewModel.guardarGrupoConOpciones(grupo.id, nombre, multiple, obligatorio, opcionesGrupo)) {
+                    editandoGrupo = null
+                }
             },
             onDismiss = { editandoGrupo = null },
         )
@@ -595,68 +587,46 @@ private fun ModificadoresDialog(
         )
     }
 
-    creandoOpcionEnGrupo?.let { grupoId ->
-        OpcionDialogo(
-            titulo = stringResource(R.string.carta_opcion_nueva),
-            nombreInicial = "",
-            deltaInicial = "",
-            aliasInicial = "",
-            onConfirm = { nombre, delta, alias ->
-                if (viewModel.crearOpcion(grupoId, nombre, delta, alias)) creandoOpcionEnGrupo = null
-            },
-            onDismiss = { creandoOpcionEnGrupo = null },
-        )
-    }
-
-    editandoOpcion?.let { opcion ->
-        OpcionDialogo(
-            titulo = stringResource(R.string.carta_opcion_editar),
-            nombreInicial = opcion.nombre,
-            deltaInicial = deltaPlano(opcion.deltaPrecio),
-            aliasInicial = opcion.alias,
-            onConfirm = { nombre, delta, alias ->
-                if (viewModel.editarOpcion(opcion.id, nombre, delta, alias)) editandoOpcion = null
-            },
-            onDismiss = { editandoOpcion = null },
-        )
-    }
-
-    borrandoOpcion?.let { opcion ->
-        AlertDialog(
-            onDismissRequest = { borrandoOpcion = null },
-            title = { Text(stringResource(R.string.carta_opcion_borrar)) },
-            text = { Text(stringResource(R.string.carta_opcion_borrar_mensaje, opcion.nombre)) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.borrarOpcion(opcion.id); borrandoOpcion = null }) {
-                    Text(stringResource(R.string.mapa_menu_borrar), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { borrandoOpcion = null }) { Text(stringResource(R.string.mapa_cancelar)) }
-            },
-        )
-    }
 }
 
-/** Diálogo de alta/edición de un grupo de modificadores. */
+/** Borrador de opción en el editor inline (delta como texto para editar). */
+private data class OpcionBorradorUi(
+    val id: String = "",
+    val nombre: String = "",
+    val delta: String = "",
+    val alias: String = "",
+)
+
+/**
+ * Diálogo de alta/edición de un grupo de modificadores con sus opciones **inline**
+ * (espejo del editor de Commander): filas nombre/delta/alias + botón «Añadir opción».
+ */
 @Composable
 private fun GrupoDialogo(
     titulo: String,
     nombreInicial: String,
     multipleInicial: Boolean,
     obligatorioInicial: Boolean,
-    onConfirm: (nombre: String, multiple: Boolean, obligatorio: Boolean) -> Unit,
+    opcionesIniciales: List<OpcionModificadorBorrador>,
+    onConfirm: (nombre: String, multiple: Boolean, obligatorio: Boolean, opciones: List<OpcionModificadorBorrador>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var nombre by remember { mutableStateOf(nombreInicial) }
     var multiple by remember { mutableStateOf(multipleInicial) }
     var obligatorio by remember { mutableStateOf(obligatorioInicial) }
+    var opciones by remember {
+        mutableStateOf(
+            opcionesIniciales
+                .map { OpcionBorradorUi(it.id, it.nombre, deltaPlano(it.deltaPrecio), it.alias) }
+                .ifEmpty { listOf(OpcionBorradorUi()) },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(titulo) },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
@@ -684,70 +654,74 @@ private fun GrupoDialogo(
                     )
                     Switch(checked = obligatorio, onCheckedChange = { obligatorio = it })
                 }
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.carta_opciones_titulo),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                opciones.forEachIndexed { idx, op ->
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = op.nombre,
+                            onValueChange = { v ->
+                                opciones = opciones.toMutableList().also { it[idx] = it[idx].copy(nombre = v) }
+                            },
+                            label = { Text(stringResource(R.string.carta_opcion_campo_nombre)) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                        )
+                        IconButton(
+                            onClick = { opciones = opciones.filterIndexed { i, _ -> i != idx } },
+                        ) {
+                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.carta_opcion_quitar))
+                        }
+                    }
+                    OutlinedTextField(
+                        value = op.delta,
+                        onValueChange = { v ->
+                            opciones = opciones.toMutableList().also { it[idx] = it[idx].copy(delta = v) }
+                        },
+                        label = { Text(stringResource(R.string.carta_opcion_campo_delta)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    )
+                    OutlinedTextField(
+                        value = op.alias,
+                        onValueChange = { v ->
+                            opciones = opciones.toMutableList().also { it[idx] = it[idx].copy(alias = v) }
+                        },
+                        label = { Text(stringResource(R.string.carta_opcion_campo_alias)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                }
+                TextButton(onClick = { opciones = opciones + OpcionBorradorUi() }) {
+                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.carta_opcion_anadir), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.carta_opcion_anadir))
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(nombre, multiple, obligatorio) },
-                enabled = nombre.isNotBlank(),
-            ) {
-                Text(stringResource(R.string.carta_guardar))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapa_cancelar)) }
-        },
-    )
-}
-
-/** Diálogo de alta/edición de una opción de modificador. */
-@Composable
-private fun OpcionDialogo(
-    titulo: String,
-    nombreInicial: String,
-    deltaInicial: String,
-    aliasInicial: String,
-    onConfirm: (nombre: String, delta: Double, alias: String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var nombre by remember { mutableStateOf(nombreInicial) }
-    var delta by remember { mutableStateOf(deltaInicial) }
-    var alias by remember { mutableStateOf(aliasInicial) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(titulo) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text(stringResource(R.string.carta_opcion_campo_nombre)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = delta,
-                    onValueChange = { delta = it },
-                    label = { Text(stringResource(R.string.carta_opcion_campo_delta)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = alias,
-                    onValueChange = { alias = it },
-                    label = { Text(stringResource(R.string.carta_opcion_campo_alias)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(nombre, delta.toDoubleOrNull() ?: 0.0, alias) },
+                onClick = {
+                    onConfirm(
+                        nombre,
+                        multiple,
+                        obligatorio,
+                        opciones.map {
+                            OpcionModificadorBorrador(
+                                id = it.id,
+                                nombre = it.nombre.trim(),
+                                deltaPrecio = it.delta.toDoubleOrNull() ?: 0.0,
+                                alias = it.alias.trim(),
+                            )
+                        },
+                    )
+                },
                 enabled = nombre.isNotBlank(),
             ) {
                 Text(stringResource(R.string.carta_guardar))
@@ -800,13 +774,6 @@ private fun precioTexto(precio: Double, conSimbolo: Boolean): String {
     if (precio == 0.0) return "—"
     val importe = String.format(java.util.Locale.getDefault(), "%.2f", precio)
     return if (conSimbolo) "$importe €" else importe
-}
-
-/** Delta de una opción legible: «+0,50 €» (solo si ≠ 0), «—» si es 0. */
-private fun deltaTexto(delta: Double): String {
-    if (delta == 0.0) return "—"
-    val importe = String.format(java.util.Locale.getDefault(), "%.2f", delta)
-    return if (delta > 0) "+$importe €" else "$importe €"
 }
 
 /** Delta plano para editar en un campo de texto: «» si es 0, «0,50» si no (sin símbolo). */
