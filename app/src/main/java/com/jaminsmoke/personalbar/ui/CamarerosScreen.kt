@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +42,7 @@ import com.jaminsmoke.personalbar.data.Invitacion
 import com.jaminsmoke.personalbar.data.InvitacionEstado
 import com.jaminsmoke.personalbar.data.RolCamarero
 import com.jaminsmoke.personalbar.lan.IdentityCamareroDirectorio
+import com.jaminsmoke.personalbar.ui.components.PbPestanasMenu
 import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 import com.jaminsmoke.personalbar.ui.gestion.PbJornadasSeccion
 
@@ -64,6 +64,9 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
 
     // Resumen de jornadas de hoy (sección «Jornadas de hoy», absorbida del hub).
     val resumenJornadas = remember(viewModel) { viewModel.resumenJornadasHoy() }
+
+    // Pestañas de sección: 0 = Miembros y servicio, 1 = Altas e invitaciones, 2 = Jornadas de hoy.
+    var seccion by remember { mutableStateOf(0) }
 
     Column(
         modifier = Modifier
@@ -91,65 +94,64 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
             return
         }
 
-        // Tarjetas de sección (tablet apaisada): primera fila = miembros y servicio
-        // + jornadas de hoy (las dos compactas); segunda fila a todo el ancho = altas
-        // e invitaciones (la que más espacio consume, así no empuja la primera fila).
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                PbSeccionCard(titulo = stringResource(R.string.camareros_seccion_miembros_servicio)) {
-                    MiembrosSection(
-                        camareros = camareros,
-                        onVerFicha = { ficha = it },
-                        onRevocar = viewModel::revocar,
-                    )
-                }
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                PbSeccionCard(titulo = stringResource(R.string.camareros_seccion_jornadas)) {
-                    PbJornadasSeccion(
-                        resumen = resumenJornadas,
-                        camareros = camareros,
-                    )
-                }
-            }
-        }
+        // Pestañas de sección (patrón de menús de gestión, precedente en el Mapa):
+        // cada bloque ocupa todo el ancho y se navega con las pestañas.
+        PbPestanasMenu(
+            titulos = listOf(
+                stringResource(R.string.camareros_seccion_miembros_servicio),
+                stringResource(R.string.camareros_seccion_altas),
+                stringResource(R.string.camareros_seccion_jornadas),
+            ),
+            indice = seccion,
+            onSeleccionar = { seccion = it },
+        )
         Spacer(Modifier.height(16.dp))
-        PbSeccionCard(titulo = stringResource(R.string.camareros_seccion_altas)) {
-            QrSection(
-                qr = qrInput,
-                onQr = { qrInput = it },
-                trabajando = trabajando,
-                mensaje = mensaje,
-                onDarAlta = {
-                    if (viewModel.altaPorQr(qrInput) == AltaResultado.OK) qrInput = ""
-                },
+        when (seccion) {
+            0 -> MiembrosSection(
+                camareros = camareros,
+                onVerFicha = { ficha = it },
+                onRevocar = viewModel::revocar,
             )
-            Spacer(Modifier.height(16.dp))
-            DirectorioSection(
-                conectado = identityConfig.conectado,
-                isOnline = isOnline,
-                cargando = directorioCargando,
-                directorio = directorio,
-                busqueda = busqueda,
-                onBusqueda = { busqueda = it },
-                onBuscar = { viewModel.buscarDirectorio(busqueda) },
-                onInvitar = viewModel::invitarDelDirectorio,
-            )
-            Spacer(Modifier.height(16.dp))
-            InvitacionSection(
-                conectado = identityConfig.conectado,
-                isOnline = isOnline,
-                invitaciones = invitaciones,
-                trabajando = trabajando,
-                email = emailInput,
-                onEmail = { emailInput = it },
-                onInvitar = {
-                    viewModel.invitarPorEmail(emailInput)
-                    emailInput = ""
-                },
-                onRevocar = viewModel::revocarInvitacion,
-                onSincronizar = viewModel::sincronizar,
+            1 -> Column {
+                QrSection(
+                    qr = qrInput,
+                    onQr = { qrInput = it },
+                    trabajando = trabajando,
+                    mensaje = mensaje,
+                    onDarAlta = {
+                        if (viewModel.altaPorQr(qrInput) == AltaResultado.OK) qrInput = ""
+                    },
+                )
+                Spacer(Modifier.height(16.dp))
+                DirectorioSection(
+                    conectado = identityConfig.conectado,
+                    isOnline = isOnline,
+                    cargando = directorioCargando,
+                    directorio = directorio,
+                    busqueda = busqueda,
+                    onBusqueda = { busqueda = it },
+                    onBuscar = { viewModel.buscarDirectorio(busqueda) },
+                    onInvitar = viewModel::invitarDelDirectorio,
+                )
+                Spacer(Modifier.height(16.dp))
+                InvitacionSection(
+                    conectado = identityConfig.conectado,
+                    isOnline = isOnline,
+                    invitaciones = invitaciones,
+                    trabajando = trabajando,
+                    email = emailInput,
+                    onEmail = { emailInput = it },
+                    onInvitar = {
+                        viewModel.invitarPorEmail(emailInput)
+                        emailInput = ""
+                    },
+                    onRevocar = viewModel::revocarInvitacion,
+                    onSincronizar = viewModel::sincronizar,
+                )
+            }
+            else -> PbJornadasSeccion(
+                resumen = resumenJornadas,
+                camareros = camareros,
             )
         }
     }
@@ -525,32 +527,6 @@ private fun CamareroRow(
                     Text(stringResource(R.string.camareros_revocar))
                 }
             }
-        }
-    }
-}
-
-/**
- * Tarjeta de sección con título: contenedor Surface con cabecera. Patrón de
- * Gestión para agrupar bloques (miembros, altas, jornadas) con un título claro.
- */
-@Composable
-private fun PbSeccionCard(
-    titulo: String,
-    contenido: @Composable ColumnScope.() -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = titulo,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(8.dp))
-            contenido()
         }
     }
 }
