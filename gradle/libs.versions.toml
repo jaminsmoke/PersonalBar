@@ -17,6 +17,7 @@ ktor = "3.5.2"
 kotlinxSerialization = "1.11.0"
 tink = "1.15.0"
 zxing = "3.5.3"
+cyclonedx = "3.4.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -57,3 +58,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+cyclonedx-bom = { id = "org.cyclonedx.bom", version.ref = "cyclonedx" }
