@@ -587,6 +587,69 @@ data class IdentityEnlacePublico(
     @SerialName("url_publica") val urlPublica: String? = null,
 )
 
+/** Sección de la web pública con fondo propio (valores canónicos de Identity #140). */
+enum class FondoSeccion(val apiValor: String) {
+    INICIO("inicio"),
+    HORARIO("horario"),
+    CARTA("carta"),
+    EQUIPO("equipo"),
+    CONTACTO("contacto");
+
+    companion object {
+        /** Todas las secciones en orden canónico (mismo orden que el catálogo de Identity). */
+        val TODAS: List<FondoSeccion> = entries
+    }
+}
+
+/** Miniatura de un fondo Estate del catálogo (`GET .../fondos/catalogo`). */
+@Serializable
+data class CatalogoFondoItem(
+    val id: String = "",
+    val seccion: String = "",
+    val url: String = "",
+)
+
+/** Slot de fondo resuelto (gestión): `fuente` = catalogo | upload | hero. */
+@Serializable
+data class FondoAsignado(
+    val fuente: String = "",
+    val id: String? = null,
+    val url: String = "",
+)
+
+/** Asignación actual de fondos por sección (`GET .../fondos`). */
+@Serializable
+data class FondosAsignadosResponse(
+    val inicio: FondoAsignado = FondoAsignado(),
+    val horario: FondoAsignado = FondoAsignado(),
+    val carta: FondoAsignado = FondoAsignado(),
+    val equipo: FondoAsignado = FondoAsignado(),
+    val contacto: FondoAsignado = FondoAsignado(),
+) {
+    /** Fondo asignado a la sección [seccion], o vacío si no llega. */
+    fun de(seccion: FondoSeccion): FondoAsignado = when (seccion) {
+        FondoSeccion.INICIO -> inicio
+        FondoSeccion.HORARIO -> horario
+        FondoSeccion.CARTA -> carta
+        FondoSeccion.EQUIPO -> equipo
+        FondoSeccion.CONTACTO -> contacto
+    }
+}
+
+/**
+ * Cuerpo del PUT parcial de fondos. `{slot: {fuente:"catalogo", id}}` asigna
+ * catálogo; `{slot: null}` vuelve al default Estate. Los slots no incluidos se
+ * ignoran en Identity, así que el body lleva **solo** el slot que cambia.
+ */
+internal fun fondoUpdateBody(slot: FondoSeccion, catalogoId: String?): String {
+    val nombre = slot.apiValor
+    return if (catalogoId == null) {
+        """{"$nombre": null}"""
+    } else {
+        """{"$nombre": {"fuente": "catalogo", "id": "$catalogoId"}}"""
+    }
+}
+
 /**
  * Cliente HTTP del servicio Identity **negocio/establecimientos** (v0.2). Config
  * (URL + token + UUID del establecimiento) en memoria (v0.1): se pierde al reiniciar
@@ -1230,4 +1293,91 @@ object IdentityNegocioClient {
             )
             mapearResultadoMarcarLeida(code, text)
         }
+
+    // ── Fondos de la web pública (catálogo Estate o upload por sección) ───
+
+    /** `GET /v1/establecimientos/{id}/fondos/catalogo` → miniaturas Estate por sección. */
+    suspend fun listarCatalogoFondos(): List<CatalogoFondoItem> = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext emptyList()
+        val (code, text) = IdentityHttp.request(
+            baseUrl, "GET", "/v1/establecimientos/$id/fondos/catalogo", token = negocioToken,
+        )
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<List<CatalogoFondoItem>>(text) }.getOrNull().orEmpty()
+        } else {
+            emptyList()
+        }
+    }
+
+    /** `GET /v1/establecimientos/{id}/fondos` → asignación actual por sección. */
+    suspend fun obtenerFondos(): FondosAsignadosResponse? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(
+            baseUrl, "GET", "/v1/establecimientos/$id/fondos", token = negocioToken,
+        )
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<FondosAsignadosResponse>(text) }.getOrNull()
+        } else {
+            null
+        }
+    }
+
+    /**
+     * `PUT /v1/establecimientos/{id}/fondos` → asignación parcial. [catalogoId]
+     * asigna ese fondo de catálogo; `null` vuelve al default Estate. Devuelve la
+     * asignación resultante (o null si falla).
+     */
+    suspend fun actualizarFondos(seccion: FondoSeccion, catalogoId: String?): FondosAsignadosResponse? =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext null
+            val body = fondoUpdateBody(seccion, catalogoId)
+            val (code, text) = IdentityHttp.request(
+                baseUrl, "PUT", "/v1/establecimientos/$id/fondos", body = body, token = negocioToken,
+            )
+            if (code in 200..299) {
+                runCatching { LanJson.decodeFromString<FondosAsignadosResponse>(text) }.getOrNull()
+            } else {
+                null
+            }
+        }
+
+    /** `POST /v1/establecimientos/{id}/fondos/{slot}` (multipart, campo `imagen`).
+     *  Sustituye el catálogo del slot por el upload; Identity normaliza a WebP. */
+    suspend fun subirFondo(seccion: FondoSeccion, bytes: ByteArray, mimetype: String): FondosAsignadosResponse? =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext null
+            val ok = IdentityHttp.uploadMultipart(
+                baseUrl, "/v1/establecimientos/$id/fondos/${seccion.apiValor}",
+                "imagen", "fondo.webp", bytes, mimetype, negocioToken,
+            )
+            if (ok) obtenerFondos() else null
+        }
+
+    /** `DELETE /v1/establecimientos/{id}/fondos/{slot}` → vuelve al default Estate. */
+    suspend fun borrarFondo(seccion: FondoSeccion): FondosAsignadosResponse? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(
+            baseUrl, "DELETE", "/v1/establecimientos/$id/fondos/${seccion.apiValor}", token = negocioToken,
+        )
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<FondosAsignadosResponse>(text) }.getOrNull()
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Bytes de la miniatura de un fondo: si [url] es absoluta (catálogo vía
+     * `WEB_NEGOCIO_URL_BASE`) GET directo sin token; si es relativa (upload propio
+     * del establecimiento) GET con token del servicio negocio.
+     */
+    suspend fun obtenerBytesFondo(url: String): ByteArray? = withContext(Dispatchers.IO) {
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            val (code, bytes) = IdentityHttp.requestBytesUrl(url)
+            if (code in 200..299) bytes else null
+        } else {
+            val (code, bytes) = IdentityHttp.requestBytes(baseUrl, "GET", url, negocioToken)
+            if (code in 200..299) bytes else null
+        }
+    }
 }

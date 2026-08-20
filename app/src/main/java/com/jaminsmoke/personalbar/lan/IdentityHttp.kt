@@ -43,6 +43,32 @@ object IdentityHttp {
         }
     }
 
+    /**
+     * GET binario a una **URL absoluta** (p. ej. las miniaturas del catálogo de
+     * fondos, que Identity sirve desde `WEB_NEGOCIO_URL_BASE`). A diferencia de
+     * [requestBytes] no concatena `baseUrl` delante: la URL llega completa.
+     * Devuelve (statusCode, bytes); -1 si falló la red.
+     */
+    fun requestBytesUrl(url: String, token: String? = null): Pair<Int, ByteArray> {
+        var connection: HttpURLConnection? = null
+        return try {
+            connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                if (token != null) setRequestProperty("Authorization", "Bearer $token")
+                connectTimeout = 5000
+                readTimeout = 5000
+            }
+            val code = connection.responseCode
+            val bytes = (if (code in 200..299) connection.inputStream else connection.errorStream)
+                ?.readBytes() ?: ByteArray(0)
+            code to bytes
+        } catch (_: Exception) {
+            -1 to ByteArray(0)
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
     /** Petición JSON. Devuelve (statusCode, body). -1 si falló la red. */
     fun request(
         baseUrl: String?,
