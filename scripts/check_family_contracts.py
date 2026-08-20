@@ -49,6 +49,13 @@ UPLOAD_RE = re.compile(
 
 CONST_RE = re.compile("const\\s+val\\s+([A-Z_][A-Z0-9_]*)\\s*:\\s*String\\s*=\\s*\"([^\"]*)\"")
 
+# Regla canónica de la familia (espejo de Identity): cualquier `{param}`, `$var` o
+# `${expr}` de segmento se convierte en `*`. El sufijo de query interpolada se
+# elimina solo cuando el `$var` final NO va precedido de `/` (lookbehind), para no
+# borrar un segmento de path real como `/galeria/$imagenId`.
+PARAM_RE = re.compile(r"\{[^}]+\}|\$\{[^}]+\}|\$[A-Za-z_][A-Za-z0-9_]*")
+QUERY_SUFFIX_VAR_RE = re.compile(r"(?<!/)\$[A-Za-z_][A-Za-z0-9_]*$")
+
 # Rutas LAN que Commander consume (espejo de su bar-contract-paths.txt). Informativas.
 COMMANDER_ROUTES = {"/health", "/v1/rondas", "/v1/estado", "/v1/eventos", "/v1/carta"}
 
@@ -58,16 +65,15 @@ def load_constants(fuente: str) -> dict[str, str]:
 
 
 def normalize(ruta: str) -> str:
-    """Convierte la interpolación Kotlin en placeholders OpenAPI y quita la query."""
-    ruta = ruta.replace("$id", "{establecimiento_id}")
-    ruta = ruta.replace("$camareroId", "{camarero_id}")
-    ruta = ruta.replace("$invitacionId", "{invitacion_id}")
-    ruta = ruta.replace("$enlaceId", "{enlace_id}")
-    ruta = ruta.replace("$conflictoId", "{conflicto_id}")
-    ruta = ruta.replace("$notificacionId", "{notificacion_id}")
-    # Query interpolada (p. ej. ".../invitaciones$q"): el sufijo `$var` al final no es path.
-    ruta = re.sub(r"\$[A-Za-z_][A-Za-z0-9_]*$", "", ruta)
-    return ruta.split("?", 1)[0]
+    """Deja la ruta comparable: sin query, sin parámetros con nombre, sin slash final.
+
+    Regla canónica de la familia: cualquier `{param}`, `$var` o `${expr}` de segmento
+    se convierte en `*`. El sufijo de query interpolada (p. ej. `/invitaciones$q`) se
+    elimina solo cuando el `$var` final NO va precedido de `/`.
+    """
+    base = ruta.split("?", 1)[0].strip().rstrip("/")
+    base = QUERY_SUFFIX_VAR_RE.sub("", base)
+    return PARAM_RE.sub("*", base)
 
 
 def client_paths(fuente: str) -> set[tuple[str, str]]:
@@ -91,7 +97,8 @@ def openapi_paths(path: Path) -> set[str]:
     paths = spec.get("paths")
     if not isinstance(paths, dict):
         raise ValueError(f"{path} no tiene objeto paths")
-    return set(paths)
+    # Normalizar el lado del spec con la misma regla que el cliente.
+    return {normalize(p) for p in paths}
 
 
 def ktor_paths(fuente: str) -> set[str]:
@@ -199,21 +206,31 @@ def selftest() -> None:
         IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/sync/conflictos/$conflictoId/resolver", token = t)
         IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/notificaciones/$notificacionId/leer", token = t)
         IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/invitaciones$q", token = t)
+        IdentityHttp.requestBytes(baseUrl, "GET", "/v1/establecimientos/$id/galeria/$imagenId", t)
+        IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/galeria/$imagenId", token = t)
+        IdentityHttp.uploadMultipart(baseUrl, "/v1/establecimientos/$id/fondos/${seccion.apiValor}", "imagen", "f", b, "mime", t)
+        IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/fondos/${seccion.apiValor}", token = t)
     '''
     rutas = client_paths(src)
-    assert ("GET", "/v1/establecimientos/{establecimiento_id}/miembros") in rutas, rutas
+    assert ("GET", "/v1/establecimientos/*/miembros") in rutas, rutas
     assert ("GET", "/v1/auth/negocio/me/logo") in rutas, rutas
     assert ("POST", "/v1/auth/negocio/me/logo") in rutas, rutas
-    assert ("POST", "/v1/establecimientos/{establecimiento_id}/enlaces/{enlace_id}/revocar") in rutas, rutas
+    assert ("POST", "/v1/establecimientos/*/enlaces/*/revocar") in rutas, rutas
     assert (
         "POST",
-        "/v1/establecimientos/{establecimiento_id}/sync/conflictos/{conflicto_id}/resolver",
+        "/v1/establecimientos/*/sync/conflictos/*/resolver",
     ) in rutas, rutas
     assert (
         "POST",
-        "/v1/establecimientos/{establecimiento_id}/notificaciones/{notificacion_id}/leer",
+        "/v1/establecimientos/*/notificaciones/*/leer",
     ) in rutas, rutas
-    assert ("GET", "/v1/establecimientos/{establecimiento_id}/invitaciones") in rutas, rutas
+    assert ("GET", "/v1/establecimientos/*/invitaciones") in rutas, rutas
+    # Variable final de segmento (no es sufijo de query): se conserva como `*`.
+    assert ("GET", "/v1/establecimientos/*/galeria/*") in rutas, rutas
+    assert ("DELETE", "/v1/establecimientos/*/galeria/*") in rutas, rutas
+    # Template Kotlin `${...}` en segmento de path: se convierte en `*` (sin artefacto `$*`).
+    assert ("POST", "/v1/establecimientos/*/fondos/*") in rutas, rutas
+    assert ("DELETE", "/v1/establecimientos/*/fondos/*") in rutas, rutas
 
     # Comparación: falta una ruta → fallo.
     import tempfile
