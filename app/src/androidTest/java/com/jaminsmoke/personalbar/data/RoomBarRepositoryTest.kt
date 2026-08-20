@@ -343,15 +343,17 @@ class RoomBarRepositoryTest {
     fun outbox_de_catalogo_y_revisiones_persisten_tras_recarga() = runBlocking {
         val repo1 = nuevoRepo()
 
-        // Crear un producto → encola «crear»; editar → «actualizar».
+        // Crear un producto → encola «crear».
         assertTrue(repo1.crearProducto("Café solo", "Bebida", 1.5))
         repo1.awaitPersistencia()
         val creado = repo1.catalogo.first().first { it.nombre == "Café solo" }
-        assertTrue(repo1.editarProducto(creado.id, "Café con leche", "Bebida", 1.8, true))
-        repo1.awaitPersistencia()
 
-        // Revisión canónica tras «aplicar» el crear en el server.
+        // Revisión canónica tras «aplicar» el crear en el server: a partir de
+        // aquí el producto está sincronizado y editar → «actualizar» (si no,
+        // editar un producto sin sincronizar re-encola «crear» con el estado nuevo).
         repo1.actualizarRevisionProducto(creado.id, 1)
+        repo1.awaitPersistencia()
+        assertTrue(repo1.editarProducto(creado.id, "Café con leche", "Bebida", 1.8, true))
         repo1.awaitPersistencia()
 
         val repo2 = nuevoRepo()
