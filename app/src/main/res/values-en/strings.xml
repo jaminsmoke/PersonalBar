@@ -161,7 +161,6 @@
     <string name="camareros_identidad">ID: %1$s</string>
 
     <!-- Menu (catalog) -->
-    <string name="carta_titulo">Menu</string>
     <string name="carta_subtitulo">Bar product catalog</string>
     <string name="carta_sync_pendiente">Menu changes are waiting to be published on the website.</string>
     <string name="carta_nuevo_producto">New product</string>
@@ -184,6 +183,7 @@
     <string name="carta_campo_permite_nota">Allows free note</string>
     <string name="carta_asignar_grupos">Assigned modifiers</string>
     <string name="carta_grupos_titulo">Modifiers</string>
+    <string name="carta_pestana_productos">Products</string>
     <string name="carta_grupos_vacio">No modifier groups. Create one to add options (cooking point, extras…).</string>
     <string name="carta_grupo_nuevo">New group</string>
     <string name="carta_grupo_editar">Edit group</string>
@@ -200,7 +200,6 @@
     <string name="carta_opcion_campo_alias">Voice alias (optional)</string>
     <string name="carta_error_grupo_vacio">The group name is required</string>
     <string name="carta_error_opcion_vacia">The option name is required</string>
-    <string name="carta_cerrar">Close</string>
 
     <!-- Catalog conflicts (resolution surface) -->
     <string name="conflictos_titulo">Catalog conflicts</string>

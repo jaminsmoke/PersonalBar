@@ -69,6 +69,8 @@ enum class GestionAcceso(
 fun GestionScreen(
     accesoSolicitado: GestionAcceso? = null,
     onAccesoSolicitadoConsumido: () -> Unit = {},
+    /** Contador de «volver al hub»: al cambiar (>0), resetea la selección interna. */
+    resetHub: Int = 0,
 ) {
     var seleccion by remember { mutableStateOf<GestionAcceso?>(null) }
 
@@ -78,6 +80,13 @@ fun GestionScreen(
         if (accesoSolicitado != null) {
             seleccion = accesoSolicitado
             onAccesoSolicitadoConsumido()
+        }
+    }
+
+    // Pulsar «Gestión» en el rail estando dentro de un submenú: vuelve al hub.
+    LaunchedEffect(resetHub) {
+        if (resetHub > 0) {
+            seleccion = null
         }
     }
 

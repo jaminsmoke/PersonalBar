@@ -109,6 +109,9 @@ fun ExpoScreen(
     var section by remember { mutableStateOf(PbSection.COLAS) }
     // Sub-pantalla de Gestión pedida externamente (p. ej. «Ir al perfil» desde la sesión).
     var gestionSolicitud by remember { mutableStateOf<GestionAcceso?>(null) }
+    // Contador para volver al hub: pulsar «Gestión» en el rail estando dentro de un
+    // submenú resetea la selección interna de GestionScreen (simétrico a gestionSolicitud).
+    var resetHub by remember { mutableStateOf(0) }
     // Parada del nodo pendiente de confirmación (la sala se quedaría ciega).
     var paradaPendiente by remember { mutableStateOf(false) }
     // Bandeja de notificaciones (capa global abierta desde la campana del header).
@@ -166,7 +169,15 @@ fun ExpoScreen(
         ) {
             PbSidebar(
                 current = section,
-                onSelect = { section = it },
+                onSelect = { seleccion ->
+                    // Pulsar el icono del menú en el que ya estamos: si Gestión y hay un
+                    // submenú abierto, vuelve al hub general; en el resto es no-op.
+                    if (seleccion == PbSection.GESTION && section == PbSection.GESTION) {
+                        resetHub++
+                    } else {
+                        section = seleccion
+                    }
+                },
                 bloqueado = sinSesion,
             )
             VerticalDivider(
@@ -206,6 +217,7 @@ fun ExpoScreen(
                     PbSection.GESTION -> GestionScreen(
                         accesoSolicitado = gestionSolicitud,
                         onAccesoSolicitadoConsumido = { gestionSolicitud = null },
+                        resetHub = resetHub,
                     )
                     PbSection.AJUSTES -> AjustesScreen()
                 }

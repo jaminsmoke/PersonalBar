@@ -51,6 +51,7 @@ import com.jaminsmoke.personalbar.data.GrupoModificador
 import com.jaminsmoke.personalbar.data.OpcionModificadorBorrador
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.destinoDesdeCategoria
+import com.jaminsmoke.personalbar.ui.components.PbPestanasMenu
 
 /** Categorías canónicas de la carta (valores que `destinoDesdeCategoria` mapea correctamente). */
 private val CATEGORIAS = listOf(
@@ -69,95 +70,100 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
     var creando by remember { mutableStateOf(false) }
     var editando by remember { mutableStateOf<Producto?>(null) }
     var borrando by remember { mutableStateOf<Producto?>(null) }
-    var mostrandoGrupos by remember { mutableStateOf(false) }
+
+    // Pestañas de sección: 0 = Productos, 1 = Grupos y opciones.
+    var seccion by remember { mutableStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.carta_titulo),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = stringResource(R.string.carta_subtitulo),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            TextButton(onClick = { mostrandoGrupos = true }) {
-                Text(stringResource(R.string.carta_grupos_titulo))
-            }
-            Spacer(Modifier.width(4.dp))
-            Button(onClick = { creando = true }) {
-                Icon(imageVector = Icons.Outlined.Add, contentDescription = stringResource(R.string.carta_nuevo_producto))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.carta_nuevo_producto))
-            }
-        }
-        error?.let { res ->
-            Text(
-                text = stringResource(res),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-        if (pendingWeb.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.carta_sync_pendiente),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
+        Text(
+            text = stringResource(R.string.carta_subtitulo),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        PbPestanasMenu(
+            titulos = listOf(
+                stringResource(R.string.carta_pestana_productos),
+                stringResource(R.string.carta_grupos_titulo),
+            ),
+            indice = seccion,
+            onSeleccionar = { seccion = it },
+        )
         Spacer(Modifier.height(16.dp))
-
-        if (catalogo.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = stringResource(R.string.carta_vacia),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.carta_vacia_subtitulo),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(catalogo, key = { it.id }) { producto ->
-                    CartaFila(
-                        producto = producto,
-                        onEditar = { editando = producto },
-                        onBorrar = { borrando = producto },
-                        onToggleDisponible = {
-                            viewModel.editar(
-                                id = producto.id,
-                                nombre = producto.nombre,
-                                categoria = producto.categoria,
-                                precio = producto.precio,
-                                disponible = !producto.disponible,
-                                subfamilia = producto.subfamilia,
-                                permiteNota = producto.permiteNota,
-                                descripcion = producto.descripcion,
-                            )
-                        },
+        when (seccion) {
+            0 -> {
+                error?.let { res ->
+                    Text(
+                        text = stringResource(res),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp),
                     )
                 }
+                if (pendingWeb.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.carta_sync_pendiente),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Button(onClick = { creando = true }) {
+                        Icon(imageVector = Icons.Outlined.Add, contentDescription = stringResource(R.string.carta_nuevo_producto))
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.carta_nuevo_producto))
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                if (catalogo.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.carta_vacia),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = stringResource(R.string.carta_vacia_subtitulo),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(catalogo, key = { it.id }) { producto ->
+                            CartaFila(
+                                producto = producto,
+                                onEditar = { editando = producto },
+                                onBorrar = { borrando = producto },
+                                onToggleDisponible = {
+                                    viewModel.editar(
+                                        id = producto.id,
+                                        nombre = producto.nombre,
+                                        categoria = producto.categoria,
+                                        precio = producto.precio,
+                                        disponible = !producto.disponible,
+                                        subfamilia = producto.subfamilia,
+                                        permiteNota = producto.permiteNota,
+                                        descripcion = producto.descripcion,
+                                    )
+                                },
+                            )
+                        }
+                    }
+                }
             }
+            else -> ModificadoresSeccion(viewModel = viewModel)
         }
     }
 
@@ -231,12 +237,6 @@ fun CartaScreen(viewModel: CartaViewModel = viewModel()) {
         )
     }
 
-    if (mostrandoGrupos) {
-        ModificadoresDialog(
-            viewModel = viewModel,
-            onDismiss = { mostrandoGrupos = false },
-        )
-    }
 }
 
 /** Fila de producto: nombre, subfamilia, categoría/destino, precio, toggle disponible, editar y borrar. */
@@ -458,11 +458,10 @@ private fun CartaDialogo(
     )
 }
 
-/** Diálogo de gestión de grupos de modificadores: CRUD de grupos y sus opciones. */
+/** Sección de grupos de modificadores (pestaña de Carta): CRUD de grupos y sus opciones. */
 @Composable
-private fun ModificadoresDialog(
+private fun ModificadoresSeccion(
     viewModel: CartaViewModel,
-    onDismiss: () -> Unit,
 ) {
     val grupos by viewModel.gruposModificador.collectAsState()
     val opciones by viewModel.opcionesModificador.collectAsState()
@@ -471,70 +470,76 @@ private fun ModificadoresDialog(
     var borrandoGrupo by remember { mutableStateOf<GrupoModificador?>(null) }
     var creandoGrupo by remember { mutableStateOf(false) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.carta_grupos_titulo), modifier = Modifier.weight(1f))
-                IconButton(onClick = { creandoGrupo = true }) {
-                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.carta_grupo_nuevo))
-                }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.carta_grupos_titulo),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Button(onClick = { creandoGrupo = true }) {
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.carta_grupo_nuevo))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.carta_grupo_nuevo))
             }
-        },
-        text = {
-            if (grupos.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.carta_grupos_vacio),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    grupos.forEach { grupo ->
-                        val opcionesGrupo = opciones.filter { it.grupoId == grupo.id }
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainer,
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = grupo.nombre,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                        )
-                                        Text(
-                                            text = descripcionGrupo(grupo),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                    IconButton(onClick = { editandoGrupo = grupo }) {
-                                        Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.carta_grupo_editar))
-                                    }
-                                    IconButton(onClick = { borrandoGrupo = grupo }) {
-                                        Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.carta_grupo_borrar))
-                                    }
-                                }
-                                if (opcionesGrupo.isNotEmpty()) {
+        }
+        Spacer(Modifier.height(12.dp))
+        if (grupos.isEmpty()) {
+            Text(
+                text = stringResource(R.string.carta_grupos_vacio),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                grupos.forEach { grupo ->
+                    val opcionesGrupo = opciones.filter { it.grupoId == grupo.id }
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = opcionesGrupo.joinToString(" · ") { it.nombre },
-                                        style = MaterialTheme.typography.bodySmall,
+                                        text = grupo.nombre,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Text(
+                                        text = descripcionGrupo(grupo),
+                                        style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
+                                IconButton(onClick = { editandoGrupo = grupo }) {
+                                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.carta_grupo_editar))
+                                }
+                                IconButton(onClick = { borrandoGrupo = grupo }) {
+                                    Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.carta_grupo_borrar))
+                                }
+                            }
+                            if (opcionesGrupo.isNotEmpty()) {
+                                Text(
+                                    text = opcionesGrupo.joinToString(" · ") { it.nombre },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.carta_cerrar)) }
-        },
-    )
+        }
+    }
 
     if (creandoGrupo) {
         GrupoDialogo(
