@@ -16,9 +16,7 @@
     <string name="gestion_enlaces">QR\'s</string>
     <string name="gestion_local">Local</string>
     <string name="gestion_perfil">Perfil</string>
-    <string name="gestion_jornadas">Jornadas</string>
     <string name="gestion_conflictos">Conflictos</string>
-    <string name="jornadas_titulo">Jornadas de los camareros</string>
     <string name="jornadas_vacio">Sin jornadas en este periodo</string>
     <string name="jornadas_horas">Horas</string>
     <string name="jornadas_mesas">Mesas servidas</string>
@@ -141,7 +139,10 @@
     <!-- Camareros (lista blanca) -->
     <string name="camareros_titulo">Camareros</string>
     <string name="camareros_subtitulo">Lista blanca del establecimiento</string>
-    <string name="camareros_seccion_miembros">Camareros del establecimiento</string>
+    <string name="camareros_seccion_miembros_servicio">Miembros y servicio</string>
+    <string name="camareros_seccion_altas">Altas e invitaciones</string>
+    <string name="camareros_seccion_jornadas">Jornadas de hoy</string>
+    <string name="camareros_de_servicio">De servicio</string>
     <string name="camareros_qr_titulo">QR del camarero (identificar / alta offline)</string>
     <string name="camareros_ficha_titulo">Ficha del camarero</string>
     <string name="camareros_ficha_cerrar">Cerrar</string>

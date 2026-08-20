@@ -7,7 +7,6 @@ import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.CartaModificadores
-import com.jaminsmoke.personalbar.data.JornadasResumen
 import com.jaminsmoke.personalbar.data.CamareroEstado
 import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.Linea
@@ -74,19 +73,6 @@ class ExpoViewModel : ViewModel() {
     /** Quién prepara ahora («en mano»): último chip pulsado de los de servicio. */
     private val _enMano = MutableStateFlow<Camarero?>(null)
     val enMano: StateFlow<Camarero?> = _enMano.asStateFlow()
-
-    /** Resumen de jornadas de hoy (intervalos + horas + mesas distintas) para la vista de Gestión. */
-    fun resumenJornadasHoy(): JornadasResumen {
-        val ahora = System.currentTimeMillis()
-        val inicioDia = java.util.Calendar.getInstance().apply {
-            timeInMillis = ahora
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }.timeInMillis
-        return repository.resumenJornadas(desde = inicioDia, hasta = ahora)
-    }
 
     /** Voz: true mientras el reconocedor escucha. */
     private val _escuchando = MutableStateFlow(false)

@@ -16,9 +16,7 @@
     <string name="gestion_enlaces">QR codes</string>
     <string name="gestion_local">Venue</string>
     <string name="gestion_perfil">Profile</string>
-    <string name="gestion_jornadas">Shifts</string>
     <string name="gestion_conflictos">Conflicts</string>
-    <string name="jornadas_titulo">Staff shifts</string>
     <string name="jornadas_vacio">No shifts in this period</string>
     <string name="jornadas_horas">Hours</string>
     <string name="jornadas_mesas">Tables served</string>
@@ -142,7 +140,10 @@
     <!-- Waiters (whitelist) -->
     <string name="camareros_titulo">Waiters</string>
     <string name="camareros_subtitulo">Venue whitelist</string>
-    <string name="camareros_seccion_miembros">Venue waiters</string>
+    <string name="camareros_seccion_miembros_servicio">Members &amp; service</string>
+    <string name="camareros_seccion_altas">Sign-ups &amp; invitations</string>
+    <string name="camareros_seccion_jornadas">Today\'s shifts</string>
+    <string name="camareros_de_servicio">On service</string>
     <string name="camareros_qr_titulo">Waiter QR (identify / offline sign-up)</string>
     <string name="camareros_ficha_titulo">Waiter profile</string>
     <string name="camareros_ficha_cerrar">Close</string>

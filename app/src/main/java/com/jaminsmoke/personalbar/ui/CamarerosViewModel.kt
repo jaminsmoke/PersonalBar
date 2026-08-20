@@ -9,6 +9,7 @@ import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.Invitacion
+import com.jaminsmoke.personalbar.data.JornadasResumen
 import com.jaminsmoke.personalbar.data.Phid1
 import com.jaminsmoke.personalbar.data.QrKey
 import com.jaminsmoke.personalbar.data.QrParser
@@ -49,6 +50,19 @@ class CamarerosViewModel : ViewModel() {
 
     private val _directorioCargando = MutableStateFlow(false)
     val directorioCargando: StateFlow<Boolean> = _directorioCargando.asStateFlow()
+
+    /** Resumen de jornadas de hoy (intervalos + horas + mesas distintas) para la sección de Camareros. */
+    fun resumenJornadasHoy(): JornadasResumen {
+        val ahora = System.currentTimeMillis()
+        val inicioDia = java.util.Calendar.getInstance().apply {
+            timeInMillis = ahora
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        return repository.resumenJornadas(desde = inicioDia, hasta = ahora)
+    }
 
     /**
      * Alta por QR. Es **respaldo/identificación**, no alta canónica: con Identity
