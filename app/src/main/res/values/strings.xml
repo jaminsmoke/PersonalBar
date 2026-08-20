@@ -160,7 +160,6 @@
     <string name="camareros_identidad">ID: %1$s</string>
 
     <!-- Carta (catálogo) -->
-    <string name="carta_titulo">Carta</string>
     <string name="carta_subtitulo">Catálogo de productos del bar</string>
     <string name="carta_sync_pendiente">Hay cambios de carta pendientes de publicar en la web.</string>
     <string name="carta_nuevo_producto">Nuevo producto</string>
@@ -183,6 +182,7 @@
     <string name="carta_campo_permite_nota">Admite nota libre</string>
     <string name="carta_asignar_grupos">Modificadores asignados</string>
     <string name="carta_grupos_titulo">Modificadores</string>
+    <string name="carta_pestana_productos">Productos</string>
     <string name="carta_grupos_vacio">Sin grupos de modificadores. Crea uno para añadir opciones (punto, extras…).</string>
     <string name="carta_grupo_nuevo">Nuevo grupo</string>
     <string name="carta_grupo_editar">Editar grupo</string>
@@ -199,7 +199,6 @@
     <string name="carta_opcion_campo_alias">Alias de voz (opcional)</string>
     <string name="carta_error_grupo_vacio">El nombre del grupo es obligatorio</string>
     <string name="carta_error_opcion_vacia">El nombre de la opción es obligatorio</string>
-    <string name="carta_cerrar">Cerrar</string>
 
     <!-- Conflictos de catálogo (superficie de resolución) -->
     <string name="conflictos_titulo">Conflictos de catálogo</string>

@@ -74,11 +74,6 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
             .verticalScroll(rememberScrollState()),
     ) {
         Text(
-            text = stringResource(R.string.camareros_titulo),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
             text = stringResource(R.string.camareros_subtitulo),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

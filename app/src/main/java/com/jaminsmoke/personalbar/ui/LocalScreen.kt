@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.TipoEstablecimiento
+import com.jaminsmoke.personalbar.ui.components.PbPestanasMenu
 import com.jaminsmoke.personalbar.ui.components.PbSesionRequerida
 import com.jaminsmoke.personalbar.ui.gestion.HorarioScreen
 
@@ -83,32 +83,20 @@ fun LocalScreen(viewModel: LocalViewModel = viewModel()) {
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
-        Row(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .width(180.dp)
-                    .fillMaxHeight()
-                    .padding(end = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                LocalSeccion.entries.forEach { dest ->
-                    FilterChip(
-                        selected = seccion == dest,
-                        onClick = { seccion = dest },
-                        label = { Text(stringResource(dest.labelRes)) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
-            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                when (seccion) {
-                    LocalSeccion.IDENTIDAD -> LocalIdentidad(viewModel)
-                    LocalSeccion.WEB -> LocalWeb(viewModel)
-                    LocalSeccion.FOTOS -> LocalFotos(viewModel)
-                    LocalSeccion.HORARIO -> HorarioScreen()
-                    LocalSeccion.APARIENCIA -> LocalApariencia(viewModel)
-                }
-            }
+        // Pestañas de sección (patrón de menús de gestión): cada bloque ocupa todo
+        // el ancho; sustituye al selector vertical de chips anterior.
+        PbPestanasMenu(
+            titulos = LocalSeccion.entries.map { stringResource(it.labelRes) },
+            indice = LocalSeccion.entries.indexOf(seccion),
+            onSeleccionar = { seccion = LocalSeccion.entries[it] },
+        )
+        Spacer(Modifier.height(16.dp))
+        when (seccion) {
+            LocalSeccion.IDENTIDAD -> LocalIdentidad(viewModel)
+            LocalSeccion.WEB -> LocalWeb(viewModel)
+            LocalSeccion.FOTOS -> LocalFotos(viewModel)
+            LocalSeccion.HORARIO -> HorarioScreen()
+            LocalSeccion.APARIENCIA -> LocalApariencia(viewModel)
         }
     }
 }
