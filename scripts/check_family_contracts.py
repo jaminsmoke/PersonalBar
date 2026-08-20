@@ -57,7 +57,10 @@ PARAM_RE = re.compile(r"\{[^}]+\}|\$\{[^}]+\}|\$[A-Za-z_][A-Za-z0-9_]*")
 QUERY_SUFFIX_VAR_RE = re.compile(r"(?<!/)\$[A-Za-z_][A-Za-z0-9_]*$")
 
 # Rutas LAN que Commander consume (espejo de su bar-contract-paths.txt). Informativas.
-COMMANDER_ROUTES = {"/health", "/v1/rondas", "/v1/estado", "/v1/eventos", "/v1/carta"}
+COMMANDER_ROUTES = {
+    "/health", "/v1/rondas", "/v1/sesion", "/v1/sesion/iniciar", "/v1/sesion/cortar",
+    "/v1/heartbeat", "/v1/estado", "/v1/eventos", "/v1/carta",
+}
 
 
 def load_constants(fuente: str) -> dict[str, str]:

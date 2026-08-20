@@ -1,0 +1,605 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Personal Bar — Protocolo LAN de sala",
+    "description": "Contrato del nodo de sala en el puerto 8787: rutas HTTP y evento SSE que Personal Commander consume. La versión es espejo de `BarLanConfig.VERSION` y la coherencia se verifica con `scripts/check_lan_contract.py` + `LanContractTest` (fixtures en docs/contrato/fixtures/). HTTP en claro solo en LAN de confianza.",
+    "version": "0.1"
+  },
+  "servers": [
+    {
+      "url": "http://{host}:8787",
+      "variables": {
+        "host": {
+          "default": "10.0.2.2",
+          "description": "Host del nodo Bar en la LAN (descubierto por radar/health)."
+        }
+      }
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness del nodo. `sala` es alias deprecado de `establecimiento`.",
+        "responses": {
+          "200": {
+            "description": "Nodo vivo.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthPayload" },
+                "example": {
+                  "ok": true,
+                  "role": "bar",
+                  "establecimiento": "La Terraza",
+                  "sala": "La Terraza",
+                  "establecimiento_id": "11111111-1111-4111-8111-111111111111",
+                  "version": "0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sesion": {
+      "post": {
+        "summary": "Consulta de lista blanca con el QR permanente del camarero. No da de alta ni inicia jornada.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SesionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado de la consulta (admitido o no).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SesionResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "QR inválido o cuerpo ilegible."
+          }
+        }
+      }
+    },
+    "/v1/sesion/iniciar": {
+      "post": {
+        "summary": "Petición de jornada de trabajo. Concede `sesionActiva=true` si el camarero está activo.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SesionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Jornada concedida.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SesionIniciarResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "QR inválido."
+          },
+          "403": {
+            "description": "Camarero no activo en la lista blanca."
+          }
+        }
+      }
+    },
+    "/v1/sesion/cortar": {
+      "post": {
+        "summary": "Corte de jornada de trabajo (fin de jornada / revocación / salida de LAN).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SesionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Jornada cortada."
+          },
+          "400": {
+            "description": "QR inválido."
+          },
+          "404": {
+            "description": "Camarero sin jornada activa."
+          }
+        }
+      }
+    },
+    "/v1/heartbeat": {
+      "post": {
+        "summary": "Latido del Commander con su id de Identity mientras hay jornada (~10 s).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/HeartbeatRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Jornada viva."
+          },
+          "400": {
+            "description": "camareroId vacío."
+          },
+          "403": {
+            "description": "Sin jornada activa para ese camarero."
+          }
+        }
+      }
+    },
+    "/v1/rondas": {
+      "post": {
+        "summary": "Recibe una ronda de Commander y la parte en tickets BARRA/COCINA. Idempotente por `id` de ronda (200 si ya existe).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Ronda" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ronda creada; devuelve los tickets generados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Ticket" }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Ronda duplicada (idempotente); devuelve los tickets existentes."
+          },
+          "403": {
+            "description": "Con lista blanca presente y sin jornada activa: comanda denegada."
+          }
+        }
+      }
+    },
+    "/v1/tickets/{id}/preparado": {
+      "post": {
+        "summary": "Marca un ticket como preparado (expo de Bar). El camarero que lo elaboró va en `preparado_por`.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PreparadoRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ticket marcado preparado."
+          },
+          "400": {
+            "description": "id o preparado_por vacíos."
+          },
+          "404": {
+            "description": "Ticket inexistente o ya fuera de la cola."
+          }
+        }
+      }
+    },
+    "/v1/tickets/{id}/recogido": {
+      "post": {
+        "summary": "Saca un ticket preparado de la cola (recogido en expo).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ticket recogido; pasa a servidos."
+          },
+          "400": {
+            "description": "id vacío."
+          },
+          "404": {
+            "description": "Ticket inexistente o no preparado."
+          }
+        }
+      }
+    },
+    "/v1/estado": {
+      "get": {
+        "summary": "Snapshot completo del nodo: establecimiento, salas, colas (bebida/comida), servidos y mesas (layout convertido al canvas de Commander).",
+        "responses": {
+          "200": {
+            "description": "Estado del nodo.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/EstadoResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/carta": {
+      "get": {
+        "summary": "Catálogo canónico del nodo. `schema` = 2 (ids UUID); Commander reconstruye su espejo al detectar cambio.",
+        "responses": {
+          "200": {
+            "description": "Carta/catálogo.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CartaResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sesion/jornadas": {
+      "get": {
+        "summary": "Resumen de jornadas del periodo (opcional `desde`/`hasta` epoch ms).",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "hasta",
+            "in": "query",
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumen de jornadas.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JornadasResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/eventos": {
+      "get": {
+        "summary": "Eventos SSE del nodo. `event` = tipo (`ticket.preparado`, `ticket.recogido`, `sesion.cortada`); `data` = JSON SalaEvent.",
+        "responses": {
+          "200": {
+            "description": "Stream de eventos (text/event-stream).",
+            "content": {
+              "text/event-stream": {
+                "schema": { "$ref": "#/components/schemas/SalaEvent" },
+                "example": "event: ticket.preparado\ndata: {\"version\":1,\"tipo\":\"ticket.preparado\",\"ticketId\":\"r1-barra\",\"preparadoPor\":\"Ana\",\"mesaId\":\"T3\",\"camarero\":\"Lucía\",\"resumen\":\"2× Caña\",\"ticket\":{\"id\":\"r1-barra\",\"rondaId\":\"r1\",\"destino\":\"BARRA\",\"estado\":\"PREPARADO\",\"preparadoPor\":\"Ana\",\"numeroCola\":1,\"lineas\":[{\"productoId\":\"cana\",\"nombreProducto\":\"Caña\",\"cantidad\":2}]}}\n\n"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthPayload": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "role": { "type": "string", "const": "bar" },
+          "establecimiento": { "type": "string" },
+          "sala": { "type": "string", "deprecated": true },
+          "establecimiento_id": { "type": "string", "format": "uuid" },
+          "version": { "type": "string" }
+        },
+        "required": ["ok", "role", "establecimiento", "sala", "version"]
+      },
+      "SesionRequest": {
+        "type": "object",
+        "properties": {
+          "qr": { "type": "string" }
+        },
+        "required": ["qr"]
+      },
+      "SesionResponse": {
+        "type": "object",
+        "properties": {
+          "admitido": { "type": "boolean" },
+          "camareroId": { "type": "string" },
+          "nombre": { "type": "string" }
+        },
+        "required": ["admitido"]
+      },
+      "SesionIniciarResponse": {
+        "type": "object",
+        "properties": {
+          "sesionActiva": { "type": "boolean" }
+        },
+        "required": ["sesionActiva"]
+      },
+      "HeartbeatRequest": {
+        "type": "object",
+        "properties": {
+          "camareroId": { "type": "string" }
+        },
+        "required": ["camareroId"]
+      },
+      "PreparadoRequest": {
+        "type": "object",
+        "properties": {
+          "preparado_por": { "type": "string" }
+        },
+        "required": ["preparado_por"]
+      },
+      "Ronda": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "mesaId": { "type": "string", "description": "idZona de red, p. ej. T3" },
+          "numero": { "type": "integer" },
+          "camarero": { "type": "string" },
+          "creadoEn": { "type": "integer", "format": "int64" },
+          "lineas": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Linea" }
+          }
+        },
+        "required": ["id", "mesaId", "numero", "creadoEn", "lineas"]
+      },
+      "Linea": {
+        "type": "object",
+        "properties": {
+          "productoId": { "type": "string" },
+          "nombreProducto": { "type": "string" },
+          "cantidad": { "type": "integer" },
+          "estado": { "type": "string", "default": "PENDIENTE" },
+          "nota": { "type": "string" },
+          "modificadores": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ModificadorLinea" }
+          }
+        },
+        "required": ["productoId", "nombreProducto", "cantidad"]
+      },
+      "ModificadorLinea": {
+        "type": "object",
+        "properties": {
+          "grupo": { "type": "string" },
+          "opcion": { "type": "string" },
+          "delta": { "type": "number" },
+          "grupoId": { "type": "string" },
+          "opcionId": { "type": "string" }
+        }
+      },
+      "Ticket": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "rondaId": { "type": "string" },
+          "destino": {
+            "type": "string",
+            "enum": ["BARRA", "COCINA"]
+          },
+          "estado": {
+            "type": "string",
+            "enum": ["PENDIENTE", "PREPARADO", "RECOGIDO"],
+            "default": "PENDIENTE"
+          },
+          "preparadoPor": { "type": "string" },
+          "numeroCola": { "type": "integer" },
+          "lineas": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Linea" }
+          }
+        },
+        "required": ["id", "rondaId", "destino", "lineas"]
+      },
+      "EstadoResponse": {
+        "type": "object",
+        "properties": {
+          "version": { "type": "string" },
+          "establecimiento": { "$ref": "#/components/schemas/Establecimiento" },
+          "salas": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Sala" }
+          },
+          "bebida": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Ticket" }
+          },
+          "comida": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Ticket" }
+          },
+          "servidos": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Ticket" }
+          },
+          "mesas": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Mesa" }
+          }
+        },
+        "required": ["version", "establecimiento", "salas", "bebida", "comida", "servidos", "mesas"]
+      },
+      "Establecimiento": {
+        "type": "object",
+        "properties": {
+          "idEstable": { "type": "string" },
+          "nombre": { "type": "string" }
+        },
+        "required": ["idEstable", "nombre"]
+      },
+      "Sala": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "nombre": { "type": "string" },
+          "orden": { "type": "integer" }
+        },
+        "required": ["id", "nombre", "orden"]
+      },
+      "Mesa": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "salaId": { "type": "string" },
+          "indiceZona": { "type": "integer" },
+          "numero": { "type": "integer" },
+          "alias": { "type": "string" },
+          "forma": {
+            "type": "string",
+            "enum": ["REDONDA", "CUADRADA", "RECTANGULAR", "RECTANGULAR_XL"],
+            "default": "CUADRADA"
+          },
+          "capacidad": { "type": "integer" },
+          "posX": { "type": "number" },
+          "posY": { "type": "number" },
+          "girada": { "type": "boolean" },
+          "bloqueada": { "type": "boolean" },
+          "reservaActivaId": { "type": "string" }
+        },
+        "required": ["id", "salaId", "indiceZona"]
+      },
+      "CartaResponse": {
+        "type": "object",
+        "properties": {
+          "schema": { "type": "integer", "default": 2 },
+          "productos": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProductoCarta" }
+          },
+          "gruposModificador": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GrupoModificadorCarta" }
+          }
+        },
+        "required": ["schema", "productos"]
+      },
+      "ProductoCarta": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "nombre": { "type": "string" },
+          "categoria": { "type": "string" },
+          "precio": { "type": "number" },
+          "disponible": { "type": "boolean" },
+          "subfamilia": { "type": "string" },
+          "permiteNota": { "type": "boolean" },
+          "grupos": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["id", "nombre", "categoria", "precio", "disponible"]
+      },
+      "GrupoModificadorCarta": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "nombre": { "type": "string" },
+          "multiple": { "type": "boolean" },
+          "obligatorio": { "type": "boolean" },
+          "opciones": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OpcionModificadorCarta" }
+          }
+        },
+        "required": ["id", "nombre"]
+      },
+      "OpcionModificadorCarta": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "nombre": { "type": "string" },
+          "deltaPrecio": { "type": "number" },
+          "alias": { "type": "string" }
+        },
+        "required": ["id", "nombre"]
+      },
+      "SalaEvent": {
+        "type": "object",
+        "description": "Evento SSE (data). Los campos nuevos son opcionales para compatibilidad.",
+        "properties": {
+          "version": { "type": "integer", "default": 1 },
+          "tipo": {
+            "type": "string",
+            "enum": ["ticket.preparado", "ticket.recogido", "sesion.cortada"]
+          },
+          "ticketId": { "type": "string" },
+          "preparadoPor": { "type": "string" },
+          "mesaId": { "type": "string" },
+          "camarero": { "type": "string" },
+          "resumen": { "type": "string" },
+          "ticket": { "$ref": "#/components/schemas/Ticket" },
+          "camareroId": { "type": "string" }
+        },
+        "required": ["version", "tipo", "ticketId"]
+      },
+      "JornadasResponse": {
+        "type": "object",
+        "properties": {
+          "resumen": { "$ref": "#/components/schemas/JornadasResumen" }
+        },
+        "required": ["resumen"]
+      },
+      "JornadasResumen": {
+        "type": "object",
+        "properties": {
+          "intervalos": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/JornadaIntervalo" }
+          },
+          "porCamarero": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ResumenCamarero" }
+          }
+        },
+        "required": ["intervalos", "porCamarero"]
+      },
+      "JornadaIntervalo": {
+        "type": "object",
+        "properties": {
+          "camareroId": { "type": "string" },
+          "inicio": { "type": "integer", "format": "int64" },
+          "fin": { "type": "integer", "format": "int64" }
+        },
+        "required": ["camareroId", "inicio"]
+      },
+      "ResumenCamarero": {
+        "type": "object",
+        "properties": {
+          "camareroId": { "type": "string" },
+          "horasMs": { "type": "integer", "format": "int64" },
+          "mesasDistintas": { "type": "integer" }
+        },
+        "required": ["camareroId", "horasMs", "mesasDistintas"]
+      }
+    }
+  }
+}

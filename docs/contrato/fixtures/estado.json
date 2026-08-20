@@ -1,0 +1,41 @@
+{
+  "version": "0.1",
+  "establecimiento": {
+    "idEstable": "local-1",
+    "nombre": "La Terraza"
+  },
+  "salas": [
+    {
+      "id": "sala-terraza",
+      "nombre": "Terraza",
+      "orden": 1
+    }
+  ],
+  "bebida": [
+    {
+      "id": "r1-barra",
+      "rondaId": "r1",
+      "destino": "BARRA",
+      "estado": "PREPARADO",
+      "preparadoPor": "anaTest",
+      "numeroCola": 1,
+      "lineas": [
+        {
+          "productoId": "cana",
+          "nombreProducto": "Caña",
+          "cantidad": 2
+        }
+      ]
+    }
+  ],
+  "comida": [],
+  "servidos": [],
+  "mesas": [
+    {
+      "id": "mesa-1",
+      "salaId": "sala-terraza",
+      "indiceZona": 3,
+      "numero": 3
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "r1-barra",
+    "rondaId": "r1",
+    "destino": "BARRA",
+    "estado": "PENDIENTE",
+    "numeroCola": 1,
+    "lineas": [
+      {
+        "productoId": "cana",
+        "nombreProducto": "Caña",
+        "cantidad": 2
+      }
+    ]
+  },
+  {
+    "id": "r1-cocina",
+    "rondaId": "r1",
+    "destino": "COCINA",
+    "estado": "PENDIENTE",
+    "numeroCola": 1,
+    "lineas": [
+      {
+        "productoId": "croquetas",
+        "nombreProducto": "Croquetas",
+        "cantidad": 1
+      }
+    ]
+  }
+]

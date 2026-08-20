@@ -109,3 +109,9 @@ jobs:
           python scripts/check_family_contracts.py
           --camareros-openapi .family/identity/docs/openapi-camareros.json
           --negocio-openapi .family/identity/docs/openapi-negocio.json
+
+      - name: Self-test LAN contract checker
+        run: python scripts/check_lan_contract.py --selftest
+
+      - name: Check LAN contract coherence
+        run: python scripts/check_lan_contract.py
