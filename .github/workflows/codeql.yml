@@ -44,8 +44,10 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+      # assembleRelease minifica con R8 y CodeQL autobuild lo incluye; en debug
+      # basta para extraer el grafo Java/Kotlin y coincide con el CI required.
+      - name: Build debug
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
