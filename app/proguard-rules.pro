@@ -1,2 +1,4 @@
-# Add project specific ProGuard rules here.
-# Room generates code that R8 keeps automatically; empty rules file for bootstrap.
+# Ktor (`IntellijIdeaDebugDetector`) referencia `java.lang.management`, que no
+# existe en Android. Sin esto, `minifyReleaseWithR8` falla y CodeQL autobuild
+# no llega a analizar.
+-dontwarn java.lang.management.**
