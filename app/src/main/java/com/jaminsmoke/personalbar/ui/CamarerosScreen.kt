@@ -91,8 +91,9 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
             return
         }
 
-        // Tarjetas de sección (tablet apaisada): izquierda = miembros y servicio;
-        // derecha = altas e invitaciones; abajo a todo el ancho = jornadas de hoy.
+        // Tarjetas de sección (tablet apaisada): primera fila = miembros y servicio
+        // + jornadas de hoy (las dos compactas); segunda fila a todo el ancho = altas
+        // e invitaciones (la que más espacio consume, así no empuja la primera fila).
         Row(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
                 PbSeccionCard(titulo = stringResource(R.string.camareros_seccion_miembros_servicio)) {
@@ -105,50 +106,50 @@ fun CamarerosScreen(viewModel: CamarerosViewModel = viewModel()) {
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                PbSeccionCard(titulo = stringResource(R.string.camareros_seccion_altas)) {
-                    QrSection(
-                        qr = qrInput,
-                        onQr = { qrInput = it },
-                        trabajando = trabajando,
-                        mensaje = mensaje,
-                        onDarAlta = {
-                            if (viewModel.altaPorQr(qrInput) == AltaResultado.OK) qrInput = ""
-                        },
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    DirectorioSection(
-                        conectado = identityConfig.conectado,
-                        isOnline = isOnline,
-                        cargando = directorioCargando,
-                        directorio = directorio,
-                        busqueda = busqueda,
-                        onBusqueda = { busqueda = it },
-                        onBuscar = { viewModel.buscarDirectorio(busqueda) },
-                        onInvitar = viewModel::invitarDelDirectorio,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    InvitacionSection(
-                        conectado = identityConfig.conectado,
-                        isOnline = isOnline,
-                        invitaciones = invitaciones,
-                        trabajando = trabajando,
-                        email = emailInput,
-                        onEmail = { emailInput = it },
-                        onInvitar = {
-                            viewModel.invitarPorEmail(emailInput)
-                            emailInput = ""
-                        },
-                        onRevocar = viewModel::revocarInvitacion,
-                        onSincronizar = viewModel::sincronizar,
+                PbSeccionCard(titulo = stringResource(R.string.camareros_seccion_jornadas)) {
+                    PbJornadasSeccion(
+                        resumen = resumenJornadas,
+                        camareros = camareros,
                     )
                 }
             }
         }
         Spacer(Modifier.height(16.dp))
-        PbSeccionCard(titulo = stringResource(R.string.camareros_seccion_jornadas)) {
-            PbJornadasSeccion(
-                resumen = resumenJornadas,
-                camareros = camareros,
+        PbSeccionCard(titulo = stringResource(R.string.camareros_seccion_altas)) {
+            QrSection(
+                qr = qrInput,
+                onQr = { qrInput = it },
+                trabajando = trabajando,
+                mensaje = mensaje,
+                onDarAlta = {
+                    if (viewModel.altaPorQr(qrInput) == AltaResultado.OK) qrInput = ""
+                },
+            )
+            Spacer(Modifier.height(16.dp))
+            DirectorioSection(
+                conectado = identityConfig.conectado,
+                isOnline = isOnline,
+                cargando = directorioCargando,
+                directorio = directorio,
+                busqueda = busqueda,
+                onBusqueda = { busqueda = it },
+                onBuscar = { viewModel.buscarDirectorio(busqueda) },
+                onInvitar = viewModel::invitarDelDirectorio,
+            )
+            Spacer(Modifier.height(16.dp))
+            InvitacionSection(
+                conectado = identityConfig.conectado,
+                isOnline = isOnline,
+                invitaciones = invitaciones,
+                trabajando = trabajando,
+                email = emailInput,
+                onEmail = { emailInput = it },
+                onInvitar = {
+                    viewModel.invitarPorEmail(emailInput)
+                    emailInput = ""
+                },
+                onRevocar = viewModel::revocarInvitacion,
+                onSincronizar = viewModel::sincronizar,
             )
         }
     }
