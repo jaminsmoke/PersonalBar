@@ -650,4 +650,85 @@ class InMemoryBarRepositoryTest {
         assertEquals(1, repo.altasPendientes.value.size)
         assertEquals("nuevo", repo.altasPendientes.value.single().payload)
     }
+
+    // ── Editor inline de grupos con opciones (paridad Commander) ───────────
+
+    @Test
+    fun guardarGrupoConOpcionesCreaGrupoYopciones() {
+        val repo = InMemoryBarRepository()
+        val ok = repo.guardarGrupoConOpciones(
+            null, "Punto", multiple = false, obligatorio = true,
+            opciones = listOf(
+                OpcionModificadorBorrador(nombre = "Al punto", deltaPrecio = 0.0, alias = "al punto"),
+                OpcionModificadorBorrador(nombre = "Muy hecho", deltaPrecio = 0.5),
+            ),
+        )
+        assertTrue(ok)
+        val grupo = repo.gruposModificador.value.single()
+        assertEquals("Punto", grupo.nombre)
+        assertTrue(grupo.obligatorio)
+        assertEquals(listOf("Al punto", "Muy hecho"), repo.opcionesModificador.value.map { it.nombre })
+        assertEquals(0.5, repo.opcionesModificador.value.first { it.nombre == "Muy hecho" }.deltaPrecio, 0.0)
+    }
+
+    @Test
+    fun guardarGrupoConOpcionesEditaYreemplazaOpciones() {
+        val repo = InMemoryBarRepository()
+        repo.guardarGrupoConOpciones(null, "Punto", false, true, listOf(OpcionModificadorBorrador(nombre = "Al punto")))
+        val grupoId = repo.gruposModificador.value.single().id
+        val opcionId = repo.opcionesModificador.value.single().id
+
+        val ok = repo.guardarGrupoConOpciones(
+            grupoId, "Punto de carne", multiple = true, obligatorio = false,
+            opciones = listOf(
+                OpcionModificadorBorrador(id = opcionId, nombre = "Al punto"),
+                OpcionModificadorBorrador(nombre = "Muy hecho", deltaPrecio = 1.0),
+            ),
+        )
+        assertTrue(ok)
+        val grupo = repo.gruposModificador.value.single()
+        assertEquals("Punto de carne", grupo.nombre)
+        assertTrue(grupo.multiple)
+        assertFalse(grupo.obligatorio)
+        assertEquals(setOf("Al punto", "Muy hecho"), repo.opcionesModificador.value.map { it.nombre }.toSet())
+        assertTrue(repo.opcionesModificador.value.any { it.id == opcionId })
+    }
+
+    @Test
+    fun guardarGrupoConOpcionesNombreVacioDevuelveFalse() {
+        val repo = InMemoryBarRepository()
+        assertFalse(repo.guardarGrupoConOpciones(null, "  ", false, false, emptyList()))
+    }
+
+    // ── Resolución de ids en el snapshot al recibir una ronda ──────────────
+
+    @Test
+    fun crearRondaResuelveIdsDeModificadoresPorNombre() {
+        val repo = repo()
+        repo.guardarGrupoConOpciones(null, "Punto", false, true, listOf(OpcionModificadorBorrador(nombre = "Al punto")))
+        val grupoId = repo.gruposModificador.value.single().id
+        val opcionId = repo.opcionesModificador.value.single().id
+
+        val ronda = Ronda(
+            "r1", "T3", 1,
+            lineas = listOf(Linea("cana", "Caña", 1, modificadores = listOf(ModificadorLinea("Punto", "Al punto", 0.0)))),
+        )
+        assertTrue(repo.crearRonda(ronda))
+        val mod = repo.bebidaQueue.value.single().lineas.single().modificadores.single()
+        assertEquals(grupoId, mod.grupoId)
+        assertEquals(opcionId, mod.opcionId)
+    }
+
+    @Test
+    fun crearRondaModificadorNoResueltoDejaIdsVacios() {
+        val repo = repo()
+        val ronda = Ronda(
+            "r1", "T3", 1,
+            lineas = listOf(Linea("cana", "Caña", 1, modificadores = listOf(ModificadorLinea("Punto", "Al punto", 0.0)))),
+        )
+        assertTrue(repo.crearRonda(ronda))
+        val mod = repo.bebidaQueue.value.single().lineas.single().modificadores.single()
+        assertEquals("", mod.grupoId)
+        assertEquals("", mod.opcionId)
+    }
 }

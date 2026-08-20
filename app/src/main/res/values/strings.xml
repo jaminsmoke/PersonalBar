@@ -190,10 +190,9 @@
     <string name="carta_grupo_campo_nombre">Nombre del grupo</string>
     <string name="carta_grupo_multiple">Selección múltiple</string>
     <string name="carta_grupo_obligatorio">Obligatorio</string>
-    <string name="carta_opcion_nueva">Nueva opción</string>
-    <string name="carta_opcion_editar">Editar opción</string>
-    <string name="carta_opcion_borrar">¿Borrar opción?</string>
-    <string name="carta_opcion_borrar_mensaje">Se borrará «%1$s» del grupo.</string>
+    <string name="carta_opciones_titulo">Opciones</string>
+    <string name="carta_opcion_anadir">Añadir opción</string>
+    <string name="carta_opcion_quitar">Quitar opción</string>
     <string name="carta_opcion_campo_nombre">Nombre de la opción</string>
     <string name="carta_opcion_campo_delta">Delta de precio (opcional)</string>
     <string name="carta_opcion_campo_alias">Alias de voz (opcional)</string>

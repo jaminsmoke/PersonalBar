@@ -217,6 +217,21 @@ class RoomBarRepository(
         return ok
     }
 
+    override fun guardarGrupoConOpciones(
+        grupoId: String?,
+        nombre: String,
+        multiple: Boolean,
+        obligatorio: Boolean,
+        opciones: List<OpcionModificadorBorrador>,
+    ): Boolean {
+        val ok = inner.guardarGrupoConOpciones(grupoId, nombre, multiple, obligatorio, opciones)
+        if (ok) persist {
+            dao.replaceGruposModificador(inner.gruposModificador.value)
+            dao.replaceOpcionesModificador(inner.opcionesModificador.value)
+        }
+        return ok
+    }
+
     override fun asignarGrupoProducto(productoId: String, grupoId: String): Boolean {
         val ok = inner.asignarGrupoProducto(productoId, grupoId)
         if (ok) persist { dao.replaceProductoGrupo(inner.productoGrupo.value) }

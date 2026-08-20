@@ -161,12 +161,41 @@ class InMemoryBarRepository(
 
     override fun crearRonda(ronda: Ronda): Boolean {
         if (!rondasRecibidas.add(ronda.id)) return false
-        _rondas.update { it + ronda }
-        val tickets = RondaSplitter.split(ronda, _catalogo.value.associateBy { it.id })
+        val enriquecida = ronda.copy(lineas = resolverIdsModificadores(ronda.lineas))
+        _rondas.update { it + enriquecida }
+        val tickets = RondaSplitter.split(enriquecida, _catalogo.value.associateBy { it.id })
             .map { t -> t.copy(numeroCola = siguienteCola(t.destino)) }
         _bebidaQueue.update { it + tickets.filter { t -> t.destino == Destino.BARRA } }
         _comidaQueue.update { it + tickets.filter { t -> t.destino == Destino.COCINA } }
         return true
+    }
+
+    /**
+     * Rellena los ids internos (`grupoId`/`opcionId`) de los modificadores de cada
+     * línea resolviendo por nombre contra el catálogo actual. Best-effort: si un
+     * nombre no resuelve (renombrado/borrado), el id queda vacío y no bloquea la ronda.
+     */
+    private fun resolverIdsModificadores(lineas: List<Linea>): List<Linea> {
+        val gruposPorNombre = _gruposModificador.value.associateBy { normalizarNombreCamarero(it.nombre) }
+        val opciones = _opcionesModificador.value
+        return lineas.map { linea ->
+            if (linea.modificadores.isEmpty()) {
+                linea
+            } else {
+                linea.copy(
+                    modificadores = linea.modificadores.map { m ->
+                        val gid = gruposPorNombre[normalizarNombreCamarero(m.grupo)]?.id.orEmpty()
+                        val oid = opciones
+                            .firstOrNull {
+                                it.grupoId == gid &&
+                                    normalizarNombreCamarero(it.nombre) == normalizarNombreCamarero(m.opcion)
+                            }
+                            ?.id.orEmpty()
+                        m.copy(grupoId = gid, opcionId = oid)
+                    },
+                )
+            }
+        }
     }
 
     private fun siguienteCola(destino: Destino): Int =
@@ -309,6 +338,46 @@ class InMemoryBarRepository(
         val antes = _opcionesModificador.value.size
         _opcionesModificador.update { it.filterNot { o -> o.id == id } }
         return _opcionesModificador.value.size < antes
+    }
+
+    override fun guardarGrupoConOpciones(
+        grupoId: String?,
+        nombre: String,
+        multiple: Boolean,
+        obligatorio: Boolean,
+        opciones: List<OpcionModificadorBorrador>,
+    ): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        val gid: String
+        if (grupoId == null) {
+            gid = UUID.randomUUID().toString()
+            _gruposModificador.update { it + GrupoModificador(gid, n, multiple, obligatorio) }
+        } else {
+            if (_gruposModificador.value.none { it.id == grupoId }) return false
+            _gruposModificador.update { list ->
+                list.map { if (it.id == grupoId) it.copy(nombre = n, multiple = multiple, obligatorio = obligatorio) else it }
+            }
+            gid = grupoId
+        }
+        // Reemplaza las opciones del grupo: conserva el id de las existentes,
+        // genera id para las nuevas y elimina las que ya no vienen.
+        val nuevas = opciones.mapNotNull { borrador ->
+            val on = borrador.nombre.trim()
+            if (on.isEmpty()) {
+                null
+            } else {
+                OpcionModificador(
+                    id = borrador.id.ifBlank { UUID.randomUUID().toString() },
+                    grupoId = gid,
+                    nombre = on,
+                    deltaPrecio = borrador.deltaPrecio,
+                    alias = borrador.alias.trim(),
+                )
+            }
+        }
+        _opcionesModificador.update { list -> list.filterNot { it.grupoId == gid } + nuevas }
+        return true
     }
 
     override fun asignarGrupoProducto(productoId: String, grupoId: String): Boolean {

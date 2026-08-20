@@ -6,6 +6,7 @@ import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.GrupoModificador
 import com.jaminsmoke.personalbar.data.OpcionModificador
+import com.jaminsmoke.personalbar.data.OpcionModificadorBorrador
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.ProductoGrupo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,6 +88,19 @@ class CartaViewModel : ViewModel() {
 
     fun borrarOpcion(id: String) {
         repository.borrarOpcionModificador(id)
+    }
+
+    /** Guarda (crea/edita) un grupo y reemplaza sus opciones de forma atómica. */
+    fun guardarGrupoConOpciones(
+        grupoId: String?,
+        nombre: String,
+        multiple: Boolean,
+        obligatorio: Boolean,
+        opciones: List<OpcionModificadorBorrador>,
+    ): Boolean {
+        val ok = repository.guardarGrupoConOpciones(grupoId, nombre, multiple, obligatorio, opciones)
+        _error.value = if (ok) null else R.string.carta_error_grupo_vacio
+        return ok
     }
 
     fun asignarGrupo(productoId: String, grupoId: String) {

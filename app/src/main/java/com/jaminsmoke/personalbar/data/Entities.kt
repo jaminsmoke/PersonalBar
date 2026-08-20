@@ -89,12 +89,16 @@ data class Linea(
  * Modificador elegido en una línea (snapshot para historial y expo). Es el
  * espejo en claro de `ModificadorRondaLan` del contrato Commander: grupo/opción
  * van como nombres (no ids) y [delta] es el delta de precio de la opción.
+ * [grupoId]/[opcionId] son **internos** de Bar (resueltos al recibir la ronda
+ * por nombre): no viajan por la red y se serializan solo si ≠ "".
  */
 @Serializable
 data class ModificadorLinea(
     val grupo: String = "",
     val opcion: String = "",
     val delta: Double = 0.0,
+    val grupoId: String = "",
+    val opcionId: String = "",
 )
 
 /**
