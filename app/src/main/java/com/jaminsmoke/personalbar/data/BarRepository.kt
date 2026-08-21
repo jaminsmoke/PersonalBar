@@ -166,8 +166,11 @@ interface BarRepository {
         camareroId: String? = null,
     ): Boolean
 
-    /** @return true si se actualizó nombre/color; false si no existe o el nombre queda vacío. */
-    fun editarZona(zonaId: String, nombre: String, color: ZonaColor): Boolean
+    /**
+     * @return true si se actualizó nombre/color/camarero; false si no existe, el
+     * nombre queda vacío o el camarero no está ACTIVA.
+     */
+    fun editarZona(zonaId: String, nombre: String, color: ZonaColor, camareroId: String? = null): Boolean
 
     /** @return true si se movió la zona a (posX, posY), encajada en el board. */
     fun moverZona(zonaId: String, posX: Float, posY: Float): Boolean

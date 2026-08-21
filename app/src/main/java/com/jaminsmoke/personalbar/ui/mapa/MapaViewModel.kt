@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jaminsmoke.personalbar.PersonalBarApp
 import com.jaminsmoke.personalbar.data.BarRepository
+import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.MesaVisualStatus
@@ -11,6 +12,8 @@ import com.jaminsmoke.personalbar.data.Reserva
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.Ticket
+import com.jaminsmoke.personalbar.data.Zona
+import com.jaminsmoke.personalbar.data.ZonaColor
 import com.jaminsmoke.personalbar.data.derivarEstadoMesas
 import com.jaminsmoke.personalbar.lan.LayoutBackup
 import kotlinx.coroutines.launch
@@ -27,6 +30,8 @@ class MapaViewModel : ViewModel() {
 
     val mesas: StateFlow<List<Mesa>> = repository.mesas
     val salas: StateFlow<List<Sala>> = repository.salas
+    val zonas: StateFlow<List<Zona>> = repository.zonas
+    val camareros: StateFlow<List<Camarero>> = repository.camareros
     val rondas: StateFlow<List<Ronda>> = repository.rondas
     val bebida: StateFlow<List<Ticket>> = repository.bebidaQueue
     val comida: StateFlow<List<Ticket>> = repository.comidaQueue
@@ -79,6 +84,34 @@ class MapaViewModel : ViewModel() {
 
     fun girarMesa(mesaId: String): Boolean =
         repository.girarMesa(mesaId).also { if (it) respaldar() }
+
+    // ── Zonas ──
+    fun crearZona(
+        salaId: String,
+        nombre: String,
+        color: ZonaColor,
+        posX: Float,
+        posY: Float,
+        ancho: Float,
+        alto: Float,
+        camareroId: String?,
+    ): Boolean =
+        repository.crearZona(salaId, nombre, color, posX, posY, ancho, alto, camareroId).also { if (it) respaldar() }
+
+    fun editarZona(zonaId: String, nombre: String, color: ZonaColor, camareroId: String?): Boolean =
+        repository.editarZona(zonaId, nombre, color, camareroId).also { if (it) respaldar() }
+
+    fun moverZona(zonaId: String, posX: Float, posY: Float): Boolean =
+        repository.moverZona(zonaId, posX, posY).also { if (it) respaldar() }
+
+    fun redimensionarZona(zonaId: String, ancho: Float, alto: Float): Boolean =
+        repository.redimensionarZona(zonaId, ancho, alto).also { if (it) respaldar() }
+
+    fun borrarZona(zonaId: String): Boolean =
+        repository.borrarZona(zonaId).also { if (it) respaldar() }
+
+    fun asignarCamareroZona(zonaId: String, camareroId: String?): Boolean =
+        repository.asignarCamareroZona(zonaId, camareroId).also { if (it) respaldar() }
 
     /** Respalda el layout en Identity (best-effort, si conectado). */
     private fun respaldar() {

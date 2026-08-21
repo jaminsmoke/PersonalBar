@@ -137,6 +137,29 @@
     <string name="mapa_ticket_destino_barra">Drinks</string>
     <string name="mapa_ticket_destino_cocina">Food</string>
 
+    <!-- Room zones (board) -->
+    <string name="zona_nueva">New zone</string>
+    <string name="zona_crear">Create zone</string>
+    <string name="zona_editar">Edit zone</string>
+    <string name="zona_borrar_titulo">Delete zone?</string>
+    <string name="zona_borrar_mensaje">The zone &quot;%1$s&quot; will be deleted and its tables left unassigned.</string>
+    <string name="zona_nombre">Zone name</string>
+    <string name="zona_color">Color</string>
+    <string name="zona_camarero">Waiter</string>
+    <string name="zona_sin_camarero">Unassigned</string>
+    <string name="zona_ancho">Width</string>
+    <string name="zona_alto">Height</string>
+    <string name="zona_dibujar_pista">Drag on the board to draw the zone</string>
+    <string name="zona_dibujar_cancelar">Cancel drawing</string>
+    <string name="zona_color_azul">Blue</string>
+    <string name="zona_color_verde">Green</string>
+    <string name="zona_color_amarillo">Yellow</string>
+    <string name="zona_color_naranja">Orange</string>
+    <string name="zona_color_morado">Purple</string>
+    <string name="zona_color_rojo">Red</string>
+    <string name="zona_menu_editar">Edit</string>
+    <string name="zona_menu_borrar">Delete</string>
+
     <!-- Waiters (whitelist) -->
     <string name="camareros_titulo">Waiters</string>
     <string name="camareros_subtitulo">Venue whitelist</string>

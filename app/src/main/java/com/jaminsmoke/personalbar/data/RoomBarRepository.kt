@@ -342,8 +342,8 @@ class RoomBarRepository(
         return ok
     }
 
-    override fun editarZona(zonaId: String, nombre: String, color: ZonaColor): Boolean {
-        val ok = inner.editarZona(zonaId, nombre, color)
+    override fun editarZona(zonaId: String, nombre: String, color: ZonaColor, camareroId: String?): Boolean {
+        val ok = inner.editarZona(zonaId, nombre, color, camareroId)
         if (ok) persist { dao.replaceZonas(inner.zonas.value) }
         return ok
     }

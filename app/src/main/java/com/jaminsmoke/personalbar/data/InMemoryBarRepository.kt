@@ -630,11 +630,17 @@ class InMemoryBarRepository(
         return true
     }
 
-    override fun editarZona(zonaId: String, nombre: String, color: ZonaColor): Boolean {
+    override fun editarZona(zonaId: String, nombre: String, color: ZonaColor, camareroId: String?): Boolean {
         val n = nombre.trim()
         if (n.isEmpty()) return false
         if (_zonas.value.none { it.id == zonaId }) return false
-        _zonas.update { list -> list.map { if (it.id == zonaId) it.copy(nombre = n, color = color) else it } }
+        val nuevoCamarero = camareroId?.let {
+            if (!esCamareroActivo(it)) return false
+            it
+        }
+        _zonas.update { list ->
+            list.map { if (it.id == zonaId) it.copy(nombre = n, color = color, camareroId = nuevoCamarero) else it }
+        }
         return true
     }
 
