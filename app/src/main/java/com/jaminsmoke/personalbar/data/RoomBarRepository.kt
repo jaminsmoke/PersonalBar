@@ -266,9 +266,9 @@ class RoomBarRepository(
 
     // ── Salas / mesas ────────────────────────────────────────────────────────
 
-    override fun reemplazarLayout(salas: List<Sala>, mesas: List<Mesa>) {
-        inner.reemplazarLayout(salas, mesas)
-        persist { dao.replaceSalas(inner.salas.value); dao.replaceMesas(inner.mesas.value) }
+    override fun reemplazarLayout(salas: List<Sala>, mesas: List<Mesa>, zonas: List<Zona>) {
+        inner.reemplazarLayout(salas, mesas, zonas)
+        persist { dao.replaceSalas(inner.salas.value); dao.replaceMesas(inner.mesas.value); dao.replaceZonas(inner.zonas.value) }
     }
 
     override fun renombrarEstablecimiento(nombre: String): Boolean {

@@ -492,11 +492,13 @@ class InMemoryBarRepository(
 
     // ── Salas ─────────────────────────────────────────────────────────────────
 
-    override fun reemplazarLayout(salas: List<Sala>, mesas: List<Mesa>) {
+    override fun reemplazarLayout(salas: List<Sala>, mesas: List<Mesa>, zonas: List<Zona>) {
         _salas.value = salas
         _mesas.value = mesas
+        _zonas.value = zonas
         salaSeq = maxNumSuffix("sala", salas.map { it.id })
         mesaSeq = maxNumSuffix("mesa", mesas.map { it.id })
+        zonaSeq = maxNumSuffix("zona", zonas.map { it.id })
     }
 
     override fun crearSala(nombre: String): Boolean {

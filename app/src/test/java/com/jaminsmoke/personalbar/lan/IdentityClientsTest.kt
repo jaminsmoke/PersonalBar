@@ -3,6 +3,8 @@ package com.jaminsmoke.personalbar.lan
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.Sala
+import com.jaminsmoke.personalbar.data.Zona
+import com.jaminsmoke.personalbar.data.ZonaColor
 import com.jaminsmoke.personalbar.ui.validarNuevaPassword
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -184,10 +186,17 @@ class IdentityClientsTest {
         val mesas = listOf(
             Mesa(id = "mesa-1", salaId = "sala-barra", indiceZona = 1, numero = 1, forma = MesaForma.REDONDA, capacidad = 2, posX = 40f, posY = 40f)
         )
+        val zonas = listOf(Zona(id = "zona-1", salaId = "sala-barra", nombre = "Interior", color = ZonaColor.VERDE))
         val salasJson = LanJson.encodeToString(salas)
         val mesasJson = LanJson.encodeToString(mesas)
         assertEquals(salas, LanJson.decodeFromString<List<Sala>>(salasJson))
         assertEquals(mesas, LanJson.decodeFromString<List<Mesa>>(mesasJson))
+        // LayoutSnapshot roundtrip con tres capas
+        val snapshot = LayoutSnapshot(salas = salas, mesas = mesas, zonas = zonas)
+        val snapshotJson = LanJson.encodeToString(snapshot)
+        val decoded = LanJson.decodeFromString<LayoutSnapshot>(snapshotJson)
+        assertEquals(1, decoded.zonas.size)
+        assertEquals("Interior", decoded.zonas[0].nombre)
     }
 
     @Test

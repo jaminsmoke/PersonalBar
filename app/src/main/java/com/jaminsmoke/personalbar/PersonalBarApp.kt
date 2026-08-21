@@ -530,9 +530,9 @@ class PersonalBarApp : Application() {
      */
     private fun sincronizarDesdeIdentity() {
         sessionScope.launch {
-            IdentityNegocioClient.obtenerLayout()?.let { (salas, mesas) ->
-                if (salas.isNotEmpty() || mesas.isNotEmpty()) {
-                    repository.reemplazarLayout(salas, mesas)
+            IdentityNegocioClient.obtenerLayout()?.let { snapshot ->
+                if (snapshot.salas.isNotEmpty() || snapshot.mesas.isNotEmpty()) {
+                    repository.reemplazarLayout(snapshot.salas, snapshot.mesas, snapshot.zonas)
                 }
             }
             val miembros = IdentityNegocioClient.listarMiembros()

@@ -127,8 +127,8 @@ interface BarRepository {
     /** @return true si el ticket estaba PREPARADO y pasó a RECOGIDO (sale de la cola). */
     fun marcarRecogido(ticketId: String): Boolean
 
-    /** Reemplaza el layout local (salas + mesas) por el espejo de Identity (recuperación). */
-    fun reemplazarLayout(salas: List<Sala>, mesas: List<Mesa>)
+    /** Reemplaza el layout local (salas + mesas + zonas) por el espejo de Identity (recuperación). */
+    fun reemplazarLayout(salas: List<Sala>, mesas: List<Mesa>, zonas: List<Zona> = emptyList())
 
     /** @return true si se creó la sala; false si el nombre ya existe o está vacío. */
     fun crearSala(nombre: String): Boolean
