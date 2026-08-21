@@ -443,9 +443,14 @@
           "mesas": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/Mesa" }
+          },
+          "zonas": {
+            "type": "array",
+            "description": "Zonas del layout convertidas al canvas de Commander.",
+            "items": { "$ref": "#/components/schemas/Zona" }
           }
         },
-        "required": ["version", "establecimiento", "salas", "bebida", "comida", "servidos", "mesas"]
+        "required": ["version", "establecimiento", "salas", "bebida", "comida", "servidos", "mesas", "zonas"]
       },
       "Establecimiento": {
         "type": "object",
@@ -485,6 +490,24 @@
           "reservaActivaId": { "type": "string" }
         },
         "required": ["id", "salaId", "indiceZona"]
+      },
+      "Zona": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "salaId": { "type": "string" },
+          "nombre": { "type": "string" },
+          "posX": { "type": "number" },
+          "posY": { "type": "number" },
+          "ancho": { "type": "number" },
+          "alto": { "type": "number" },
+          "color": {
+            "type": "string",
+            "enum": ["AZUL", "VERDE", "AMARILLO", "NARANJA", "MORADO", "ROJO"]
+          },
+          "camareroId": { "type": ["string", "null"] }
+        },
+        "required": ["id", "salaId", "nombre", "posX", "posY", "ancho", "alto", "color"]
       },
       "CartaResponse": {
         "type": "object",

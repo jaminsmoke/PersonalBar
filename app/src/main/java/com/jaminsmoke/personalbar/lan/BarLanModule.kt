@@ -4,6 +4,7 @@ import com.jaminsmoke.personalbar.data.BarRepository
 import com.jaminsmoke.personalbar.data.CandadoComandas
 import com.jaminsmoke.personalbar.data.Establecimiento
 import com.jaminsmoke.personalbar.data.Mesa
+import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.QrParser
 import com.jaminsmoke.personalbar.data.Ronda
@@ -11,6 +12,7 @@ import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
 import com.jaminsmoke.personalbar.data.JornadasResumen
 import com.jaminsmoke.personalbar.data.Ticket
+import com.jaminsmoke.personalbar.data.Zona
 import com.jaminsmoke.personalbar.data.convertirLayout
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -66,6 +68,8 @@ data class EstadoResponse(
     val comida: List<Ticket>,
     val servidos: List<Ticket>,
     val mesas: List<Mesa>,
+    /** Zonas del layout; campo aditivo para clientes LAN antiguos. */
+    val zonas: List<Zona> = emptyList(),
 )/** Carta/catálogo canónico para `GET /v1/carta` (Commander espeja ids de producto). */
 @Serializable
 data class CartaResponse(
@@ -229,6 +233,8 @@ fun Application.barModule(repository: BarRepository) {
             // uniforme + centrado). El repositorio conserva las posiciones canónicas.
             val mesas = repository.mesas.value
             val convertidas = convertirLayout(mesas)
+            val zonas = repository.zonas.value
+            val zonaConvertidas = convertirRectangulos(zonas)
             call.respond(
                 EstadoResponse(
                     version = BarLanConfig.VERSION,
@@ -239,6 +245,9 @@ fun Application.barModule(repository: BarRepository) {
                     servidos = repository.servidos.value,
                     mesas = mesas.map { m ->
                         convertidas[m.id]?.let { (x, y) -> m.copy(posX = x, posY = y) } ?: m
+                    },
+                    zonas = zonas.map { z ->
+                        zonaConvertidas[z.id] ?: z
                     },
                 )            )
         }
@@ -301,5 +310,27 @@ fun Application.barModule(repository: BarRepository) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Convierte los rectángulos de zonas al canvas de Commander usando la misma
+ * transformación uniforme que las mesas.
+ */
+private fun convertirRectangulos(zonas: List<Zona>): Map<String, Zona> {
+    if (zonas.isEmpty()) return emptyMap()
+    val puntos = zonas.flatMap { z ->
+        listOf(
+            Mesa(id = "${z.id}:origen", salaId = z.salaId, indiceZona = 0, posX = z.posX, posY = z.posY, forma = MesaForma.CUADRADA),
+            Mesa(id = "${z.id}:fin", salaId = z.salaId, indiceZona = 0, posX = z.posX + z.ancho, posY = z.posY + z.alto, forma = MesaForma.CUADRADA),
+        )
+    }
+    val convertidos = convertirLayout(puntos)
+    return zonas.associate { z ->
+        val origen = convertidos["${z.id}:origen"]
+        val fin = convertidos["${z.id}:fin"]
+        z.id to if (origen != null && fin != null) {
+            z.copy(posX = origen.first, posY = origen.second, ancho = fin.first - origen.first, alto = fin.second - origen.second)
+        } else z
     }
 }
