@@ -27,8 +27,8 @@ Colas de Bebida y Comida separadas y nodo LAN de la familia PersonalHostel: los 
 
 <div class="pb-aviso" markdown>
 
-!!! info "v0.2"
-    Primer corte público (**v0.2**, Android 7.0+, tablet apaisado). El ciclo de la ronda — recibir, preparar, recoger — está en la tablet del puesto.
+!!! info "v0.3"
+    Corte **v0.3** (Android 7.0+, tablet apaisado). El ciclo de la ronda en el puesto; la UI reserva la barra de navegación de 3 botones.
 
 </div>
 
