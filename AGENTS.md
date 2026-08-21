@@ -8,7 +8,7 @@
 - Local folder: `AndroidStudioProjects/PersonalBar` (sibling of `PersonalComander` and `PersonalHosteleriaServer`)
 - Package (suggested): `com.jaminsmoke.personalbar`
 - Min SDK (align with Commander): 24
-- Version target: **v0.2** (next must be > latest — `gh release list`)
+- Version target: **v0.3** (latest GitHub Release is **v0.2** — `gh release list`)
 
 If you are the agent continuing here: read this **entire** file before changing `app/`. Do not implement TPV, Kitchen, rankings, or cut Commander (`enviarACocina`) from this repo.
 
@@ -154,7 +154,7 @@ Detectado → Debate → Roadmap → Ejecutando → Verificando → Changelog
 
 **No skipping**: every item advances in order. Exception: `Cancelado` → Changelog.
 
-**Version always > latest release**: consult `gh release list`, pick the next one (currently **v0.2**).
+**Version always > latest release**: consult `gh release list`, pick the next one (currently **v0.3**).
 
 Bodies in UTF-8. On Windows do **not** pipe PowerShell `Get-Content` into the CLI (mojibake). Prefer Python or `--body-file` / `gh issue edit --body-file`.
 
@@ -301,7 +301,7 @@ copy .kanbanrc.json.template .kanbanrc.json   # Windows
 $KANBAN config validate
 
 # Create item
-$KANBAN create --title "..." --tipo Feature --area Android --priority Alta --version "v0.2"
+$KANBAN create --title "..." --tipo Feature --area Android --priority Alta --version "v0.3"
 
 # List
 $KANBAN list
@@ -368,7 +368,7 @@ Each item's body evolves through the lifecycle. The CLI generates a template at 
 | Prioridad | SingleSelect | Alta, Media, Baja |
 | Tipo | SingleSelect | Bug, Feature, Mejora, Tarea |
 | Área principal | SingleSelect | UI/UX, Datos, Sync, Android, Build/CI, Docs |
-| Versión | SingleSelect | Sin asignar, v0.1, v0.2, … |
+| Versión | SingleSelect | Sin asignar, v0.1, v0.2, v0.3, … |
 | Decision | SingleSelect | Pendiente, Aprobado, Diferido, Cancelado |
 | HighLighted | SingleSelect | Yes, No (for changelog highlights) |
 | Inicio exacto | Text | ISO-8601 UTC timestamp |
