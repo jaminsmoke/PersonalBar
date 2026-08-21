@@ -277,6 +277,8 @@ Hasta que no exista Gradle: documentar en `Verificación` qué se comprobó (p. 
 5. Añadir ✅ al título del issue.
 6. Cerrar el issue (`gh issue close -r completed`).
 7. **Integrar por PR** (nunca push directo a `main` — `main` está protegida, ver «Protección de `main`»): rama → `gh pr create` → esperar checks verdes (incl. `Instrumented tests (GMD)` y `Workflow security`) → `gh pr merge --squash`.
+8. **Limpiar la rama de trabajo** después del squash merge: comprobar que la PR está integrada, eliminar la rama remota `feature/...` y eliminar la rama local antigua; no dejar ramas muertas. Si la rama local contiene cambios no integrados, detenerse y revisarlos antes de borrar.
+9. **Instalar y verificar la compilación resultante en la tablet**: construir la APK debug/release aplicable, instalarla en `emulator-5558` (`Tablet-PixelTablet`), arrancar la app y comprobar que no hay crash y que la funcionalidad modificada se abre correctamente. Documentar el resultado en `Verificación` antes de cerrar el lifecycle.
 
 ### Protección de `main`
 
@@ -333,6 +335,17 @@ git push -u origin feature/<cambio>
 gh pr create --base main --title "..." --body "Closes #<N>"
 gh pr checks --watch   # esperar verdes (Lint, Unit, Assemble, GMD, Workflow security)
 gh pr merge --squash
+# Después del merge: limpiar rama local y remota tras verificar que no hay trabajo único pendiente.
+git branch --merged main
+git branch -d feature/<cambio>
+git push origin --delete feature/<cambio>
+# APK final en tablet (puerto fijo 5558).
+export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
+./gradlew assembleDebug
+adb -s emulator-5558 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5558 shell am force-stop com.jaminsmoke.personalbar
+adb -s emulator-5558 shell monkey -p com.jaminsmoke.personalbar 1
+# Comprobar foreground/logcat y documentar la revisión manual en Verificación.
 $KANBAN body <itemId> --append "Commit" --content "SHA: \`$(git rev-parse --short HEAD)\`"
 $KANBAN set-field <itemId> --field "Status" --option "Changelog"
 $KANBAN set-field <itemId> --field "Completado" --date "YYYY-MM-DD"
