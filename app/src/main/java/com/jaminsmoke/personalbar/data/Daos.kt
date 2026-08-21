@@ -346,4 +346,21 @@ interface BarDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProductoGrupo(asignaciones: List<ProductoGrupo>)
+
+    // ── Zonas (agrupación espacial de sala) ───────────────────────────────
+
+    @Query("SELECT * FROM zonas ORDER BY salaId")
+    suspend fun getZonas(): List<Zona>
+
+    @Transaction
+    suspend fun replaceZonas(zonas: List<Zona>) {
+        deleteZonas()
+        insertZonas(zonas)
+    }
+
+    @Query("DELETE FROM zonas")
+    suspend fun deleteZonas()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertZonas(zonas: List<Zona>)
 }

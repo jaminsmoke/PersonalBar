@@ -20,6 +20,9 @@ interface BarRepository {
     /** Mesas canónicas del nodo. */
     val mesas: StateFlow<List<Mesa>>
 
+    /** Zonas de las salas (agrupación espacial + camarero asignado opcional). */
+    val zonas: StateFlow<List<Zona>>
+
     /** Reservas (holds comerciales) activas/canceladas. */
     val reservas: StateFlow<List<Reserva>>
 
@@ -150,6 +153,36 @@ interface BarRepository {
 
     /** @return true si se giró (re-encuadrando en celda libre si hace falta). */
     fun girarMesa(mesaId: String): Boolean
+
+    /** @return true si se creó la zona en la sala; false si la sala no existe o el nombre queda vacío. */
+    fun crearZona(
+        salaId: String,
+        nombre: String,
+        color: ZonaColor,
+        posX: Float,
+        posY: Float,
+        ancho: Float,
+        alto: Float,
+        camareroId: String? = null,
+    ): Boolean
+
+    /** @return true si se actualizó nombre/color; false si no existe o el nombre queda vacío. */
+    fun editarZona(zonaId: String, nombre: String, color: ZonaColor): Boolean
+
+    /** @return true si se movió la zona a (posX, posY), encajada en el board. */
+    fun moverZona(zonaId: String, posX: Float, posY: Float): Boolean
+
+    /** @return true si se redimensionó la zona a (ancho, alto), encajada en el board. */
+    fun redimensionarZona(zonaId: String, ancho: Float, alto: Float): Boolean
+
+    /** @return true si se borró; false si no existe. */
+    fun borrarZona(zonaId: String): Boolean
+
+    /**
+     * @return true si se asignó el camarero (ACTIVA) a la zona, o se desasignó
+     * (camareroId null). false si la zona no existe o el camarero no está ACTIVA.
+     */
+    fun asignarCamareroZona(zonaId: String, camareroId: String?): Boolean
 
     /** @return true si se reservó; false si ocupada/bloqueada/ya reservada o nombre vacío. */
     fun reservar(mesaId: String, nombre: String, paraEpoch: Long?): Boolean

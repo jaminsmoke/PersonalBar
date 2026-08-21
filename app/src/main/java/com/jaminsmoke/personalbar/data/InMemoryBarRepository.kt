@@ -26,6 +26,7 @@ class InMemoryBarRepository(
     salasIniciales: List<Sala> = emptyList(),
     catalogoInicial: List<Producto> = emptyList(),
     mesasIniciales: List<Mesa> = emptyList(),
+    zonasIniciales: List<Zona> = emptyList(),
     rondasIniciales: List<Ronda> = emptyList(),
     bebidaInicial: List<Ticket> = emptyList(),
     comidaInicial: List<Ticket> = emptyList(),
@@ -51,6 +52,7 @@ class InMemoryBarRepository(
     private val rondasRecibidas = ConcurrentHashMap.newKeySet<String>().also { it.addAll(rondasIniciales.map { r -> r.id }) }
     private var salaSeq = maxNumSuffix("sala", salasIniciales.map { it.id })
     private var mesaSeq = maxNumSuffix("mesa", mesasIniciales.map { it.id })
+    private var zonaSeq = maxNumSuffix("zona", zonasIniciales.map { it.id })
     private var reservaSeq = maxNumSuffix("reserva", reservasIniciales.map { it.id })
 
     /** Último heartbeat recibido por camarero (epoch millis). Solo para sesiones activas. */
@@ -59,6 +61,7 @@ class InMemoryBarRepository(
     private val _establecimiento = MutableStateFlow(establecimientoInicial)
     private val _salas = MutableStateFlow(salasIniciales)
     private val _mesas = MutableStateFlow(mesasIniciales)
+    private val _zonas = MutableStateFlow(zonasIniciales)
     private val _reservas = MutableStateFlow(reservasIniciales)
     private val _bebidaQueue = MutableStateFlow(bebidaInicial)
     private val _comidaQueue = MutableStateFlow(comidaInicial)
@@ -92,6 +95,7 @@ class InMemoryBarRepository(
     override val establecimiento: StateFlow<Establecimiento> = _establecimiento.asStateFlow()
     override val salas: StateFlow<List<Sala>> = _salas.asStateFlow()
     override val mesas: StateFlow<List<Mesa>> = _mesas.asStateFlow()
+    override val zonas: StateFlow<List<Zona>> = _zonas.asStateFlow()
     override val reservas: StateFlow<List<Reserva>> = _reservas.asStateFlow()
     override val bebidaQueue: StateFlow<List<Ticket>> = _bebidaQueue.asStateFlow()
     override val comidaQueue: StateFlow<List<Ticket>> = _comidaQueue.asStateFlow()
@@ -594,6 +598,96 @@ class InMemoryBarRepository(
         }
         return true
     }
+
+    // ── Zonas (agrupación espacial de sala) ─────────────────────────────────
+
+    override fun crearZona(
+        salaId: String,
+        nombre: String,
+        color: ZonaColor,
+        posX: Float,
+        posY: Float,
+        ancho: Float,
+        alto: Float,
+        camareroId: String?,
+    ): Boolean {
+        if (_salas.value.none { it.id == salaId }) return false
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        val (x, y, w, h) = encajarZona(posX, posY, ancho, alto)
+        val zona = Zona(
+            id = "zona-${++zonaSeq}",
+            salaId = salaId,
+            nombre = n,
+            posX = x,
+            posY = y,
+            ancho = w,
+            alto = h,
+            color = color,
+            camareroId = camareroId?.takeIf { esCamareroActivo(it) },
+        )
+        _zonas.update { it + zona }
+        return true
+    }
+
+    override fun editarZona(zonaId: String, nombre: String, color: ZonaColor): Boolean {
+        val n = nombre.trim()
+        if (n.isEmpty()) return false
+        if (_zonas.value.none { it.id == zonaId }) return false
+        _zonas.update { list -> list.map { if (it.id == zonaId) it.copy(nombre = n, color = color) else it } }
+        return true
+    }
+
+    override fun moverZona(zonaId: String, posX: Float, posY: Float): Boolean {
+        val zona = _zonas.value.firstOrNull { it.id == zonaId } ?: return false
+        val (x, y, w, h) = encajarZona(posX, posY, zona.ancho, zona.alto)
+        _zonas.update { list -> list.map { if (it.id == zonaId) it.copy(posX = x, posY = y) else it } }
+        return true
+    }
+
+    override fun redimensionarZona(zonaId: String, ancho: Float, alto: Float): Boolean {
+        val zona = _zonas.value.firstOrNull { it.id == zonaId } ?: return false
+        val (x, y, w, h) = encajarZona(zona.posX, zona.posY, ancho, alto)
+        _zonas.update { list -> list.map { if (it.id == zonaId) it.copy(posX = x, posY = y, ancho = w, alto = h) else it } }
+        return true
+    }
+
+    override fun borrarZona(zonaId: String): Boolean {
+        val antes = _zonas.value.size
+        _zonas.update { it.filterNot { z -> z.id == zonaId } }
+        return _zonas.value.size < antes
+    }
+
+    override fun asignarCamareroZona(zonaId: String, camareroId: String?): Boolean {
+        val zona = _zonas.value.firstOrNull { it.id == zonaId } ?: return false
+        val nuevoCamarero = camareroId?.let {
+            if (!esCamareroActivo(it)) return false
+            it
+        }
+        _zonas.update { list -> list.map { if (it.id == zonaId) it.copy(camareroId = nuevoCamarero) else it } }
+        return true
+    }
+
+    /**
+     * Encaja el rectángulo de la zona en el canvas del board: tamaño mínimo una
+     * celda, máximo el board completo, y posición dentro de los límites.
+     */
+    private fun encajarZona(
+        posX: Float,
+        posY: Float,
+        ancho: Float,
+        alto: Float,
+    ): FloatArray {
+        val w = ancho.coerceIn(CELL_F, ZONA_ANCHO)
+        val h = alto.coerceIn(CELL_F, ZONA_ALTO)
+        val x = posX.coerceIn(0f, ZONA_ANCHO - w)
+        val y = posY.coerceIn(0f, ZONA_ALTO - h)
+        return floatArrayOf(x, y, w, h)
+    }
+
+    /** true si el camarero existe y está ACTIVA en la lista blanca. */
+    private fun esCamareroActivo(camareroId: String): Boolean =
+        _camareros.value.any { it.id == camareroId && it.estado == CamareroEstado.ACTIVA }
 
     // ── Reservas / bloqueos ───────────────────────────────────────────────────
 

@@ -81,6 +81,7 @@ class RoomBarRepository(
                 salasIniciales = salasBd,
                 catalogoInicial = dao.getProductos(),
                 mesasIniciales = mesasIniciales,
+                zonasIniciales = dao.getZonas(),
                 rondasIniciales = dao.getRondas(),
                 bebidaInicial = renumerados.filter { it.destino == Destino.BARRA && it.estado != TicketEstado.RECOGIDO },
                 comidaInicial = renumerados.filter { it.destino == Destino.COCINA && it.estado != TicketEstado.RECOGIDO },
@@ -109,6 +110,7 @@ class RoomBarRepository(
     override val establecimiento: StateFlow<Establecimiento> get() = inner.establecimiento
     override val salas: StateFlow<List<Sala>> get() = inner.salas
     override val mesas: StateFlow<List<Mesa>> get() = inner.mesas
+    override val zonas: StateFlow<List<Zona>> get() = inner.zonas
     override val reservas: StateFlow<List<Reserva>> get() = inner.reservas
     override val bebidaQueue: StateFlow<List<Ticket>> get() = inner.bebidaQueue
     override val comidaQueue: StateFlow<List<Ticket>> get() = inner.comidaQueue
@@ -320,6 +322,53 @@ class RoomBarRepository(
     override fun girarMesa(mesaId: String): Boolean {
         val ok = inner.girarMesa(mesaId)
         if (ok) persist { dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
+    // ── Zonas ────────────────────────────────────────────────────────────────
+
+    override fun crearZona(
+        salaId: String,
+        nombre: String,
+        color: ZonaColor,
+        posX: Float,
+        posY: Float,
+        ancho: Float,
+        alto: Float,
+        camareroId: String?,
+    ): Boolean {
+        val ok = inner.crearZona(salaId, nombre, color, posX, posY, ancho, alto, camareroId)
+        if (ok) persist { dao.replaceZonas(inner.zonas.value) }
+        return ok
+    }
+
+    override fun editarZona(zonaId: String, nombre: String, color: ZonaColor): Boolean {
+        val ok = inner.editarZona(zonaId, nombre, color)
+        if (ok) persist { dao.replaceZonas(inner.zonas.value) }
+        return ok
+    }
+
+    override fun moverZona(zonaId: String, posX: Float, posY: Float): Boolean {
+        val ok = inner.moverZona(zonaId, posX, posY)
+        if (ok) persist { dao.replaceZonas(inner.zonas.value) }
+        return ok
+    }
+
+    override fun redimensionarZona(zonaId: String, ancho: Float, alto: Float): Boolean {
+        val ok = inner.redimensionarZona(zonaId, ancho, alto)
+        if (ok) persist { dao.replaceZonas(inner.zonas.value) }
+        return ok
+    }
+
+    override fun borrarZona(zonaId: String): Boolean {
+        val ok = inner.borrarZona(zonaId)
+        if (ok) persist { dao.replaceZonas(inner.zonas.value) }
+        return ok
+    }
+
+    override fun asignarCamareroZona(zonaId: String, camareroId: String?): Boolean {
+        val ok = inner.asignarCamareroZona(zonaId, camareroId)
+        if (ok) persist { dao.replaceZonas(inner.zonas.value) }
         return ok
     }
 
@@ -569,6 +618,7 @@ class RoomBarRepository(
             dao.upsertEstablecimiento(seed.establecimiento.value)
             dao.replaceSalas(seed.salas.value)
             dao.replaceMesas(seed.mesas.value)
+            dao.replaceZonas(seed.zonas.value)
             dao.replaceProductos(seed.catalogo.value)
             dao.replaceRondas(seed.rondas.value)
             dao.replaceTickets(

@@ -24,7 +24,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * (revisión canónica por producto); v14 añade `catalogo_sync_estado`
  * (cursor global del pull de deltas `GET /sync/cambios`); v15 añade modificadores
  * y subfamilias de carta; v16 añade `descripcion` (copy público del plato) en
- * `productos` y `operaciones_catalogo`.
+ * `productos` y `operaciones_catalogo`; v17 añade `zonas` (agrupación espacial
+ * de sala: rectángulo + color de paleta + camarero asignado opcional).
  * Schema exportado a `app/schemas/` para versionar migraciones futuras igual
  * que Commander.
  */
@@ -52,8 +53,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         GrupoModificador::class,
         OpcionModificador::class,
         ProductoGrupo::class,
+        Zona::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -329,6 +331,27 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE productos ADD COLUMN descripcion TEXT")
                 db.execSQL("ALTER TABLE operaciones_catalogo ADD COLUMN descripcion TEXT")
+            }
+        }
+
+        /**
+         * v16→v17: `zonas` (agrupación espacial de sala). Tabla nueva, arranca
+         * vacía; sin datos previos que migrar (aditiva).
+         */
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS zonas (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "salaId TEXT NOT NULL, " +
+                        "nombre TEXT NOT NULL, " +
+                        "posX REAL NOT NULL, " +
+                        "posY REAL NOT NULL, " +
+                        "ancho REAL NOT NULL, " +
+                        "alto REAL NOT NULL, " +
+                        "color TEXT NOT NULL, " +
+                        "camareroId TEXT)"
+                )
             }
         }
     }
