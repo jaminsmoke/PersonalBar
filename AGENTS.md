@@ -8,7 +8,7 @@
 - Local folder: `AndroidStudioProjects/PersonalBar` (sibling of `PersonalComander` and `PersonalHosteleriaServer`)
 - Package (suggested): `com.jaminsmoke.personalbar`
 - Min SDK (align with Commander): 24
-- Version target: **v0.3** (latest GitHub Release is **v0.2** — `gh release list`)
+- Version target: **v0.3** (next must be > latest — `gh release list`)
 
 If you are the agent continuing here: read this **entire** file before changing `app/`. Do not implement TPV, Kitchen, rankings, or cut Commander (`enviarACocina`) from this repo.
 
@@ -109,7 +109,7 @@ Cleartext en internet para identidad: no. Identidad = HTTPS al servidor Identity
 
 ## UI a diseñar
 
-- **Target de dispositivo (v0.2): tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). No se adapta a móvil en v0.2. Pruebas en emulador `Tablet-PixelTablet`.
+- **Target de dispositivo (v0.3): tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). No se adapta a móvil en v0.3. Pruebas en emulador `Tablet-PixelTablet`.
 - Cola **Bebida** y cola **Comida** (separadas, mismo dispositivo; dos columnas fijas aprovechando el ancho de la tablet, no tabs).
 - Ticket: mesa, ronda, camarero (cuando haya nombre), líneas, acciones listo.
 - Alta de camarero (pegar/escanear QR).
