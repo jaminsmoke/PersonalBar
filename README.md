@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/github/license/jaminsmoke/PersonalBar?color=%23E9C349)](LICENSE)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 
-**v0.1** · Android 7.0+ (API 24) · Tablet apaisado · [Nodo LAN en el puerto 8787](#nodo-lan)
+**v0.2** · Android 7.0+ (API 24) · Tablet apaisado · [Nodo LAN en el puerto 8787](#nodo-lan)
 
 </div>
 
@@ -134,8 +134,9 @@ Ejecútalos después de cualquier cambio de marca o rediseño de UI para mantene
 
 ## 🗺️ Roadmap
 
-- **v0.1** — el ciclo completo de la ronda: recibir → colas → preparado → recogido, con el nodo LAN y la lista blanca.
-- Después — el sitio web (`jaminsmoke.github.io/PersonalBar`), premium (ver modelo de licencia).
+- **v0.1** — ciclo interno de la ronda (nodo LAN, colas, lista blanca); no hubo GitHub Release.
+- **v0.2** — primer corte público: APK/AAB, Identity, carta, mapa, gestión y Local activo.
+- Después — premium (ver modelo de licencia).
 
 ## 🤝 Contribuir
 
