@@ -456,8 +456,8 @@ class MigrationTest {
                 "INSERT INTO salas (id, nombre, orden) VALUES ('sala-1', 'Barra', 1)"
             )
             db.execSQL(
-                "INSERT INTO mesas (id, salaId, indiceZona, numero, forma, posX, posY) " +
-                    "VALUES ('mesa-1', 'sala-1', 1, 1, 'CUADRADA', 120.0, 120.0)"
+                "INSERT INTO mesas (id, salaId, indiceZona, numero, forma, capacidad, posX, posY, girada, bloqueada) " +
+                    "VALUES ('mesa-1', 'sala-1', 1, 1, 'CUADRADA', 4, 120.0, 120.0, 0, 0)"
             )
         }
 
