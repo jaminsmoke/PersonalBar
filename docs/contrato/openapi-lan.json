@@ -471,8 +471,10 @@
       },
       "Mesa": {
         "type": "object",
+        "description": "Mesa canónica del nodo. mesaUuid: identidad canónica e inmutable de familia (QR/CFC/sync). id: clave local Room. indiceZona/alias: etiqueta derivada y alias visual.",
         "properties": {
-          "id": { "type": "string" },
+          "id": { "type": "string", "description": "Clave local Room (mesa-N); no es identidad de familia." },
+          "mesaUuid": { "type": "string", "format": "uuid", "description": "UUID canónico e inmutable de familia (QR/CFC, sync con Identity, correlación con Commander). Aditivo: clientes antiguos pueden ignorarlo." },
           "salaId": { "type": "string" },
           "indiceZona": { "type": "integer" },
           "numero": { "type": "integer" },

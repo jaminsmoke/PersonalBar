@@ -548,6 +548,7 @@ class InMemoryBarRepository(
         val (px, py) = findNearestFreeCell(candidata.first, candidata.second, w, h, ocupadas)
         val mesa = Mesa(
             id = "mesa-${++mesaSeq}",
+            mesaUuid = UUID.randomUUID().toString(),
             salaId = salaId,
             indiceZona = indice,
             numero = numero,

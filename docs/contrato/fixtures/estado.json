@@ -33,6 +33,7 @@
   "mesas": [
     {
       "id": "mesa-1",
+      "mesaUuid": "d1b2c3a4-0000-4000-8000-000000000001",
       "salaId": "sala-terraza",
       "indiceZona": 3,
       "numero": 3
