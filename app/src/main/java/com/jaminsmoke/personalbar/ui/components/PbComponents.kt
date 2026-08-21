@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Router
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -168,6 +169,54 @@ fun PbRoomStatus(
         Icon(
             imageVector = Icons.Outlined.Router,
             contentDescription = stringResource(R.string.local_toggle_descripcion),
+            tint = accent,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = etiqueta,
+            style = MaterialTheme.typography.labelMedium,
+            color = accent,
+        )
+    }
+}
+
+/**
+ * Estado de la jornada CFC (admisión de pedidos de cliente), clickeable:
+ * abierta (mint) o cerrada (gris). Con [barEnLinea] pinta el matiz «en línea»
+ * (heartbeat fresco) vs. «solo horario» (Bar caído pero el horario admite).
+ */
+@Composable
+fun PbJornadaCfcStatus(
+    abierta: Boolean,
+    barEnLinea: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = when {
+        abierta && barEnLinea -> MaterialTheme.colorScheme.tertiary
+        abierta -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.outline
+    }
+    val etiqueta = when {
+        abierta && barEnLinea -> stringResource(R.string.jornada_cfc_abierta_en_linea)
+        abierta -> stringResource(R.string.jornada_cfc_solo_horario)
+        else -> stringResource(R.string.jornada_cfc_cerrada)
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(999.dp))
+            .clickable(role = Role.Button, onClick = onToggle)
+            .background(
+                color = accent.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(999.dp),
+            )
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.QrCode2,
+            contentDescription = stringResource(R.string.jornada_cfc_toggle_descripcion),
             tint = accent,
             modifier = Modifier.size(16.dp),
         )

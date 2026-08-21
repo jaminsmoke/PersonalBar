@@ -185,6 +185,17 @@ data class IdentityHorarioResponse(
 @Serializable
 data class IdentityHorarioUpdate(val dias: List<IdentityHorarioDia>)
 
+/** Respuesta de los endpoints de jornada CFC (`/v1/establecimientos/{id}/cfc/...`). */
+@Serializable
+data class JornadaCfcResponse(
+    val id: String = "",
+    @SerialName("establecimiento_id") val establecimientoId: String = "",
+    @SerialName("abierta_en") val abiertaEn: String? = null,
+    @SerialName("ultimo_heartbeat") val ultimoHeartbeat: String? = null,
+    @SerialName("cerrada_en") val cerradaEn: String? = null,
+    @SerialName("bar_en_linea") val barEnLinea: Boolean = true,
+)
+
 @Serializable
 data class IdentityImagenGaleria(
     val id: String,
@@ -1112,6 +1123,40 @@ object IdentityNegocioClient {
         val body = LanJson.encodeToString(IdentityHorarioUpdate(dias))
         val (code, text) = IdentityHttp.request(baseUrl, "PATCH", "/v1/establecimientos/$id/horario", body = body, token = negocioToken)
         if (code in 200..299) runCatching { LanJson.decodeFromString<IdentityHorarioResponse>(text) }.getOrNull() else null
+    }
+
+    // ── Jornada CFC (admisión de pedidos de cliente) ──────────────────────────
+
+    /**
+     * `POST /v1/establecimientos/{id}/cfc/jornada/abrir` → abre la admisión CFC.
+     * Idempotente en el server: si ya hay jornada abierta, refresca el heartbeat
+     * y la devuelve. Devuelve la jornada (con `bar_en_linea`) o null si falla.
+     */
+    suspend fun abrirJornadaCfc(): JornadaCfcResponse? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/cfc/jornada/abrir", token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<JornadaCfcResponse>(text) }.getOrNull() else null
+    }
+
+    /**
+     * `POST /v1/establecimientos/{id}/cfc/jornada/cerrar` → cierra la admisión CFC.
+     * Devuelve true si cerró (2xx) o si ya estaba cerrada (409 = sin jornada abierta).
+     */
+    suspend fun cerrarJornadaCfc(): Boolean = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext false
+        val (code, _) = IdentityHttp.request(baseUrl, "POST", "/v1/establecimientos/$id/cfc/jornada/cerrar", token = negocioToken)
+        code in 200..299 || code == 409
+    }
+
+    /**
+     * `PUT /v1/establecimientos/{id}/cfc/heartbeat` → mantiene `bar_en_linea`.
+     * Devuelve la jornada si el heartbeat se aceptó (2xx); null si no hay jornada
+     * (409), no hay sesión o la red falla.
+     */
+    suspend fun heartbeatCfc(): JornadaCfcResponse? = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext null
+        val (code, text) = IdentityHttp.request(baseUrl, "PUT", "/v1/establecimientos/$id/cfc/heartbeat", token = negocioToken)
+        if (code in 200..299) runCatching { LanJson.decodeFromString<JornadaCfcResponse>(text) }.getOrNull() else null
     }
 
     // ── Libro de oficio (productor: estadísticas de servicio) ────────────────

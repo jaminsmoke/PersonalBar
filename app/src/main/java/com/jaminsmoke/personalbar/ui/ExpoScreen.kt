@@ -81,6 +81,7 @@ import com.jaminsmoke.personalbar.data.Camarero
 import com.jaminsmoke.personalbar.data.SesionEstado
 import com.jaminsmoke.personalbar.ui.components.PbColumnHeader
 import com.jaminsmoke.personalbar.ui.components.PbEmptyQueue
+import com.jaminsmoke.personalbar.ui.components.PbJornadaCfcStatus
 import com.jaminsmoke.personalbar.ui.components.PbRoomStatus
 import com.jaminsmoke.personalbar.ui.components.PbTicketCard
 import com.jaminsmoke.personalbar.ui.gestion.GestionAcceso
@@ -159,6 +160,12 @@ fun ExpoScreen(
                                 viewModel.toggleLocal()
                             }
                         },
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    PbJornadaCfcStatus(
+                        abierta = uiState.jornadaCfcAbierta,
+                        barEnLinea = uiState.barEnLinea,
+                        onToggle = { viewModel.toggleJornadaCfc() },
                     )
                     Spacer(Modifier.width(16.dp))
                 },

@@ -51,6 +51,12 @@
     </plurals>
     <string name="local_toggle_descripcion">Arrancar o parar el nodo de sala</string>
 
+    <!-- Jornada CFC (admisión de pedidos de cliente) -->
+    <string name="jornada_cfc_cerrada">CFC cerrado</string>
+    <string name="jornada_cfc_abierta_en_linea">CFC abierto</string>
+    <string name="jornada_cfc_solo_horario">CFC abierto · solo horario</string>
+    <string name="jornada_cfc_toggle_descripcion">Abrir o cerrar la admisión de pedidos CFC</string>
+
     <!-- Parada del nodo (confirmación) -->
     <string name="local_parar_titulo">¿Parar el nodo de sala?</string>
     <string name="local_parar_mensaje">Los Commanders de la sala se quedarán sin conexión hasta que vuelvas a arrancarlo.</string>
