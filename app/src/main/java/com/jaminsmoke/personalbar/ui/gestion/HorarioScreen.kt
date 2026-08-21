@@ -2,6 +2,7 @@ package com.jaminsmoke.personalbar.ui.gestion
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -191,7 +192,10 @@ fun HorarioScreen(
             style = MaterialTheme.typography.titleMedium,
         )
         Spacer(Modifier.height(12.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 12.dp),
+        ) {
             items(dias, key = { it.dia }) { dia ->
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Row(
