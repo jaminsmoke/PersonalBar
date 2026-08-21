@@ -9,8 +9,8 @@
     "Closed": "PVTF_lAHOBM87Yc4BgQqazhadpKg",
     "Prioridad": "PVTSSF_lAHOBM87Yc4BgQqazhadp4c",
     "Tipo": "PVTSSF_lAHOBM87Yc4BgQqazhadp4g",
-    "Área principal": "PVTSSF_lAHOBM87Yc4BgQqazhadp4k",
-    "Versión": "PVTSSF_lAHOBM87Yc4BgQqazhadp4s",
+    "\u00c1rea principal": "PVTSSF_lAHOBM87Yc4BgQqazhadp4k",
+    "Versi\u00f3n": "PVTSSF_lAHOBM87Yc4BgQqazhadp4s",
     "Decision": "PVTSSF_lAHOBM87Yc4BgQqazhadp4w",
     "HighLighted": "PVTSSF_lAHOBM87Yc4BgQqazhadp40",
     "Inicio": "PVTF_lAHOBM87Yc4BgQqazhadp5s",
@@ -28,8 +28,10 @@
       "Changelog": "daea85f2"
     },
     "version": {
-      "Sin asignar": "922e3f39",
-      "v0.1": "f30fc32b"
+      "Sin asignar": "cbfd7e71",
+      "v0.1": "ec067885",
+      "v0.2": "c8802d27",
+      "v0.3": "0f27bce1"
     },
     "priority": {
       "Alta": "d3cbda61",
