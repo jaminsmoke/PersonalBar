@@ -615,14 +615,18 @@ class InMemoryBarRepositoryTest {
         val repo = InMemoryBarRepository(
             salasIniciales = listOf(Sala("sala-1", "Barra", 1)),
             mesasIniciales = listOf(Mesa(id = "mesa-1", salaId = "sala-1", indiceZona = 1)),
+            zonasIniciales = listOf(Zona(id = "zona-1", salaId = "sala-1", nombre = "Interior", color = ZonaColor.VERDE)),
         )
         repo.reemplazarLayout(
             salas = listOf(Sala("sala-a", "Patio", 1), Sala("sala-b", "VIP", 2)),
             mesas = listOf(Mesa(id = "mesa-9", salaId = "sala-a", indiceZona = 1)),
+            zonas = listOf(Zona(id = "zona-9", salaId = "sala-a", nombre = "VIP", color = ZonaColor.AZUL)),
         )
         assertEquals(listOf("sala-a", "sala-b"), repo.salas.value.map { it.id })
         assertEquals(1, repo.mesas.value.size)
         assertEquals("sala-a", repo.mesas.value[0].salaId)
+        assertEquals(1, repo.zonas.value.size)
+        assertEquals("VIP", repo.zonas.value[0].nombre)
         // crear una sala nueva tras restaurar no colisiona con los ids restaurados
         assertTrue(repo.crearSala("Terraza"))
         assertEquals(3, repo.salas.value.size)

@@ -11,6 +11,6 @@ object LayoutBackup {
 
     suspend fun respaldar(repository: BarRepository) {
         if (!IdentityNegocioClient.conectado) return
-        IdentityNegocioClient.guardarLayout(repository.salas.value, repository.mesas.value)
+        IdentityNegocioClient.guardarLayout(repository.salas.value, repository.mesas.value, repository.zonas.value)
     }
 }

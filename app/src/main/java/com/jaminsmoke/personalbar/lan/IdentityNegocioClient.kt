@@ -21,6 +21,7 @@ import com.jaminsmoke.personalbar.data.NotificacionRemoto
 import com.jaminsmoke.personalbar.data.OperacionCatalogo
 import com.jaminsmoke.personalbar.data.ProductoRemoto
 import com.jaminsmoke.personalbar.data.Sala
+import com.jaminsmoke.personalbar.data.Zona
 import com.jaminsmoke.personalbar.data.invitacionEstadoDesdeApi
 
 // ── Respuestas del servicio Identity negocio (v0.2) que consume Bar ───────────
@@ -561,6 +562,7 @@ sealed interface ResultadoMarcarLeida {
 data class LayoutUpdateRequest(
     val salas: List<Sala>,
     val mesas: List<Mesa>,
+    val zonas: List<Zona> = emptyList(),
 )
 
 @Serializable
@@ -569,6 +571,15 @@ data class IdentityLayout(
     val version: Int = 0,
     val salas: List<Sala> = emptyList(),
     val mesas: List<Mesa> = emptyList(),
+    val zonas: List<Zona> = emptyList(),
+)
+
+/** Snapshot del layout que Bar envía/recupera de Identity (documento JSONB opaco). */
+@Serializable
+data class LayoutSnapshot(
+    val salas: List<Sala>,
+    val mesas: List<Mesa>,
+    val zonas: List<Zona> = emptyList(),
 )
 
 /**
@@ -919,20 +930,20 @@ object IdentityNegocioClient {
         IdentityHttp.request(baseUrl, "DELETE", "/v1/establecimientos/$id/miembros/$camareroId", token = negocioToken).first in 200..299
     }
 
-    /** `PUT /v1/establecimientos/{id}/layout` — respaldo del layout (salas + mesas). */
-    suspend fun guardarLayout(salas: List<Sala>, mesas: List<Mesa>): Boolean = withContext(Dispatchers.IO) {
+    /** `PUT /v1/establecimientos/{id}/layout` — respaldo del layout (salas + mesas + zonas). */
+    suspend fun guardarLayout(salas: List<Sala>, mesas: List<Mesa>, zonas: List<Zona> = emptyList()): Boolean = withContext(Dispatchers.IO) {
         val id = establecimientoUuid ?: return@withContext false
-        val body = LanJson.encodeToString(LayoutUpdateRequest(salas = salas, mesas = mesas))
+        val body = LanJson.encodeToString(LayoutUpdateRequest(salas = salas, mesas = mesas, zonas = zonas))
         IdentityHttp.request(baseUrl, "PUT", "/v1/establecimientos/$id/layout", body = body, token = negocioToken).first in 200..299
     }
 
     /** `GET /v1/establecimientos/{id}/layout` — recupera el layout respaldado, o null. */
-    suspend fun obtenerLayout(): Pair<List<Sala>, List<Mesa>>? = withContext(Dispatchers.IO) {
+    suspend fun obtenerLayout(): LayoutSnapshot? = withContext(Dispatchers.IO) {
         val id = establecimientoUuid ?: return@withContext null
         val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/establecimientos/$id/layout", token = negocioToken)
         if (code !in 200..299) return@withContext null
         runCatching { LanJson.decodeFromString<IdentityLayout>(text) }
-            .getOrNull()?.let { it.salas to it.mesas }
+            .getOrNull()?.let { LayoutSnapshot(salas = it.salas, mesas = it.mesas, zonas = it.zonas) }
     }
 
     // ── Enlaces públicos del establecimiento (web | carta) ───────────────────
