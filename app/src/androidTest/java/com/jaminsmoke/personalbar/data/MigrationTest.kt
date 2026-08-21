@@ -448,6 +448,31 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v17_a_v18_anade_mesaUuid_notNull() {
+        // 1. BD en v17 con una mesa (sin mesaUuid)
+        helper.createDatabase(TEST_DB, 17).use { db ->
+            db.execSQL(
+                "INSERT INTO salas (id, nombre, orden) VALUES ('sala-1', 'Barra', 1)"
+            )
+            db.execSQL(
+                "INSERT INTO mesas (id, salaId, indiceZona, numero, posX, posY) " +
+                    "VALUES ('mesa-1', 'sala-1', 1, 1, 120.0, 120.0)"
+            )
+        }
+
+        // 2. Migrar a v18 y validar contra 18.json: mesaUuid TEXT NOT NULL DEFAULT ''
+        val db = helper.runMigrationsAndValidate(TEST_DB, 18, true, AppDatabase.MIGRATION_17_18)
+        db.use {
+            val cursor = it.query("SELECT mesaUuid FROM mesas WHERE id = 'mesa-1'")
+            cursor.use { c ->
+                assertNotNull("La columna mesaUuid existe tras migrar", c)
+                c.moveToFirst()
+                assertEquals("mesaUuid arranca vacío (el backfill lo rellena)", "", c.getString(0))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }

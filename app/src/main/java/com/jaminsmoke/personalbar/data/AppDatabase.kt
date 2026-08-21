@@ -367,7 +367,10 @@ abstract class AppDatabase : RoomDatabase() {
          */
         val MIGRATION_17_18 = object : Migration(17, 18) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE mesas ADD COLUMN mesaUuid TEXT")
+                // `mesaUuid` es `String = ""` en la entidad → Room espera TEXT NOT NULL
+                // (sin DEFAULT SQL). ADD COLUMN con NOT NULL exige DEFAULT no nulo en
+                // SQLite; el backfill de [RoomBarRepository] rellena el UUID real.
+                db.execSQL("ALTER TABLE mesas ADD COLUMN mesaUuid TEXT NOT NULL DEFAULT ''")
             }
         }
     }
