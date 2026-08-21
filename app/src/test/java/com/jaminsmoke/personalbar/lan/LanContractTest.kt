@@ -92,6 +92,9 @@ class LanContractTest {
         assertEquals(TicketEstado.PREPARADO, estado.bebida.single().estado)
         assertEquals("anaTest", estado.bebida.single().preparadoPor)
         assertEquals(3, estado.mesas.single().indiceZona)
+        assertEquals(1, estado.zonas.size)
+        assertEquals("zona-1", estado.zonas.single().id)
+        assertEquals("VERDE", estado.zonas.single().color.name)
     }
 
     @Test

@@ -422,6 +422,32 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v16_a_v17_crea_zonas() {
+        // 1. BD en v16 con una sala (sin zonas)
+        helper.createDatabase(TEST_DB, 16).use { db ->
+            db.execSQL(
+                "INSERT INTO salas (id, nombre, orden) VALUES ('sala-1', 'Terraza', 1)"
+            )
+        }
+
+        // 2. Migrar a v17: la tabla zonas existe y arranca vacía
+        val db = helper.runMigrationsAndValidate(TEST_DB, 17, true, AppDatabase.MIGRATION_16_17)
+        db.use {
+            it.execSQL(
+                "INSERT INTO zonas (id, salaId, nombre, posX, posY, ancho, alto, color, camareroId) " +
+                    "VALUES ('zona-1', 'sala-1', 'Barra alta', 40.0, 40.0, 240.0, 160.0, 'AMARILLO', NULL)"
+            )
+            val cursor = it.query("SELECT nombre, color, camareroId FROM zonas WHERE id = 'zona-1'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("Barra alta", c.getString(0))
+                assertEquals("AMARILLO", c.getString(1))
+                assertEquals("camareroId arranca null", null, c.getString(2))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }

@@ -19,6 +19,14 @@ enum class MesaEstado { LIBRE, OCUPADA, EN_COCINA }
 @Serializable
 enum class MesaVisualStatus { LIBRE, OCUPADA, EN_COCINA, RESERVADA, BLOQUEADA }
 
+/**
+ * Color de zona (paleta fija, token de espacio físico fuera del theme, como
+ * `MesaColors`). Se persiste por nombre en Room y viaja por LAN a Commander,
+ * que mapea el mismo nombre a su paleta local.
+ */
+@Serializable
+enum class ZonaColor { AZUL, VERDE, AMARILLO, NARANJA, MORADO, ROJO }
+
 // ── Grid del board ────────────────────────────────────────────────────────────
 // Bar es tablet apaisado: canvas horizontal propio (2600×2000). Al exportar a
 // Commander se convierten las posiciones a su canvas 2000×2600 (LayoutExport).
@@ -134,3 +142,21 @@ fun ticketsAbiertosDeMesa(
     if (rondaIds.isEmpty()) return emptyList()
     return (bebida + comida).filter { it.rondaId in rondaIds }
 }
+
+/**
+ * Pertenencia mesa↔zona por **intersección geométrica** (opción sólida v0.4):
+ * la mesa pertenece a la zona si el centro de su bbox cae dentro del rectángulo
+ * de la zona. No se toca `Mesa.idZona` ni el contrato `Ronda.mesaId`; es solo
+ * agrupación visual/derivada. Una mesa puede quedar sin zona (ninguna la cubre).
+ */
+fun zonaContieneMesa(zona: Zona, mesa: Mesa): Boolean {
+    val (w, h) = mesaDims(mesa.forma, mesa.girada)
+    val cx = mesa.posX + w / 2f
+    val cy = mesa.posY + h / 2f
+    return cx >= zona.posX && cx <= zona.posX + zona.ancho &&
+        cy >= zona.posY && cy <= zona.posY + zona.alto
+}
+
+/** Zonas de la sala que contienen a la mesa (normalmente 0 o 1). */
+fun zonasDeMesa(zonas: List<Zona>, mesa: Mesa): List<Zona> =
+    zonas.filter { it.salaId == mesa.salaId && zonaContieneMesa(it, mesa) }

@@ -5,7 +5,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
@@ -35,11 +40,16 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedTextField
@@ -62,6 +72,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -73,6 +84,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -82,6 +95,8 @@ import com.jaminsmoke.personalbar.R
 import com.jaminsmoke.personalbar.data.CELL_F
 import com.jaminsmoke.personalbar.data.MAX_BOARD_SCALE
 import com.jaminsmoke.personalbar.data.MIN_BOARD_SCALE
+import com.jaminsmoke.personalbar.data.Camarero
+import com.jaminsmoke.personalbar.data.CamareroEstado
 import com.jaminsmoke.personalbar.data.Destino
 import com.jaminsmoke.personalbar.data.Mesa
 import com.jaminsmoke.personalbar.data.MesaForma
@@ -89,6 +104,8 @@ import com.jaminsmoke.personalbar.data.MesaVisualStatus
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.Ticket
+import com.jaminsmoke.personalbar.data.Zona
+import com.jaminsmoke.personalbar.data.ZonaColor
 import com.jaminsmoke.personalbar.data.ticketsAbiertosDeMesa
 import com.jaminsmoke.personalbar.data.ZONA_ALTO
 import com.jaminsmoke.personalbar.data.ZONA_ANCHO
@@ -106,6 +123,10 @@ import com.jaminsmoke.personalbar.ui.theme.PbBoardGridMajor
 import com.jaminsmoke.personalbar.ui.theme.mesaStatusAccent
 import com.jaminsmoke.personalbar.ui.theme.mesaStatusFill
 import com.jaminsmoke.personalbar.ui.theme.mesaStatusOnFill
+import com.jaminsmoke.personalbar.ui.theme.zonaColorAccent
+import com.jaminsmoke.personalbar.ui.theme.zonaColorFill
+import com.jaminsmoke.personalbar.ui.theme.zonaColorSolid
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -118,8 +139,11 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
     val rondas by viewModel.rondas.collectAsState()
     val bebida by viewModel.bebida.collectAsState()
     val comida by viewModel.comida.collectAsState()
+    val zonas by viewModel.zonas.collectAsState()
+    val camareros by viewModel.camareros.collectAsState()
 
     val salasById = remember(salas) { salas.associateBy { it.id } }
+    val camarerosById = remember(camareros) { camareros.associateBy { it.id } }
     val mesasFiltradas = remember(mesas, salaSeleccionada) {
         if (salaSeleccionada == null) mesas else mesas.filter { it.salaId == salaSeleccionada }
     }
@@ -132,6 +156,12 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
     var crearSalaVisible by remember { mutableStateOf(false) }
     var salaEditando by remember { mutableStateOf<Sala?>(null) }
     var salaBorrando by remember { mutableStateOf<Sala?>(null) }
+
+    // Zonas: modo dibujo + diálogos (crear desde rectángulo trazado, editar, borrar)
+    var modoDibujo by remember { mutableStateOf(false) }
+    var zonaCreando by remember { mutableStateOf<ZonaRect?>(null) }
+    var zonaEditando by remember { mutableStateOf<Zona?>(null) }
+    var zonaBorrando by remember { mutableStateOf<Zona?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         // Selector de salas + acciones contextuales (siempre visibles, fuera del canvas)
@@ -196,12 +226,23 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
             }
         }
 
-        // «Nueva mesa» cuando hay una sala seleccionada (gestión de mesas, se mantiene)
+        // Acciones de sala: «Nueva mesa» y «Nueva zona» (modo dibujo en el board)
         if (salaActiva != null) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { crearVisible = true }) {
                     Icon(Icons.Default.Add, stringResource(R.string.mapa_nueva_mesa))
                     Text(stringResource(R.string.mapa_nueva_mesa))
+                }
+                TextButton(onClick = { modoDibujo = !modoDibujo }) {
+                    Icon(
+                        Icons.Default.Add,
+                        stringResource(if (modoDibujo) R.string.zona_dibujar_cancelar else R.string.zona_nueva),
+                        tint = if (modoDibujo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        stringResource(if (modoDibujo) R.string.zona_dibujar_cancelar else R.string.zona_nueva),
+                        color = if (modoDibujo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    )
                 }
             }
         }
@@ -218,6 +259,9 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
                 mesas = mesasFiltradas,
                 salasById = salasById,
                 estados = estados,
+                zonas = zonas.filter { it.salaId == salaSeleccionada },
+                camarerosById = camarerosById,
+                modoDibujo = modoDibujo,
                 onClick = { mesaVista = it },
                 onEdit = { mesaEditando = it },
                 onDelete = { mesaBorrando = it },
@@ -227,6 +271,14 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
                 onBloquear = { viewModel.bloquearMesa(it.id) },
                 onDesbloquear = { viewModel.desbloquearMesa(it.id) },
                 onMove = { mesa, x, y -> viewModel.moverMesa(mesa.id, x, y) },
+                onCrearZonaRect = {
+                    zonaCreando = it
+                    modoDibujo = false
+                },
+                onEditarZona = { zonaEditando = it },
+                onBorrarZona = { zonaBorrando = it },
+                onMoverZona = { id, x, y -> viewModel.moverZona(id, x, y) },
+                onRedimensionarZona = { id, w, h -> viewModel.redimensionarZona(id, w, h) },
             )
         }
     }
@@ -265,6 +317,46 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
         ReservarDialog(
             onDismiss = { mesaReservando = null },
             onReservar = { nombre -> viewModel.reservar(mesa.id, nombre, null); mesaReservando = null },
+        )
+    }
+
+    zonaCreando?.let { rect ->
+        CrearZonaDialog(
+            rect = rect,
+            camareros = camareros,
+            onDismiss = { zonaCreando = null },
+            onCreate = { nombre, color, camareroId ->
+                salaSeleccionada?.let { salaId ->
+                    viewModel.crearZona(salaId, nombre, color, rect.x, rect.y, rect.w, rect.h, camareroId)
+                }
+                zonaCreando = null
+            },
+        )
+    }
+
+    zonaEditando?.let { zona ->
+        EditarZonaDialog(
+            zona = zona,
+            camareros = camareros,
+            onDismiss = { zonaEditando = null },
+            onSave = { nombre, color, camareroId ->
+                viewModel.editarZona(zona.id, nombre, color, camareroId)
+                zonaEditando = null
+            },
+        )
+    }
+
+    zonaBorrando?.let { zona ->
+        AlertDialog(
+            onDismissRequest = { zonaBorrando = null },
+            title = { Text(stringResource(R.string.zona_borrar_titulo)) },
+            text = { Text(stringResource(R.string.zona_borrar_mensaje, zona.nombre)) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.borrarZona(zona.id); zonaBorrando = null }) {
+                    Text(stringResource(R.string.zona_menu_borrar), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { zonaBorrando = null }) { Text(stringResource(R.string.mapa_cancelar)) } },
         )
     }
 
@@ -393,6 +485,9 @@ private fun BoardView(
     mesas: List<Mesa>,
     salasById: Map<String, Sala>,
     estados: Map<String, MesaVisualStatus>,
+    zonas: List<Zona>,
+    camarerosById: Map<String, Camarero>,
+    modoDibujo: Boolean,
     onClick: (Mesa) -> Unit,
     onEdit: (Mesa) -> Unit,
     onDelete: (Mesa) -> Unit,
@@ -402,6 +497,11 @@ private fun BoardView(
     onBloquear: (Mesa) -> Unit,
     onDesbloquear: (Mesa) -> Unit,
     onMove: (Mesa, Float, Float) -> Unit,
+    onCrearZonaRect: (ZonaRect) -> Unit,
+    onEditarZona: (Zona) -> Unit,
+    onBorrarZona: (Zona) -> Unit,
+    onMoverZona: (String, Float, Float) -> Unit,
+    onRedimensionarZona: (String, Float, Float) -> Unit,
 ) {
     val density = LocalDensity.current
 
@@ -416,6 +516,14 @@ private fun BoardView(
     var dragBaseY by remember { mutableStateOf(0f) }
     var dragPxX by remember { mutableStateOf(0f) }
     var dragPxY by remember { mutableStateOf(0f) }
+
+    // Modo dibujo de zonas: trazar un rectángulo con snap al grid
+    var dibujoInicio by remember { mutableStateOf<Offset?>(null) }
+    var dibujoActual by remember { mutableStateOf<Offset?>(null) }
+    val dibujoRect = remember(dibujoInicio, dibujoActual) {
+        if (dibujoInicio == null || dibujoActual == null) null
+        else snapRect(dibujoInicio!!, dibujoActual!!, density)
+    }
 
     val scheme = MaterialTheme.colorScheme
 
@@ -498,7 +606,9 @@ private fun BoardView(
             .clipToBounds()
             .background(scheme.surfaceContainerLowest)
             .onSizeChanged { viewportSize = it }
-            .pointerInput(Unit) {
+            .pointerInput(modoDibujo) {
+                // En modo dibujo el arrastre traza la zona; se desactiva el pan/zoom.
+                if (modoDibujo) return@pointerInput
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     val newScale = (scale * zoom).coerceIn(MIN_BOARD_SCALE, MAX_BOARD_SCALE)
                     val ratio = newScale / scale
@@ -575,8 +685,54 @@ private fun BoardView(
                             style = Stroke(width = coreW),
                         )
                     }
+                }
+                .pointerInput(modoDibujo) {
+                    // Trazado de zona: coordenadas locales del board (px → dp vía density).
+                    if (!modoDibujo) return@pointerInput
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            dibujoInicio = offset
+                            dibujoActual = offset
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            dibujoActual = change.position
+                        },
+                        onDragEnd = {
+                            dibujoInicio?.let { ini ->
+                                dibujoActual?.let { act ->
+                                    val rect = snapRect(ini, act, density)
+                                    if (rect.w >= CELL_F && rect.h >= CELL_F) onCrearZonaRect(rect)
+                                }
+                            }
+                            dibujoInicio = null
+                            dibujoActual = null
+                        },
+                        onDragCancel = {
+                            dibujoInicio = null
+                            dibujoActual = null
+                        },
+                    )
                 },
         ) {
+            // Zonas de la sala: territorio coloreado dibujado DETRÁS de las mesas
+            zonas.forEach { zona ->
+                key(zona.id) {
+                    ZonaCard(
+                        zona = zona,
+                        camareroNombre = camarerosById[zona.camareroId]?.nombre,
+                        modifier = Modifier
+                            .offset { IntOffset(zona.posX.dp.roundToPx(), zona.posY.dp.roundToPx()) }
+                            .width(zona.ancho.dp)
+                            .height(zona.alto.dp),
+                        onEditar = { onEditarZona(zona) },
+                        onBorrar = { onBorrarZona(zona) },
+                        onMover = { x, y -> onMoverZona(zona.id, x, y) },
+                        onRedimensionar = { w, h -> onRedimensionarZona(zona.id, w, h) },
+                    )
+                }
+            }
+
             mesas.forEach { mesa ->
                 key(mesa.id) {
                     val estado = estados[mesa.id] ?: MesaVisualStatus.LIBRE
@@ -651,6 +807,30 @@ private fun BoardView(
                     DragOverlayCard(mesa, salasById[mesa.salaId]?.nombre.orEmpty(), estados[mesa.id] ?: MesaVisualStatus.LIBRE)
                 }
             }
+
+            // Previsualización del rectángulo mientras se traza la zona
+            dibujoRect?.let { rect ->
+                Box(
+                    Modifier
+                        .offset { IntOffset(rect.x.dp.roundToPx(), rect.y.dp.roundToPx()) }
+                        .width(rect.w.dp)
+                        .height(rect.h.dp)
+                        .zIndex(9f)
+                        .background(zonaColorFill(ZonaColor.AZUL).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                        .border(2.dp, zonaColorAccent(ZonaColor.AZUL), RoundedCornerShape(10.dp)),
+                )
+            }
+        }
+
+        // Pista del modo dibujo (zona superior del viewport, fuera del canvas)
+        if (modoDibujo) {
+            Text(
+                stringResource(R.string.zona_dibujar_pista),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp).zIndex(6f),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
         }
 
         // Controles de cámara
@@ -893,4 +1073,310 @@ internal fun formaLabel(forma: MesaForma): String = when (forma) {
     MesaForma.CUADRADA -> "🟩"
     MesaForma.RECTANGULAR -> "🟦"
     MesaForma.RECTANGULAR_XL -> "🟫"
+}
+
+// ── Zonas (overlay del board) ─────────────────────────────────────────────────
+
+/** Rectángulo de zona en dp del board (normalizado y ajustado al grid). */
+internal data class ZonaRect(val x: Float, val y: Float, val w: Float, val h: Float)
+
+/**
+ * Normaliza y ajusta al grid un rectángulo trazado en px locales del board
+ * (coordenadas ya transformadas por el graphicsLayer del canvas).
+ */
+internal fun snapRect(a: Offset, b: Offset, density: Density): ZonaRect {
+    val ax = with(density) { a.x.toDp().value }
+    val ay = with(density) { a.y.toDp().value }
+    val bx = with(density) { b.x.toDp().value }
+    val by = with(density) { b.y.toDp().value }
+    val x = minOf(ax, bx)
+    val y = minOf(ay, by)
+    val w = abs(bx - ax)
+    val h = abs(by - ay)
+    // Tamaño: mínimo una celda, máximo el board completo (antes de encajar la posición).
+    val cw = ((w / CELL_F).roundToInt() * CELL_F).coerceIn(CELL_F, ZONA_ANCHO)
+    val ch = ((h / CELL_F).roundToInt() * CELL_F).coerceIn(CELL_F, ZONA_ALTO)
+    val sx = (x / CELL_F).roundToInt() * CELL_F
+    val sy = (y / CELL_F).roundToInt() * CELL_F
+    return ZonaRect(
+        x = sx.coerceIn(0f, ZONA_ANCHO - cw),
+        y = sy.coerceIn(0f, ZONA_ALTO - ch),
+        w = cw,
+        h = ch,
+    )
+}
+
+@Composable
+private fun zonaColorLabel(color: ZonaColor): String = stringResource(
+    when (color) {
+        ZonaColor.AZUL -> R.string.zona_color_azul
+        ZonaColor.VERDE -> R.string.zona_color_verde
+        ZonaColor.AMARILLO -> R.string.zona_color_amarillo
+        ZonaColor.NARANJA -> R.string.zona_color_naranja
+        ZonaColor.MORADO -> R.string.zona_color_morado
+        ZonaColor.ROJO -> R.string.zona_color_rojo
+    }
+)
+
+/**
+ * Territorio de zona en el board: fill semi-transparente + borde + nombre/camarero.
+ * Tap → menú (editar/borrar); arrastre largo → mover; asa inferior-derecha → redimensionar.
+ */
+@Composable
+private fun ZonaCard(
+    zona: Zona,
+    camareroNombre: String?,
+    modifier: Modifier = Modifier,
+    onEditar: () -> Unit,
+    onBorrar: () -> Unit,
+    onMover: (Float, Float) -> Unit,
+    onRedimensionar: (Float, Float) -> Unit,
+) {
+    val density = LocalDensity.current
+    var menuExpanded by remember { mutableStateOf(false) }
+    var dragBaseX by remember { mutableStateOf(0f) }
+    var dragBaseY by remember { mutableStateOf(0f) }
+    var dragPxX by remember { mutableStateOf(0f) }
+    var dragPxY by remember { mutableStateOf(0f) }
+    var resizeBaseW by remember { mutableStateOf(0f) }
+    var resizeBaseH by remember { mutableStateOf(0f) }
+    var resizePxX by remember { mutableStateOf(0f) }
+    var resizePxY by remember { mutableStateOf(0f) }
+
+    val fill = zonaColorFill(zona.color)
+    val accent = zonaColorAccent(zona.color)
+    val solid = zonaColorSolid(zona.color)
+
+    Box(
+        modifier
+            .background(fill, RoundedCornerShape(10.dp))
+            .border(2.dp, accent, RoundedCornerShape(10.dp))
+            .pointerInput(zona.id, "tap") {
+                detectTapGestures(onTap = { menuExpanded = true })
+            }
+            .pointerInput(zona.id, "mover") {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = {
+                        dragBaseX = zona.posX
+                        dragBaseY = zona.posY
+                        dragPxX = 0f
+                        dragPxY = 0f
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        dragPxX += dragAmount.x
+                        dragPxY += dragAmount.y
+                    },
+                    onDragEnd = {
+                        val dx = with(density) { dragPxX.toDp().value }
+                        val dy = with(density) { dragPxY.toDp().value }
+                        onMover(dragBaseX + dx, dragBaseY + dy)
+                    },
+                    onDragCancel = {},
+                )
+            },
+    ) {
+        Column(
+            Modifier
+                .align(Alignment.TopStart)
+                .padding(6.dp)
+                .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
+            Text(
+                zona.nombre,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (camareroNombre != null) {
+                Text(
+                    camareroNombre,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+
+        // Asa de redimensionado (esquina inferior derecha)
+        Box(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .size(22.dp)
+                .background(solid, RoundedCornerShape(topStart = 10.dp))
+                .pointerInput(zona.id, "resize") {
+                    detectDragGestures(
+                        onDragStart = {
+                            resizeBaseW = zona.ancho
+                            resizeBaseH = zona.alto
+                            resizePxX = 0f
+                            resizePxY = 0f
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            resizePxX += dragAmount.x
+                            resizePxY += dragAmount.y
+                        },
+                        onDragEnd = {
+                            val dw = with(density) { resizePxX.toDp().value }
+                            val dh = with(density) { resizePxY.toDp().value }
+                            onRedimensionar(resizeBaseW + dw, resizeBaseH + dh)
+                        },
+                        onDragCancel = {},
+                    )
+                },
+        )
+
+        Box(Modifier.align(Alignment.TopEnd)) {
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.zona_menu_editar)) },
+                    onClick = { menuExpanded = false; onEditar() },
+                    leadingIcon = { Icon(Icons.Default.Edit, null) },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.zona_menu_borrar), color = MaterialTheme.colorScheme.error) },
+                    onClick = { menuExpanded = false; onBorrar() },
+                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                )
+            }
+        }
+    }
+}
+
+/** Selector de color de zona (chips con la paleta fija). */
+@Composable
+private fun ZonaColorSelector(seleccionado: ZonaColor, onSelect: (ZonaColor) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        ZonaColor.entries.forEach { c ->
+            val solid = zonaColorSolid(c)
+            FilterChip(
+                selected = c == seleccionado,
+                onClick = { onSelect(c) },
+                label = { Text(zonaColorLabel(c)) },
+                leadingIcon = {
+                    Box(Modifier.size(14.dp).background(solid, RoundedCornerShape(4.dp)))
+                },
+            )
+        }
+    }
+}
+
+/** Selector de camarero ACTIVA de la lista blanca (o «Sin asignar»). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CamareroSelector(
+    camareros: List<Camarero>,
+    seleccionado: String?,
+    onSelect: (String?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val activos = camareros.filter { it.estado == CamareroEstado.ACTIVA }
+    val nombreSeleccionado = activos.firstOrNull { it.id == seleccionado }?.nombre
+        ?: stringResource(R.string.zona_sin_camarero)
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = nombreSeleccionado,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.zona_camarero)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.zona_sin_camarero)) },
+                onClick = { onSelect(null); expanded = false },
+            )
+            activos.forEach { c ->
+                DropdownMenuItem(
+                    text = { Text(c.nombre ?: c.id) },
+                    onClick = { onSelect(c.id); expanded = false },
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CrearZonaDialog(
+    rect: ZonaRect,
+    camareros: List<Camarero>,
+    onDismiss: () -> Unit,
+    onCreate: (String, ZonaColor, String?) -> Unit,
+) {
+    var nombre by remember { mutableStateOf("") }
+    var color by remember { mutableStateOf(ZonaColor.AZUL) }
+    var camareroId by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.zona_crear)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "${stringResource(R.string.zona_ancho)} ${rect.w.roundToInt()} · ${stringResource(R.string.zona_alto)} ${rect.h.roundToInt()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    nombre,
+                    { nombre = it },
+                    label = { Text(stringResource(R.string.zona_nombre)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(stringResource(R.string.zona_color), style = MaterialTheme.typography.labelMedium)
+                ZonaColorSelector(color, { color = it })
+                CamareroSelector(camareros, camareroId, { camareroId = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onCreate(nombre, color, camareroId) }, enabled = nombre.isNotBlank()) {
+                Text(stringResource(R.string.zona_crear))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapa_cancelar)) } },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditarZonaDialog(
+    zona: Zona,
+    camareros: List<Camarero>,
+    onDismiss: () -> Unit,
+    onSave: (String, ZonaColor, String?) -> Unit,
+) {
+    var nombre by remember(zona) { mutableStateOf(zona.nombre) }
+    var color by remember(zona) { mutableStateOf(zona.color) }
+    var camareroId by remember(zona) { mutableStateOf(zona.camareroId) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.zona_editar)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    nombre,
+                    { nombre = it },
+                    label = { Text(stringResource(R.string.zona_nombre)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(stringResource(R.string.zona_color), style = MaterialTheme.typography.labelMedium)
+                ZonaColorSelector(color, { color = it })
+                CamareroSelector(camareros, camareroId, { camareroId = it })
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(nombre, color, camareroId) }, enabled = nombre.isNotBlank()) {
+                Text(stringResource(R.string.zona_editar))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapa_cancelar)) } },
+    )
 }

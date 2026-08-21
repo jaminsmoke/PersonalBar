@@ -136,6 +136,29 @@
     <string name="mapa_ticket_destino_barra">Bebida</string>
     <string name="mapa_ticket_destino_cocina">Comida</string>
 
+    <!-- Zonas de sala (board) -->
+    <string name="zona_nueva">Nueva zona</string>
+    <string name="zona_crear">Crear zona</string>
+    <string name="zona_editar">Editar zona</string>
+    <string name="zona_borrar_titulo">¿Borrar zona?</string>
+    <string name="zona_borrar_mensaje">Se borrará la zona «%1$s» y sus mesas quedarán sin asignar.</string>
+    <string name="zona_nombre">Nombre de la zona</string>
+    <string name="zona_color">Color</string>
+    <string name="zona_camarero">Camarero</string>
+    <string name="zona_sin_camarero">Sin asignar</string>
+    <string name="zona_ancho">Ancho</string>
+    <string name="zona_alto">Alto</string>
+    <string name="zona_dibujar_pista">Arrastra en el plano para dibujar la zona</string>
+    <string name="zona_dibujar_cancelar">Cancelar dibujo</string>
+    <string name="zona_color_azul">Azul</string>
+    <string name="zona_color_verde">Verde</string>
+    <string name="zona_color_amarillo">Amarillo</string>
+    <string name="zona_color_naranja">Naranja</string>
+    <string name="zona_color_morado">Morado</string>
+    <string name="zona_color_rojo">Rojo</string>
+    <string name="zona_menu_editar">Editar</string>
+    <string name="zona_menu_borrar">Borrar</string>
+
     <!-- Camareros (lista blanca) -->
     <string name="camareros_titulo">Camareros</string>
     <string name="camareros_subtitulo">Lista blanca del establecimiento</string>

@@ -225,6 +225,42 @@ class RoomBarRepositoryTest {
         assertTrue(mesaNueva.id != "mesa-1" && mesaNueva.id != mesaId1)
     }
 
+    // ═══ Zonas: CRUD + asignación persistidas ═══
+
+    @Test
+    fun zonas_persisten_tras_recarga() = runBlocking {
+        val repo1 = nuevoRepo()
+        assertTrue(repo1.altaCamarero("cam-1", null, nombre = "carmenTest"))
+        assertTrue(
+            repo1.crearZona("sala-barra", "Barra alta Test", ZonaColor.AMARILLO, 40f, 40f, 240f, 160f, null)
+        )
+        val zonaId = repo1.zonas.first().single().id
+        assertTrue(repo1.asignarCamareroZona(zonaId, "cam-1"))
+        repo1.awaitPersistencia()
+
+        // Segunda instancia sobre la misma BD = "reinicio de la app"
+        val repo2 = nuevoRepo()
+        val zona = repo2.zonas.first().single()
+        assertEquals("sala-barra", zona.salaId)
+        assertEquals("Barra alta Test", zona.nombre)
+        assertEquals(ZonaColor.AMARILLO, zona.color)
+        assertEquals(40f, zona.posX, 0.001f)
+        assertEquals(40f, zona.posY, 0.001f)
+        assertEquals(240f, zona.ancho, 0.001f)
+        assertEquals(160f, zona.alto, 0.001f)
+        assertEquals("cam-1", zona.camareroId)
+
+        // Mutar en repo2 y volver a recargar: mover + desasignar sobreviven.
+        assertTrue(repo2.moverZona(zonaId, 320f, 320f))
+        assertTrue(repo2.asignarCamareroZona(zonaId, null))
+        repo2.awaitPersistencia()
+        val repo3 = nuevoRepo()
+        val zona3 = repo3.zonas.first().single()
+        assertEquals(320f, zona3.posX, 0.001f)
+        assertEquals(320f, zona3.posY, 0.001f)
+        assertEquals(null, zona3.camareroId)
+    }
+
     // ═══ Invitaciones y revocaciones persistidas ═══
 
     @Test

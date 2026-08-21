@@ -55,6 +55,30 @@ data class Mesa(
     fun nombreVisible(nombreSala: String): String = alias ?: idZona(nombreSala)
 }
 
+/**
+ * Zona de una sala: área rectangular del board (nivel intermedio Sala → Zona → Mesa).
+ *
+ * Color de paleta fija ([ZonaColor], token de espacio físico fuera del theme) y
+ * camarero asignado opcional ([camareroId] null = sin asignar; referencia a
+ * `Camarero.id` sin FK — Bar solo asigna, no edita la cuenta). La pertenencia de
+ * mesas se deriva por intersección geométrica ([zonaContieneMesa]): NO se toca
+ * `Mesa.idZona` ni el contrato `Ronda.mesaId`. [posX]/[posY]/[ancho]/[alto] en el
+ * canvas de la sala (mismas unidades que `Mesa.posX/posY`).
+ */
+@Serializable
+@Entity(tableName = "zonas")
+data class Zona(
+    @PrimaryKey val id: String,
+    val salaId: String,
+    val nombre: String,
+    val posX: Float = 0f,
+    val posY: Float = 0f,
+    val ancho: Float = 0f,
+    val alto: Float = 0f,
+    val color: ZonaColor = ZonaColor.AZUL,
+    val camareroId: String? = null,
+)
+
 /** Producto del catálogo canónico del nodo. La categoría deriva el destino. */
 @Serializable
 @Entity(tableName = "productos")

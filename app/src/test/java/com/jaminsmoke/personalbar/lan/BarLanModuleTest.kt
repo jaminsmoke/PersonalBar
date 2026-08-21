@@ -8,6 +8,8 @@ import com.jaminsmoke.personalbar.data.ModificadorLinea
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.Ronda
 import com.jaminsmoke.personalbar.data.Ticket
+import com.jaminsmoke.personalbar.data.Zona
+import com.jaminsmoke.personalbar.data.ZonaColor
 import com.jaminsmoke.personalbar.data.TicketEstado
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -87,6 +89,24 @@ class BarLanModuleTest {
         assertEquals(HttpStatusCode.OK, resp2.status)
         assertEquals(1, repository.bebidaQueue.value.size)
         assertEquals(1, repository.comidaQueue.value.size)
+    }
+
+    @Test
+    fun estadoDevuelveZonasConGeometria() = testApplication {
+        val repository = InMemoryBarRepository(
+            zonasIniciales = listOf(
+                Zona("zona-1", "sala-terraza", "Terraza Test", 40f, 80f, 400f, 240f, ZonaColor.VERDE),
+            ),
+        )
+        application { barModule(repository) }
+
+        val estado = LanJson.decodeFromString<EstadoResponse>(client.get("/v1/estado").bodyAsText())
+        assertEquals(1, estado.zonas.size)
+        assertEquals("zona-1", estado.zonas.single().id)
+        assertEquals("Terraza Test", estado.zonas.single().nombre)
+        assertEquals(ZonaColor.VERDE, estado.zonas.single().color)
+        assertTrue(estado.zonas.single().ancho > 0f)
+        assertTrue(estado.zonas.single().alto > 0f)
     }
 
     @Test

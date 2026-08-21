@@ -13,6 +13,8 @@ import com.jaminsmoke.personalbar.data.Sala
 import com.jaminsmoke.personalbar.data.SalaEvent
 import com.jaminsmoke.personalbar.data.Ticket
 import com.jaminsmoke.personalbar.data.TicketEstado
+import com.jaminsmoke.personalbar.data.Zona
+import com.jaminsmoke.personalbar.data.ZonaColor
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
@@ -233,8 +235,10 @@ class SerializationTest {
             comida = emptyList(),
             servidos = emptyList(),
             mesas = listOf(Mesa(id = "mesa-1", salaId = "sala-terraza", indiceZona = 3)),
+            zonas = listOf(Zona(id = "zona-1", salaId = "sala-terraza", nombre = "Terraza", posX = 40f, posY = 80f, ancho = 400f, alto = 240f, color = ZonaColor.VERDE)),
         )
         val json = LanJson.encodeToString(estado)
         assertEquals(estado, LanJson.decodeFromString<EstadoResponse>(json))
+        assertTrue(json.contains("\"zonas\""))
     }
 }
