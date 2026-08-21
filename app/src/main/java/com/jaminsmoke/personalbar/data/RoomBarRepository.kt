@@ -2,6 +2,7 @@ package com.jaminsmoke.personalbar.data
 
 import android.util.Log
 import androidx.annotation.VisibleForTesting
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -65,15 +66,27 @@ class RoomBarRepository(
                 m.posX < CELL_F || m.posY < CELL_F ||
                     m.posX + w > ZONA_ANCHO - CELL_F || m.posY + h > ZONA_ALTO - CELL_F
             }
+            // Backfill v18: cada mesa migrada antes de v18 llega con `mesaUuid`
+            // NULL/vacío. Se le asigna un UUID v4 estable una sola vez y se
+            // persiste; nunca se regenera ni se reutiliza (borrar descarta el UUID).
+            val conUuid = if (mesasBd.any { it.mesaUuid.isBlank() }) {
+                val rellenas = mesasBd.map { m ->
+                    if (m.mesaUuid.isBlank()) m.copy(mesaUuid = UUID.randomUUID().toString()) else m
+                }
+                dao.replaceMesas(rellenas)
+                rellenas
+            } else {
+                mesasBd
+            }
             val mesasIniciales = if (fuera) {
-                val reparadas = normalizarMesasEnGrid(mesasBd)
-                val list = mesasBd.map { m ->
+                val reparadas = normalizarMesasEnGrid(conUuid)
+                val list = conUuid.map { m ->
                     reparadas[m.id]?.let { (x, y) -> m.copy(posX = x, posY = y) } ?: m
                 }
                 dao.replaceMesas(list)
                 list
             } else {
-                mesasBd
+                conUuid
             }
             val sesionBd = dao.getSesionNegocio()
             InMemoryBarRepository(

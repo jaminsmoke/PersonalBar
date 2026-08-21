@@ -25,7 +25,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * (cursor global del pull de deltas `GET /sync/cambios`); v15 añade modificadores
  * y subfamilias de carta; v16 añade `descripcion` (copy público del plato) en
  * `productos` y `operaciones_catalogo`; v17 añade `zonas` (agrupación espacial
- * de sala: rectángulo + color de paleta + camarero asignado opcional).
+ * de sala: rectángulo + color de paleta + camarero asignado opcional); v18 añade
+ * `mesas.mesaUuid` (identidad canónica e inmutable de familia para QR/CFC,
+ * sincronización con Identity y correlación con Commander).
  * Schema exportado a `app/schemas/` para versionar migraciones futuras igual
  * que Commander.
  */
@@ -55,7 +57,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ProductoGrupo::class,
         Zona::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -352,6 +354,20 @@ abstract class AppDatabase : RoomDatabase() {
                         "color TEXT NOT NULL, " +
                         "camareroId TEXT)"
                 )
+            }
+        }
+
+        /**
+         * v17→v18: `mesas.mesaUuid` (identidad canónica de familia para QR CFC,
+         * sincronización con Identity y correlación con Commander). Columna nueva
+         * nullable: las mesas existentes quedan NULL hasta que
+         * [RoomBarRepository.cargar] haga el backfill una vez (genera un UUID v4
+         * por mesa sin `mesaUuid` y lo persiste). El `mesaUuid` nunca se reutiliza:
+         * borrar una mesa descarta su UUID y crear una mesa nueva genera otro.
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE mesas ADD COLUMN mesaUuid TEXT")
             }
         }
     }

@@ -29,13 +29,23 @@ data class Sala(
 )
 
 /**
- * Mesa canónica del nodo. Identidad local [id] (in-memory, como `Sala.id`);
- * identidad de red es [idZona] (prefijo de sala + [indiceZona]), nunca el id local.
+ * Mesa canónica del nodo. Identidad canónica de familia: [mesaUuid] (UUID
+ * estable e inmutable, no reutilizable: QR CFC, sincronización y correlación
+ * cross-repo). Identidad local [id] (clave Room; `mesa-N`); identidad de red
+ * visible es [idZona] (prefijo de sala + [indiceZona], etiqueta derivada y
+ * mutable), nunca el id local. [alias] es texto libre solo para presentación.
  */
 @Serializable
 @Entity(tableName = "mesas")
 data class Mesa(
     @PrimaryKey val id: String,
+    /**
+     * UUID canónico e inmutable de familia (QR/CFC/sync con Identity y Commander).
+     * Se asigna una sola vez al crear la mesa y nunca se reutiliza al borrar
+     * y recrear. Vacío (``) en mesas migradas antes de v18 hasta el backfill
+     * de [RoomBarRepository], que lo rellena una vez y lo persiste.
+     */
+    val mesaUuid: String = "",
     val salaId: String,
     val indiceZona: Int,
     val numero: Int = 0,
