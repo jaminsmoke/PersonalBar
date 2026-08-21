@@ -8,10 +8,9 @@
 - Local folder: `AndroidStudioProjects/PersonalBar` (sibling of `PersonalComander` and `PersonalHosteleriaServer`)
 - Package (suggested): `com.jaminsmoke.personalbar`
 - Min SDK (align with Commander): 24
-- Version target: **v0.1** (no releases yet — `gh release list`; next version must be > latest)
-- This scaffold is an **intent map**, not a Gradle app yet. This team creates the Android project here.
+- Version target: **v0.2** (next must be > latest — `gh release list`)
 
-If you are the agent continuing here: read this **entire** file before generating `app/`. Do not implement TPV, Kitchen, rankings, or cut Commander (`enviarACocina`) from this repo.
+If you are the agent continuing here: read this **entire** file before changing `app/`. Do not implement TPV, Kitchen, rankings, or cut Commander (`enviarACocina`) from this repo.
 
 ## Familia PersonalHostel
 
@@ -110,7 +109,7 @@ Cleartext en internet para identidad: no. Identidad = HTTPS al servidor Identity
 
 ## UI a diseñar
 
-- **Target de dispositivo v0.1: tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). No se adapta a móvil en v0.1. Pruebas en emulador `Tablet-PixelTablet`.
+- **Target de dispositivo (v0.2): tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). No se adapta a móvil en v0.2. Pruebas en emulador `Tablet-PixelTablet`.
 - Cola **Bebida** y cola **Comida** (separadas, mismo dispositivo; dos columnas fijas aprovechando el ancho de la tablet, no tabs).
 - Ticket: mesa, ronda, camarero (cuando haya nombre), líneas, acciones listo.
 - Alta de camarero (pegar/escanear QR).
@@ -155,7 +154,7 @@ Detectado → Debate → Roadmap → Ejecutando → Verificando → Changelog
 
 **No skipping**: every item advances in order. Exception: `Cancelado` → Changelog.
 
-**Version always > latest release**: consult `gh release list`, pick the next one (currently **v0.1**).
+**Version always > latest release**: consult `gh release list`, pick the next one (currently **v0.2**).
 
 Bodies in UTF-8. On Windows do **not** pipe PowerShell `Get-Content` into the CLI (mojibake). Prefer Python or `--body-file` / `gh issue edit --body-file`.
 
@@ -302,7 +301,7 @@ copy .kanbanrc.json.template .kanbanrc.json   # Windows
 $KANBAN config validate
 
 # Create item
-$KANBAN create --title "..." --tipo Feature --area Android --priority Alta --version "v0.1"
+$KANBAN create --title "..." --tipo Feature --area Android --priority Alta --version "v0.2"
 
 # List
 $KANBAN list
@@ -369,7 +368,7 @@ Each item's body evolves through the lifecycle. The CLI generates a template at 
 | Prioridad | SingleSelect | Alta, Media, Baja |
 | Tipo | SingleSelect | Bug, Feature, Mejora, Tarea |
 | Área principal | SingleSelect | UI/UX, Datos, Sync, Android, Build/CI, Docs |
-| Versión | SingleSelect | Sin asignar, v0.1, … |
+| Versión | SingleSelect | Sin asignar, v0.1, v0.2, … |
 | Decision | SingleSelect | Pendiente, Aprobado, Diferido, Cancelado |
 | HighLighted | SingleSelect | Yes, No (for changelog highlights) |
 | Inicio exacto | Text | ISO-8601 UTC timestamp |
