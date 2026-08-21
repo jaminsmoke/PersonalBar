@@ -51,6 +51,12 @@
     </plurals>
     <string name="local_toggle_descripcion">Start or stop the room node</string>
 
+    <!-- CFC shift (customer ordering admission) -->
+    <string name="jornada_cfc_cerrada">CFC closed</string>
+    <string name="jornada_cfc_abierta_en_linea">CFC open</string>
+    <string name="jornada_cfc_solo_horario">CFC open · schedule only</string>
+    <string name="jornada_cfc_toggle_descripcion">Open or close CFC ordering admission</string>
+
     <!-- Stop node (confirmation) -->
     <string name="local_parar_titulo">Stop the room node?</string>
     <string name="local_parar_mensaje">Commanders in the room will lose connection until you start it again.</string>

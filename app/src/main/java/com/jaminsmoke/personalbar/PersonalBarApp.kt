@@ -32,6 +32,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,6 +86,18 @@ class PersonalBarApp : Application() {
     /** Error al intentar arrancar el nodo (id de recurso; null = sin error). Lo consume el chip del header. */
     private val _lanError = MutableStateFlow<Int?>(null)
     val lanError: StateFlow<Int?> = _lanError.asStateFlow()
+
+    /**
+     * Jornada CFC abierta en Identity (admisión de pedidos de cliente).
+     * Ortogonal al FGS «Local activo» ([roomActive]): el LAN puede estar activo
+     * sin admisión CFC y viceversa.
+     */
+    private val _jornadaCfcAbierta = MutableStateFlow(false)
+    val jornadaCfcAbierta: StateFlow<Boolean> = _jornadaCfcAbierta.asStateFlow()
+
+    /** `bar_en_linea` del server: true = heartbeat fresco; false = solo horario o caído. */
+    private val _jornadaCfcBarEnLinea = MutableStateFlow(false)
+    val jornadaCfcBarEnLinea: StateFlow<Boolean> = _jornadaCfcBarEnLinea.asStateFlow()
 
     /** Establecimiento desvinculado porque ya no existe en Identity (404 en el sync). */
     private val _establecimientoFantasma = MutableStateFlow(false)
@@ -194,6 +207,76 @@ class PersonalBarApp : Application() {
         lanServer.stopServer()
         _roomActive.value = false
         _lanError.value = null
+    }
+
+    /**
+     * Abre la jornada CFC en Identity (idempotente en el server) y arranca el
+     * loop de heartbeat (30 s, holgado vs. el stale de 90 s del server). Sin
+     * sesión de negocio o sin red, no-op (el chip queda sin marcar).
+     */
+    fun abrirJornadaCfc() {
+        if (_jornadaCfcAbierta.value) return
+        sessionScope.launch {
+            val jornada = IdentityNegocioClient.abrirJornadaCfc()
+            if (jornada != null) {
+                _jornadaCfcAbierta.value = true
+                _jornadaCfcBarEnLinea.value = jornada.barEnLinea
+                startHeartbeatCfc()
+            }
+        }
+    }
+
+    /**
+     * Cierra la jornada CFC en Identity y para el heartbeat. Best-effort: si el
+     * cierre remoto falla (sin red), el server mitiga con el horario y el próximo
+     * arranque puede cerrar/reabrir.
+     */
+    fun cerrarJornadaCfc() {
+        if (!_jornadaCfcAbierta.value) return
+        stopHeartbeatCfc()
+        _jornadaCfcAbierta.value = false
+        _jornadaCfcBarEnLinea.value = false
+        sessionScope.launch { IdentityNegocioClient.cerrarJornadaCfc() }
+    }
+
+    /** Scope del heartbeat CFC. Vive con el proceso; se arranca/para con la jornada. */
+    private val heartbeatCfcScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var heartbeatCfcJob: Job? = null
+
+    private fun startHeartbeatCfc() {
+        heartbeatCfcJob?.cancel()
+        heartbeatCfcJob = heartbeatCfcScope.launch {
+            while (isActive) {
+                delay(JORNADA_CFC_HEARTBEAT_INTERVALO_MS)
+                val jornada = IdentityNegocioClient.heartbeatCfc()
+                if (jornada != null) {
+                    _jornadaCfcBarEnLinea.value = jornada.barEnLinea
+                } else {
+                    // 409 (jornada cerrada fuera) o red caída: se apaga el flag;
+                    // si la jornada sigue abierta en el server, el siguiente tick
+                    // lo reaviva al volver la red.
+                    _jornadaCfcBarEnLinea.value = false
+                }
+            }
+        }
+    }
+
+    private fun stopHeartbeatCfc() {
+        heartbeatCfcJob?.cancel()
+        heartbeatCfcJob = null
+    }
+
+    /**
+     * Cierre best-effort de la jornada CFC al destruir el proceso. No bloquea:
+     * si el cierre remoto falla, la jornada queda abierta en el server y la
+     * mitiga el horario (admite sin Bar) hasta el próximo arranque.
+     */
+    private fun cerrarJornadaCfcAlSalir() {
+        if (!_jornadaCfcAbierta.value) return
+        stopHeartbeatCfc()
+        _jornadaCfcAbierta.value = false
+        _jornadaCfcBarEnLinea.value = false
+        runBlocking { IdentityNegocioClient.cerrarJornadaCfc() }
     }
 
     /** Timer que auto-inactiva las sesiones sin heartbeat dentro del timeout. */
@@ -551,10 +634,12 @@ class PersonalBarApp : Application() {
     }
 
     override fun onTerminate() {
+        cerrarJornadaCfcAlSalir()
         pararPuenteIdentity()
         stopLocal()
         sessionScope.cancel()
         proyeccionScope.cancel()
+        heartbeatCfcScope.cancel()
         syncCatalogoScope.cancel()
         notificacionesScope.cancel()
         super.onTerminate()
@@ -578,6 +663,12 @@ class PersonalBarApp : Application() {
 
         /** Cada cuánto se revalida la sesión contra el VPS (24 h). */
         const val SESION_REVALIDACION_INTERVALO_MS: Long = 24 * 60 * 60 * 1000L
+
+        /**
+         * Cada cuánto se manda heartbeat de la jornada CFC (30 s). Holgado frente
+         * al stale de 90 s del server: un tick perdido no apaga `bar_en_linea`.
+         */
+        const val JORNADA_CFC_HEARTBEAT_INTERVALO_MS: Long = 30_000L
 
         /** Validez de la sesión local tras un contacto exitoso con el VPS (7 días). */
         const val SESION_VALIDEZ_MS: Long = 7 * 24 * 60 * 60 * 1000L

@@ -228,4 +228,50 @@ class IdentityClientsTest {
     fun validarNuevaPasswordAceptaValida() {
         assertNull(validarNuevaPassword("abcdefgh", "abcdefgh"))
     }
+
+    @Test
+    fun jornadaCfcResponseDecodificaAbierta() {
+        val json = """{
+            "id": "j-1",
+            "establecimiento_id": "e-1",
+            "abierta_en": "2026-08-21T10:00:00Z",
+            "ultimo_heartbeat": "2026-08-21T10:00:30Z",
+            "cerrada_en": null,
+            "bar_en_linea": true
+        }"""
+        val resp = LanJson.decodeFromString<JornadaCfcResponse>(json)
+        assertEquals("j-1", resp.id)
+        assertEquals("e-1", resp.establecimientoId)
+        assertTrue(resp.barEnLinea)
+        assertNull(resp.cerradaEn)
+    }
+
+    @Test
+    fun jornadaCfcResponseDecodificaCerradaYEnviarLineaFalse() {
+        val json = """{
+            "id": "j-2",
+            "establecimiento_id": "e-1",
+            "abierta_en": "2026-08-21T09:00:00Z",
+            "ultimo_heartbeat": "2026-08-21T09:00:20Z",
+            "cerrada_en": "2026-08-21T10:00:00Z",
+            "bar_en_linea": false
+        }"""
+        val resp = LanJson.decodeFromString<JornadaCfcResponse>(json)
+        assertFalse(resp.barEnLinea)
+        assertNotNull(resp.cerradaEn)
+    }
+
+    @Test
+    fun jornadaCfcResponseRoundTrip() {
+        val original = JornadaCfcResponse(
+            id = "j-3",
+            establecimientoId = "e-1",
+            abiertaEn = "2026-08-21T10:00:00Z",
+            ultimoHeartbeat = "2026-08-21T10:00:30Z",
+            barEnLinea = true,
+        )
+        val json = LanJson.encodeToString(original)
+        assertEquals(original, LanJson.decodeFromString<JornadaCfcResponse>(json))
+        assertTrue(json.contains("bar_en_linea"))
+    }
 }

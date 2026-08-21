@@ -53,6 +53,10 @@ data class ExpoUiState(
     val enMano: Camarero? = null,
     /** Commanders vivos en la sala (sesión activa + heartbeat fresco). */
     val conectados: Int = 0,
+    /** Jornada CFC abierta en Identity (admisión de pedidos de cliente). */
+    val jornadaCfcAbierta: Boolean = false,
+    /** `bar_en_linea` del server: true = heartbeat fresco; false = solo horario o caído. */
+    val barEnLinea: Boolean = false,
 )
 
 /** Base intermedia del combine (evita el overload de 6 flows). */
@@ -98,8 +102,9 @@ class ExpoViewModel : ViewModel() {
         ) { bebida, comida, rondas, active, camareros ->
             ColasBase(bebida, comida, rondas, active, camareros)
         }
+        val app = PersonalBarApp.get()
         viewModelScope.launch {
-            combine(base, repository.deServicio, _enMano, PersonalBarApp.get().fgsOk, repository.conectados) { b, deServicio, enMano, fgsOk, conectados ->
+            combine(base, repository.deServicio, _enMano, app.fgsOk, repository.conectados) { b, deServicio, enMano, fgsOk, conectados ->
                 val rondasPorId = b.rondas.associateBy { it.id }
                 ExpoUiState(
                     drinkQueue = b.bebida.map { it.toExpoTicket(rondasPorId) },
@@ -111,7 +116,11 @@ class ExpoViewModel : ViewModel() {
                     enMano = enMano,
                     conectados = conectados,
                 )
-            }.combine(PersonalBarApp.get().lanError) { state, lanError ->
+            }.combine(app.jornadaCfcAbierta) { state, jornadaCfc ->
+                state.copy(jornadaCfcAbierta = jornadaCfc)
+            }.combine(app.jornadaCfcBarEnLinea) { state, barEnLinea ->
+                state.copy(barEnLinea = barEnLinea)
+            }.combine(app.lanError) { state, lanError ->
                 state.copy(lanError = lanError)
             }.collect { state ->
                 _uiState.value = state
@@ -132,6 +141,19 @@ class ExpoViewModel : ViewModel() {
             BarLanService.stop(app)
         } else {
             BarLanService.start(app)
+        }
+    }
+
+    /**
+     * Abre/cierra la jornada CFC (admisión de pedidos de cliente) en Identity.
+     * Ortogonal a [toggleLocal]: el LAN puede estar activo sin admisión CFC.
+     */
+    fun toggleJornadaCfc() {
+        val app = PersonalBarApp.get()
+        if (app.jornadaCfcAbierta.value) {
+            app.cerrarJornadaCfc()
+        } else {
+            app.abrirJornadaCfc()
         }
     }
 
