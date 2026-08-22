@@ -449,4 +449,86 @@ class RoomBarRepositoryTest {
         val repo3 = nuevoRepo()
         assertEquals(listOf("cam-b"), repo3.deServicio.first().map { it.id })
     }
+
+    // ═══ Atomicidad: 2xx ⇒ commit durable ═══
+
+    private fun repoVacio() = RoomBarRepository(
+        db = db,
+        salasIniciales = listOf(demoSala),
+        mesasIniciales = listOf(demoMesa),
+        catalogoInicial = demoCatalogo,
+    )
+
+    private val rondaNueva = Ronda(
+        id = "r-nueva", mesaId = "B1", numero = 2, camarero = "Lucía Test",
+        lineas = listOf(
+            Linea(productoId = "cana", nombreProducto = "Caña Test", cantidad = 1),
+        ),
+    )
+
+    @Test
+    fun crearRonda_persiste_inmediatamente_sin_esperar() = runBlocking {
+        val repo = repoVacio()
+
+        assertTrue(repo.crearRonda(rondaNueva))
+
+        // El commit es síncrono: la DB ya tiene la ronda y el ticket (sin awaitPersistencia)
+        assertEquals(1, db.barDao().getRondas().size)
+        assertEquals(1, db.barDao().getTickets().size)
+        assertEquals("r-nueva", db.barDao().getTickets().first().rondaId)
+        assertEquals(Destino.BARRA, db.barDao().getTickets().first().destino)
+    }
+
+    @Test
+    fun crearRonda_sobrevive_a_recarga_inmediata() = runBlocking {
+        val repo1 = nuevoRepo() // siembra demoRonda en la BD
+        assertTrue(repo1.crearRonda(rondaNueva))
+
+        // Recarga inmediata (sin awaitPersistencia): la comanda se reconstruye
+        val repo2 = nuevoRepo()
+        assertEquals(listOf(demoRonda, rondaNueva), repo2.rondas.first())
+        assertEquals(2, repo2.bebidaQueue.first().size)
+        assertEquals(1, repo2.comidaQueue.first().size)
+    }
+
+    @Test
+    fun marcarPreparado_y_recogido_son_durables_inmediatamente() = runBlocking {
+        val repo = nuevoRepo() // ronda demo en colas
+        val ticketBebida = repo.bebidaQueue.first().first()
+
+        assertTrue(repo.marcarPreparado(ticketBebida.id, "Lucía Test"))
+        assertEquals(TicketEstado.PREPARADO, db.barDao().getTickets().first { it.id == ticketBebida.id }.estado)
+
+        assertTrue(repo.marcarRecogido(ticketBebida.id))
+        assertEquals(TicketEstado.RECOGIDO, db.barDao().getTickets().first { it.id == ticketBebida.id }.estado)
+
+        // Recarga inmediata: el estado sobrevive
+        val repo2 = nuevoRepo()
+        assertEquals(0, repo2.bebidaQueue.first().size)
+        assertEquals(1, repo2.servidos.first().size)
+    }
+
+    @Test
+    fun commit_fallido_revierte_memoria_y_devuelve_false() {
+        val repo = repoVacio()
+        db.close() // forzar fallo de commit en el siguiente crearRonda
+
+        assertFalse(repo.crearRonda(rondaNueva))
+        // Rollback: la memoria no muestra la comanda (UI y disco coherentes)
+        assertEquals(0, repo.rondas.value.size)
+        assertEquals(0, repo.bebidaQueue.value.size)
+        assertEquals(0, repo.comidaQueue.value.size)
+    }
+
+    @Test
+    fun crearRonda_duplicada_devuelve_false_sin_tocar_disco() = runBlocking {
+        val repo = repoVacio()
+        val duplicada = rondaNueva.copy(id = "dup-1")
+        assertTrue(repo.crearRonda(duplicada))
+
+        assertFalse(repo.crearRonda(duplicada))
+        // Sin duplicados en disco
+        assertEquals(1, db.barDao().getRondas().size) // solo dup-1 (una vez)
+        assertEquals(1, db.barDao().getTickets().count { it.rondaId == "dup-1" })
+    }
 }
