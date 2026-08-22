@@ -540,6 +540,8 @@ class RoomBarRepositoryTest {
         db.barDao().upsertSesionNegocio(
             SesionNegocio(id = "local", token = null, tokenCifrado = "cifrado", email = "negocio@Test")
         )
+        // Sembrar una sala para que la recarga tome la rama «BD existente» (no el seed)
+        db.barDao().insertSalas(listOf(demoSala))
         val repo = nuevoRepo()
         // identityConfigConSesion: tokenCifrado cuenta como «hay sesión»
         assertTrue(repo.identityConfig.first().conectado)
