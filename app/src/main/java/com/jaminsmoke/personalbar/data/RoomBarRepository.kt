@@ -385,6 +385,12 @@ class RoomBarRepository(
         return ok
     }
 
+    override fun asignarCamareroMesa(mesaId: String, camareroId: String?): Boolean {
+        val ok = inner.asignarCamareroMesa(mesaId, camareroId)
+        if (ok) persist { dao.replaceMesas(inner.mesas.value) }
+        return ok
+    }
+
     // ── Reservas / bloqueos ──────────────────────────────────────────────────
 
     override fun reservar(mesaId: String, nombre: String, paraEpoch: Long?): Boolean {

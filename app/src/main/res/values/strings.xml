@@ -164,6 +164,7 @@
     <string name="zona_nombre">Nombre de la zona</string>
     <string name="zona_color">Color</string>
     <string name="zona_camarero">Camarero</string>
+    <string name="mesa_camarero">Camarero responsable</string>
     <string name="zona_sin_camarero">Sin asignar</string>
     <string name="zona_ancho">Ancho</string>
     <string name="zona_alto">Alto</string>

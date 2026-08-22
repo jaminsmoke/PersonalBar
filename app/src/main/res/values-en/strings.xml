@@ -165,6 +165,7 @@
     <string name="zona_nombre">Zone name</string>
     <string name="zona_color">Color</string>
     <string name="zona_camarero">Waiter</string>
+    <string name="mesa_camarero">Responsible waiter</string>
     <string name="zona_sin_camarero">Unassigned</string>
     <string name="zona_ancho">Width</string>
     <string name="zona_alto">Height</string>

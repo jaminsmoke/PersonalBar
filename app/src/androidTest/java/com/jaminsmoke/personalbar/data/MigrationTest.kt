@@ -498,6 +498,30 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v19_a_v20_anade_mesa_camareroId() {
+        // 1. BD en v19 con una mesa (sin camareroId)
+        helper.createDatabase(TEST_DB, 19).use { db ->
+            db.execSQL(
+                "INSERT INTO salas (id, nombre, orden) VALUES ('sala-1', 'Barra', 1)"
+            )
+            db.execSQL(
+                "INSERT INTO mesas (id, mesaUuid, salaId, indiceZona, numero, forma, capacidad, posX, posY, girada, bloqueada) " +
+                    "VALUES ('mesa-1', 'uuid-1', 'sala-1', 1, 1, 'CUADRADA', 4, 120.0, 120.0, 0, 0)"
+            )
+        }
+
+        // 2. Migrar a v20 y validar contra 20.json: camareroId TEXT nullable
+        val db = helper.runMigrationsAndValidate(TEST_DB, 20, true, AppDatabase.MIGRATION_19_20)
+        db.use {
+            val cursor = it.query("SELECT camareroId FROM mesas WHERE id = 'mesa-1'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("camareroId arranca null (sin asignación)", null, c.getString(0))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }

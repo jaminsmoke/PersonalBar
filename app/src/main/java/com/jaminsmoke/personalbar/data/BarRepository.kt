@@ -187,6 +187,9 @@ interface BarRepository {
      */
     fun asignarCamareroZona(zonaId: String, camareroId: String?): Boolean
 
+    /** @return true si se asignó el camarero responsable a la mesa (null = Sin asignar). */
+    fun asignarCamareroMesa(mesaId: String, camareroId: String?): Boolean
+
     /** @return true si se reservó; false si ocupada/bloqueada/ya reservada o nombre vacío. */
     fun reservar(mesaId: String, nombre: String, paraEpoch: Long?): Boolean
 

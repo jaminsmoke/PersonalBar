@@ -64,7 +64,7 @@ class PersonalBarApp : Application() {
             AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12, AppDatabase.MIGRATION_12_13,
             AppDatabase.MIGRATION_13_14, AppDatabase.MIGRATION_14_15, AppDatabase.MIGRATION_15_16,
             AppDatabase.MIGRATION_16_17, AppDatabase.MIGRATION_17_18,
-            AppDatabase.MIGRATION_18_19,
+            AppDatabase.MIGRATION_18_19, AppDatabase.MIGRATION_19_20,
         ).build()
     }
 
@@ -303,9 +303,14 @@ class PersonalBarApp : Application() {
         val respuesta = IdentityNegocioClient.listarPedidosCfc(cursorInicial) ?: return
         val mesas = repository.mesas.value
         val salas = repository.salas.value
+        val zonas = repository.zonas.value
+        val camareros = repository.camareros.value
+        val ticketsActivos = repository.bebidaQueue.value + repository.comidaQueue.value
         val rondasVistas = repository.rondas.value.toMutableList()
         for (pedido in respuesta.pedidos) {
-            val ronda = PedidoCfcTransformer.transformar(pedido, mesas, salas, rondasVistas)
+            val ronda = PedidoCfcTransformer.transformar(
+                pedido, mesas, salas, rondasVistas, zonas, camareros, ticketsActivos,
+            )
             if (ronda != null) {
                 repository.crearRonda(ronda)
                 rondasVistas += ronda

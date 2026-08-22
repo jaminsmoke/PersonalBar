@@ -115,6 +115,9 @@ class MapaViewModel : ViewModel() {
     fun asignarCamareroZona(zonaId: String, camareroId: String?): Boolean =
         repository.asignarCamareroZona(zonaId, camareroId).also { if (it) respaldar() }
 
+    fun asignarCamareroMesa(mesaId: String, camareroId: String?): Boolean =
+        repository.asignarCamareroMesa(mesaId, camareroId).also { if (it) respaldar() }
+
     /** Respalda el layout en Identity y sincroniza mesas CFC (best-effort). */
     private fun respaldar() {
         viewModelScope.launch {
