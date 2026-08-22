@@ -497,7 +497,7 @@ class RoomBarRepositoryTest {
         val ticketBebida = repo.bebidaQueue.first().first()
 
         assertTrue(repo.marcarPreparado(ticketBebida.id, "Lucía Test"))
-        assertEquals(TicketEstado.LISTO, db.barDao().getTickets().first { it.id == ticketBebida.id }.estado)
+        assertEquals(TicketEstado.PREPARADO, db.barDao().getTickets().first { it.id == ticketBebida.id }.estado)
 
         assertTrue(repo.marcarRecogido(ticketBebida.id))
         assertEquals(TicketEstado.RECOGIDO, db.barDao().getTickets().first { it.id == ticketBebida.id }.estado)
