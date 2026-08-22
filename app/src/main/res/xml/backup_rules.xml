@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Reglas de backup para API < 31 (Auto Backup clásico): la BD del nodo se
+    excluye por completo. Bar es un puesto estático: los datos canónicos
+    (layout, catálogo, camareros) vienen de Identity; la BD local es cache +
+    turno y contiene el bearer de sesión cifrado y PII. Nada de eso viaja.
+-->
+<full-backup-content>
+    <exclude domain="database" path="personalbar.db" />
+    <exclude domain="database" path="personalbar.db-wal" />
+    <exclude domain="database" path="personalbar.db-shm" />
+</full-backup-content>

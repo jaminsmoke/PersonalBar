@@ -22,6 +22,7 @@ import com.jaminsmoke.personalbar.lan.Conectividad
 import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
 import com.jaminsmoke.personalbar.lan.PresenciaEmisor
+import com.jaminsmoke.personalbar.lan.TokenCifrador
 import com.jaminsmoke.personalbar.lan.ResultadoNotificaciones
 import com.jaminsmoke.personalbar.lan.ResultadoPullCatalogo
 import com.jaminsmoke.personalbar.lan.ResultadoSyncCatalogo
@@ -65,6 +66,7 @@ class PersonalBarApp : Application() {
             AppDatabase.MIGRATION_13_14, AppDatabase.MIGRATION_14_15, AppDatabase.MIGRATION_15_16,
             AppDatabase.MIGRATION_16_17, AppDatabase.MIGRATION_17_18,
             AppDatabase.MIGRATION_18_19, AppDatabase.MIGRATION_19_20,
+            AppDatabase.MIGRATION_20_21,
         ).build()
     }
 
@@ -532,7 +534,8 @@ class PersonalBarApp : Application() {
         if (sesion != null) {
             val actualizada = sesion.copy(establecimientoUuid = null)
             _sesion.value = actualizada
-            sessionScope.launch { db.barDao().upsertSesionNegocio(actualizada) }
+            // Nunca persistir el bearer en claro: conserva tokenCifrado, borra token.
+            sessionScope.launch { db.barDao().upsertSesionNegocio(actualizada.copy(token = null)) }
         }
         repository.setIdentityConfig(IdentityConfig(error = "establecimiento_fantasma"))
         Log.w(TAG, "Establecimiento fantasma en el sync: desvinculado; outbox conservado para re-vincular")
@@ -540,18 +543,42 @@ class PersonalBarApp : Application() {
 
     // ── Sesión de negocio: restauración, alta y validez ─────────────────────
 
-    /** Restaura la sesión persistida («Recuérdame») y su validez local. Arranca el
-     *  puente VPS (revalidación, catálogo, notificaciones) aunque Sala esté apagada. */
+    /**
+     * Restaura la sesión persistida («Recuérdame») y su validez local. Arranca el
+     * puente VPS (revalidación, catálogo, notificaciones) aunque Sala esté apagada.
+     *
+     * Seguridad (v21): en disco el bearer vive cifrado ([SesionNegocio.tokenCifrado],
+     * clave Android Keystore). Aquí se descifra solo en memoria; si la clave no
+     * existe (restore en otro dispositivo / factory reset) → logout forzado.
+     * Sesiones pre-v21 (token en claro) migran solas: cifrar → borrar el claro.
+     */
     fun restaurarSesion() {
         sessionScope.launch {
-            val guardada = db.barDao().getSesionNegocio()
-            if (guardada?.token != null) {
-                hidratarIdentity(guardada)
-                _sesion.value = guardada
-                _sesionEstado.value = sesionEstadoDe(guardada, System.currentTimeMillis())
+            val guardada = db.barDao().getSesionNegocio() ?: return@launch
+            val tokenClaro = when {
+                guardada.tokenCifrado != null -> TokenCifrador.descifrar(guardada.tokenCifrado)
+                guardada.token != null -> {
+                    // Backfill v21: cifrar una vez y borrar el claro del disco.
+                    val cifrado = runCatching { TokenCifrador.cifrar(guardada.token) }.getOrNull()
+                    if (cifrado != null) {
+                        db.barDao().upsertSesionNegocio(guardada.copy(token = null, tokenCifrado = cifrado))
+                        guardada.token
+                    } else null
+                }
+                else -> null
+            }
+            if (tokenClaro != null) {
+                val restaurada = guardada.copy(token = tokenClaro)
+                hidratarIdentity(restaurada)
+                _sesion.value = restaurada
+                _sesionEstado.value = sesionEstadoDe(restaurada, System.currentTimeMillis())
                 sessionScope.launch { _logoBytes.value = IdentityNegocioClient.obtenerLogo() }
                 sincronizarDesdeIdentity()
                 arrancarPuenteIdentity()
+            } else {
+                // Clave perdida o cifrado ilegible: forzar re-login (sesión local inválida).
+                Log.w(TAG, "Token cifrado no descifrable: cerrando sesión local")
+                cerrarSesion()
             }
         }
     }
@@ -566,8 +593,13 @@ class PersonalBarApp : Application() {
         _establecimientoFantasma.value = false
         catalogoSeedDecidido = false
         sessionScope.launch {
-            if (recordar) db.barDao().upsertSesionNegocio(sesion)
-            else db.barDao().clearSesionNegocio()
+            if (recordar) {
+                // El bearer en claro nunca se persiste: se guarda cifrado (Keystore).
+                val cifrado = runCatching { TokenCifrador.cifrar(sesion.token ?: "") }.getOrNull()
+                db.barDao().upsertSesionNegocio(sesion.copy(token = null, tokenCifrado = cifrado))
+            } else {
+                db.barDao().clearSesionNegocio()
+            }
         }
         sessionScope.launch { _logoBytes.value = IdentityNegocioClient.obtenerLogo() }
         sincronizarDesdeIdentity()
@@ -618,7 +650,7 @@ class PersonalBarApp : Application() {
                     val renovada = sesion.copy(validaHasta = System.currentTimeMillis() + SESION_VALIDEZ_MS)
                     _sesion.value = renovada
                     _sesionEstado.value = sesionEstadoDe(renovada, System.currentTimeMillis())
-                    db.barDao().upsertSesionNegocio(renovada)
+                    db.barDao().upsertSesionNegocio(renovada.copy(token = null))
                 }
                 IdentityNegocioClient.RevalidacionResultado.REVOCADA -> {
                     // «Logout técnico»: la cuenta ya no vale. Se desconecta el cliente
@@ -629,7 +661,7 @@ class PersonalBarApp : Application() {
                     val invalida = sesion.copy(validaHasta = 0L)
                     _sesion.value = invalida
                     _sesionEstado.value = SesionEstado.INVALIDA
-                    db.barDao().upsertSesionNegocio(invalida)
+                    db.barDao().upsertSesionNegocio(invalida.copy(token = null))
                     IdentityNegocioClient.desconectarConservandoBaseUrl()
                     repository.setIdentityConfig(IdentityConfig())
                 }

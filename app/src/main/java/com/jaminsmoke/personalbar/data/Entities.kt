@@ -298,7 +298,19 @@ fun tipoDesdeApi(valor: String?): TipoEstablecimiento? = when (valor) {
 @Entity(tableName = "sesion_negocio")
 data class SesionNegocio(
     @PrimaryKey val id: String = "local",
+    /**
+     * Bearer en claro SOLO en memoria durante el arranque/uso. En disco nunca
+     * se persiste en claro: la sesión guardada lleva [tokenCifrado] (AES-GCM
+     * con clave Android Keystore, migración v21). `null` en persistencia.
+     */
     val token: String? = null,
+    /**
+     * Bearer cifrado (AES-GCM, clave Keystore que no viaja en backups): lo que
+     * Room persiste con «Recuérdame». Si la clave se pierde (restore en otro
+     * dispositivo / factory reset) no descifra → logout forzado (re-login).
+     * Migración Room v21.
+     */
+    val tokenCifrado: String? = null,
     val email: String? = null,
     val nombreMostrar: String? = null,
     val establecimientoUuid: String? = null,
