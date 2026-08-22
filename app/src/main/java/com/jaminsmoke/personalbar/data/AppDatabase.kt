@@ -29,7 +29,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * `mesas.mesaUuid` (identidad canónica e inmutable de familia para QR/CFC,
  * sincronización con Identity y correlación con Commander); v19 añade
  * `cfc_estado` (cursor persistido del pull del inbox CFC: reanuda donde se
- * quedó tras reiniciar, sin re-traer pedidos ya procesados).
+ * quedó tras reiniciar, sin re-traer pedidos ya procesados); v20 añade
+ * `mesas.camareroId` (asignación directa de camarero responsable, precede a
+ * la zona en el reparto de pedidos CFC).
  * Schema exportado a `app/schemas/` para versionar migraciones futuras igual
  * que Commander.
  */
@@ -60,7 +62,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Zona::class,
         CfcEstado::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -388,6 +390,17 @@ abstract class AppDatabase : RoomDatabase() {
                         "id TEXT NOT NULL PRIMARY KEY, " +
                         "cursor INTEGER NOT NULL)"
                 )
+            }
+        }
+
+        /**
+         * v19→v20: `mesas.camareroId` (asignación directa de camarero responsable
+         * en el reparto CFC). Nullable: las mesas existentes quedan sin asignación
+         * (el resolver cae a zona / menor carga / Sin asignar).
+         */
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE mesas ADD COLUMN camareroId TEXT")
             }
         }
     }

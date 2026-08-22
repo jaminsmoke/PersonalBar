@@ -296,8 +296,13 @@ fun MapaScreen(viewModel: MapaViewModel = viewModel()) {
         EditarMesaDialog(
             mesa = mesa,
             nombreSala = salasById[mesa.salaId]?.nombre.orEmpty(),
+            camareros = camareros,
             onDismiss = { mesaEditando = null },
-            onSave = { alias, cap, forma -> viewModel.editarMesa(mesa.id, alias, cap, forma); mesaEditando = null },
+            onSave = { alias, cap, forma, camareroId ->
+                viewModel.editarMesa(mesa.id, alias, cap, forma)
+                viewModel.asignarCamareroMesa(mesa.id, camareroId)
+                mesaEditando = null
+            },
         )
     }
 
@@ -914,12 +919,14 @@ private fun CrearMesaDialog(onDismiss: () -> Unit, onCreate: (MesaForma, Int, St
 private fun EditarMesaDialog(
     mesa: Mesa,
     nombreSala: String,
+    camareros: List<Camarero>,
     onDismiss: () -> Unit,
-    onSave: (String?, Int, MesaForma) -> Unit,
+    onSave: (String?, Int, MesaForma, String?) -> Unit,
 ) {
     var alias by remember(mesa) { mutableStateOf(mesa.alias ?: "") }
     var cap by remember(mesa) { mutableStateOf(mesa.capacidad.toString()) }
     var forma by remember(mesa) { mutableStateOf(mesa.forma) }
+    var camareroId by remember(mesa) { mutableStateOf(mesa.camareroId) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.mapa_editar_mesa)) },
@@ -948,10 +955,14 @@ private fun EditarMesaDialog(
                         FilterChip(selected = forma == f, onClick = { forma = f }, label = { Text(formaLabel(f)) })
                     }
                 }
+                Text(stringResource(R.string.mesa_camarero), style = MaterialTheme.typography.labelMedium)
+                CamareroSelector(camareros, camareroId, { camareroId = it })
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(alias.ifBlank { null }, cap.toIntOrNull() ?: mesa.capacidad, forma) }) {
+            TextButton(onClick = {
+                onSave(alias.ifBlank { null }, cap.toIntOrNull() ?: mesa.capacidad, forma, camareroId)
+            }) {
                 Text(stringResource(R.string.mapa_editar_mesa))
             }
         },

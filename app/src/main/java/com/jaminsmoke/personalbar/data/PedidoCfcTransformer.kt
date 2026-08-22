@@ -19,6 +19,9 @@ object PedidoCfcTransformer {
      * @param mesas mesas locales (se resuelve por `mesaUuid`)
      * @param salas salas locales (para derivar `idZona` de la mesa)
      * @param rondas rondas existentes (para el número de ronda incremental)
+     * @param zonas zonas locales (reparto por zona)
+     * @param camareros camareros de la lista blanca (reparto)
+     * @param ticketsActivos tickets en cola (carga del reparto)
      * @return la ronda lista para `crearRonda`, o null si la mesa no existe
      */
     fun transformar(
@@ -26,16 +29,21 @@ object PedidoCfcTransformer {
         mesas: List<Mesa>,
         salas: List<Sala>,
         rondas: List<Ronda>,
+        zonas: List<Zona> = emptyList(),
+        camareros: List<Camarero> = emptyList(),
+        ticketsActivos: List<Ticket> = emptyList(),
     ): Ronda? {
         val mesa = mesas.firstOrNull { it.mesaUuid == pedido.mesaUuid } ?: return null
         val salaNombre = salas.firstOrNull { it.id == mesa.salaId }?.nombre ?: ""
         val mesaId = mesa.idZona(salaNombre)
         val numero = (rondas.filter { it.mesaId == mesaId }.maxOfOrNull { it.numero } ?: 0) + 1
+        // Carga = rondas con al menos un ticket en cola (PENDIENTE+LISTO).
+        val rondasActivas = rondas.filter { r -> ticketsActivos.any { it.rondaId == r.id } }
         return Ronda(
             id = pedido.id,
             mesaId = mesaId,
             numero = numero,
-            camarero = null,
+            camarero = RepartoCamareros.resolverCamarero(mesa, zonas, camareros, rondasActivas),
             creadoEn = epochDe(pedido.creadoEn),
             lineas = pedido.lineas.map {
                 Linea(

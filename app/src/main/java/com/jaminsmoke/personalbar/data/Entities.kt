@@ -57,6 +57,13 @@ data class Mesa(
     val girada: Boolean = false,
     val bloqueada: Boolean = false,
     val reservaActivaId: String? = null,
+    /**
+     * Asignación directa de camarero responsable (precede a la zona en el
+     * reparto de pedidos CFC). Aditivo al layout (v20): viaja con el snapshot
+     * a Identity sin tocar el server (JSONB opaco). Referencia a un
+     * [Camarero].id de Identity; el resolver valida existencia y servicio.
+     */
+    val camareroId: String? = null,
 ) {
     /** ID dentro de la sala, p. ej. "B1" para Barra 1. Requiere el nombre de la sala. */
     fun idZona(nombreSala: String): String = "${zonaPrefijo(nombreSala)}$indiceZona"

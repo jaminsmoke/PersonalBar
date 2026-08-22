@@ -677,6 +677,16 @@ class InMemoryBarRepository(
         return true
     }
 
+    override fun asignarCamareroMesa(mesaId: String, camareroId: String?): Boolean {
+        if (_mesas.value.none { it.id == mesaId }) return false
+        val nuevoCamarero = camareroId?.let {
+            if (!esCamareroActivo(it)) return false
+            it
+        }
+        _mesas.update { list -> list.map { if (it.id == mesaId) it.copy(camareroId = nuevoCamarero) else it } }
+        return true
+    }
+
     /**
      * Encaja el rectángulo de la zona en el canvas del board: tamaño mínimo una
      * celda, máximo el board completo, y posición dentro de los límites.

@@ -99,4 +99,49 @@ class PedidoCfcTransformerTest {
         // idZona sigue derivando del índice (el alias es solo nombre visible)
         assertEquals("B3", ronda?.mesaId)
     }
+
+    // ── Reparto de camarero ────────────────────────────────────────────────
+
+    private fun camarero(id: String) = Camarero(id = id, nombre = id, deServicio = true)
+
+    private fun zonaConCamarero(id: String, camareroId: String? = null) =
+        Zona(id = id, salaId = "sala-barra", nombre = id, posX = 0f, posY = 0f, ancho = 500f, alto = 500f, camareroId = camareroId)
+
+    @Test
+    fun sinRepartoCamareroQuedaNull() {
+        val ronda = PedidoCfcTransformer.transformar(pedido(), listOf(mesa), listOf(sala), emptyList())
+        assertNull(ronda?.camarero)
+    }
+
+    @Test
+    fun repartoPorZonaRellenaCamarero() {
+        val zonas = listOf(zonaConCamarero("z1", camareroId = "carmen"))
+        val camareros = listOf(camarero("carmen"))
+        val ronda = PedidoCfcTransformer.transformar(pedido(), listOf(mesa), listOf(sala), emptyList(), zonas, camareros)
+        assertEquals("carmen", ronda?.camarero)
+    }
+
+    @Test
+    fun repartoDirectoDeMesaGanaAZona() {
+        val mesaDirecta = mesa.copy(camareroId = "luis")
+        val zonas = listOf(zonaConCamarero("z1", camareroId = "carmen"))
+        val camareros = listOf(camarero("luis"), camarero("carmen"))
+        val ronda = PedidoCfcTransformer.transformar(pedido(), listOf(mesaDirecta), listOf(sala), emptyList(), zonas, camareros)
+        assertEquals("luis", ronda?.camarero)
+    }
+
+    @Test
+    fun repartoMenorCargaConTicketsActivos() {
+        val camareros = listOf(camarero("carmen"), camarero("luis"))
+        val ticket = Ticket(
+            id = "t1", rondaId = "r-activa", destino = Destino.BARRA,
+            lineas = listOf(Linea(productoId = "p1", nombreProducto = "Caña", cantidad = 1)),
+        )
+        val rondaCargada = Ronda(id = "r-activa", mesaId = "B3", numero = 1, camarero = "carmen", lineas = emptyList())
+        val ticketsActivos = listOf(ticket)
+        val rondas = listOf(rondaCargada)
+        val ronda = PedidoCfcTransformer.transformar(pedido(), listOf(mesa), listOf(sala), rondas, emptyList(), camareros, ticketsActivos)
+        // carmen lleva 1 ronda activa → luis (menor carga)
+        assertEquals("luis", ronda?.camarero)
+    }
 }
