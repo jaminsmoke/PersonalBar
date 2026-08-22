@@ -57,6 +57,19 @@
     <string name="jornada_cfc_solo_horario">CFC open · schedule only</string>
     <string name="jornada_cfc_toggle_descripcion">Open or close CFC ordering admission</string>
 
+    <!-- QR Tables (CFC) -->
+    <string name="gestion_qr_mesas">Table QRs</string>
+    <string name="qr_mesas_sin_identity">Connect to Identity to manage table QR codes</string>
+    <string name="qr_mesas_vacio">No tables synced. Modify the map to sync.</string>
+    <string name="qr_mesas_estado_activo">Active</string>
+    <string name="qr_mesas_estado_revocado">Revoked</string>
+    <string name="qr_mesas_rotar">Rotate</string>
+    <string name="qr_mesas_rotar_titulo">Rotate table QR</string>
+    <string name="qr_mesas_rotar_texto">The current QR for "%1$s" will stop working. A new one will be generated.</string>
+    <string name="qr_mesas_rotar_confirmar">Rotate</string>
+    <string name="qr_mesas_qr_desc">QR for table %1$s</string>
+    <string name="cancelar">Cancel</string>
+
     <!-- Stop node (confirmation) -->
     <string name="local_parar_titulo">Stop the room node?</string>
     <string name="local_parar_mensaje">Commanders in the room will lose connection until you start it again.</string>
