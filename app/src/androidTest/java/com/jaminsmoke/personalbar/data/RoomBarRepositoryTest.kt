@@ -481,7 +481,7 @@ class RoomBarRepositoryTest {
 
     @Test
     fun crearRonda_sobrevive_a_recarga_inmediata() = runBlocking {
-        val repo1 = repoVacio()
+        val repo1 = nuevoRepo() // siembra demoRonda en la BD
         assertTrue(repo1.crearRonda(rondaNueva))
 
         // Recarga inmediata (sin awaitPersistencia): la comanda se reconstruye
@@ -522,13 +522,13 @@ class RoomBarRepositoryTest {
 
     @Test
     fun crearRonda_duplicada_devuelve_false_sin_tocar_disco() = runBlocking {
-        val repo = nuevoRepo()
-        val duplicada = demoRonda.copy(id = "dup-1")
+        val repo = repoVacio()
+        val duplicada = rondaNueva.copy(id = "dup-1")
         assertTrue(repo.crearRonda(duplicada))
 
         assertFalse(repo.crearRonda(duplicada))
         // Sin duplicados en disco
-        assertEquals(2, db.barDao().getRondas().size) // demo + dup-1 (solo una vez)
+        assertEquals(1, db.barDao().getRondas().size) // solo dup-1 (una vez)
         assertEquals(1, db.barDao().getTickets().count { it.rondaId == "dup-1" })
     }
 }
