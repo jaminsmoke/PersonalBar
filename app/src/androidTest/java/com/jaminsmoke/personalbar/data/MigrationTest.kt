@@ -473,6 +473,31 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v18_a_v19_anade_cfc_estado() {
+        // 1. BD en v18 con una mesa (mesaUuid ya presente)
+        helper.createDatabase(TEST_DB, 18).use { db ->
+            db.execSQL(
+                "INSERT INTO salas (id, nombre, orden) VALUES ('sala-1', 'Barra', 1)"
+            )
+            db.execSQL(
+                "INSERT INTO mesas (id, mesaUuid, salaId, indiceZona, numero, forma, capacidad, posX, posY, girada, bloqueada) " +
+                    "VALUES ('mesa-1', 'uuid-1', 'sala-1', 1, 1, 'CUADRADA', 4, 120.0, 120.0, 0, 0)"
+            )
+        }
+
+        // 2. Migrar a v19 y validar contra 19.json: tabla cfc_estado creada
+        val db = helper.runMigrationsAndValidate(TEST_DB, 19, true, AppDatabase.MIGRATION_18_19)
+        db.use {
+            // La tabla nueva arranca vacía; la fila la crea el poller en el primer pull
+            val cursor = it.query("SELECT COUNT(*) FROM cfc_estado")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("cfc_estado arranca vacía (aditiva)", 0, c.getInt(0))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }

@@ -5,8 +5,10 @@ import android.util.Log
 import androidx.room.Room
 import com.jaminsmoke.personalbar.data.AppDatabase
 import com.jaminsmoke.personalbar.data.BarRepository
+import com.jaminsmoke.personalbar.data.CfcEstado
 import com.jaminsmoke.personalbar.data.IdentityConfig
 import com.jaminsmoke.personalbar.data.Mesa
+import com.jaminsmoke.personalbar.data.PedidoCfcTransformer
 import com.jaminsmoke.personalbar.data.MesaForma
 import com.jaminsmoke.personalbar.data.Producto
 import com.jaminsmoke.personalbar.data.RoomBarRepository
@@ -62,6 +64,7 @@ class PersonalBarApp : Application() {
             AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12, AppDatabase.MIGRATION_12_13,
             AppDatabase.MIGRATION_13_14, AppDatabase.MIGRATION_14_15, AppDatabase.MIGRATION_15_16,
             AppDatabase.MIGRATION_16_17, AppDatabase.MIGRATION_17_18,
+            AppDatabase.MIGRATION_18_19,
         ).build()
     }
 
@@ -222,6 +225,7 @@ class PersonalBarApp : Application() {
                 _jornadaCfcAbierta.value = true
                 _jornadaCfcBarEnLinea.value = jornada.barEnLinea
                 startHeartbeatCfc()
+                startCfcInboxPoller()
             }
         }
     }
@@ -234,6 +238,7 @@ class PersonalBarApp : Application() {
     fun cerrarJornadaCfc() {
         if (!_jornadaCfcAbierta.value) return
         stopHeartbeatCfc()
+        stopCfcInboxPoller()
         _jornadaCfcAbierta.value = false
         _jornadaCfcBarEnLinea.value = false
         sessionScope.launch { IdentityNegocioClient.cerrarJornadaCfc() }
@@ -266,6 +271,53 @@ class PersonalBarApp : Application() {
         heartbeatCfcJob = null
     }
 
+    /** Scope del poller del inbox CFC. Vive con el proceso; se arranca/para con la jornada. */
+    private val cfcInboxScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var cfcInboxJob: Job? = null
+
+    private fun startCfcInboxPoller() {
+        cfcInboxJob?.cancel()
+        cfcInboxJob = cfcInboxScope.launch {
+            while (isActive) {
+                delay(CFC_POLL_INTERVALO_MS)
+                pollCfcInbox()
+            }
+        }
+    }
+
+    private fun stopCfcInboxPoller() {
+        cfcInboxJob?.cancel()
+        cfcInboxJob = null
+    }
+
+    /**
+     * Un tick del poller: pull de pedidos pendientes desde el cursor persistido,
+     * convierte cada pedido en ronda (`crearRonda` deduplica por id), ACK por
+     * caso (aceptado si entró o era duplicado; rechazado si la mesa no resuelve)
+     * y guarda el nuevo cursor. Best-effort: fallos de red se reintentan en el
+     * siguiente tick; nunca lanza.
+     */
+    private suspend fun pollCfcInbox() {
+        if (!IdentityNegocioClient.conectado) return
+        val cursorInicial = db.barDao().getCfcEstado()?.cursor ?: 0
+        val respuesta = IdentityNegocioClient.listarPedidosCfc(cursorInicial) ?: return
+        val mesas = repository.mesas.value
+        val salas = repository.salas.value
+        val rondasVistas = repository.rondas.value.toMutableList()
+        for (pedido in respuesta.pedidos) {
+            val ronda = PedidoCfcTransformer.transformar(pedido, mesas, salas, rondasVistas)
+            if (ronda != null) {
+                repository.crearRonda(ronda)
+                rondasVistas += ronda
+                IdentityNegocioClient.ackPedidoCfc(pedido.id, aceptado = true)
+            } else {
+                // Mesa borrada: el pedido no puede entrar en una cola → rechazar.
+                IdentityNegocioClient.ackPedidoCfc(pedido.id, aceptado = false)
+            }
+        }
+        db.barDao().upsertCfcEstado(CfcEstado(cursor = respuesta.cursor))
+    }
+
     /**
      * Cierre best-effort de la jornada CFC al destruir el proceso. No bloquea:
      * si el cierre remoto falla, la jornada queda abierta en el server y la
@@ -274,6 +326,7 @@ class PersonalBarApp : Application() {
     private fun cerrarJornadaCfcAlSalir() {
         if (!_jornadaCfcAbierta.value) return
         stopHeartbeatCfc()
+        stopCfcInboxPoller()
         _jornadaCfcAbierta.value = false
         _jornadaCfcBarEnLinea.value = false
         runBlocking { IdentityNegocioClient.cerrarJornadaCfc() }
@@ -660,6 +713,7 @@ class PersonalBarApp : Application() {
         sessionScope.cancel()
         proyeccionScope.cancel()
         heartbeatCfcScope.cancel()
+        cfcInboxScope.cancel()
         syncCatalogoScope.cancel()
         notificacionesScope.cancel()
         super.onTerminate()
@@ -689,6 +743,12 @@ class PersonalBarApp : Application() {
          * al stale de 90 s del server: un tick perdido no apaga `bar_en_linea`.
          */
         const val JORNADA_CFC_HEARTBEAT_INTERVALO_MS: Long = 30_000L
+
+        /**
+         * Cada cuánto hace pull el poller del inbox CFC (30 s). El pedido llega
+         * a la cola en ≤ 2 ticks; un tick perdido (red) se recupera en el siguiente.
+         */
+        const val CFC_POLL_INTERVALO_MS: Long = 30_000L
 
         /** Validez de la sesión local tras un contacto exitoso con el VPS (7 días). */
         const val SESION_VALIDEZ_MS: Long = 7 * 24 * 60 * 60 * 1000L

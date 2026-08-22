@@ -492,3 +492,15 @@ data class CatalogoSyncEstado(
     @PrimaryKey val id: String = "local",
     val desdeRevision: Int = 0,
 )
+
+/**
+ * Estado del pull del inbox CFC (tabla de una fila): el cursor del último `seq`
+ * procesado por establecimiento. Se persiste para que el poller reanude donde
+ * se quedó tras reiniciar el puesto (sin re-traer el inbox completo).
+ */
+@Serializable
+@Entity(tableName = "cfc_estado")
+data class CfcEstado(
+    @PrimaryKey val id: String = "local",
+    val cursor: Int = 0,
+)

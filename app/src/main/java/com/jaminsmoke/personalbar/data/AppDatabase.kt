@@ -27,7 +27,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * `productos` y `operaciones_catalogo`; v17 añade `zonas` (agrupación espacial
  * de sala: rectángulo + color de paleta + camarero asignado opcional); v18 añade
  * `mesas.mesaUuid` (identidad canónica e inmutable de familia para QR/CFC,
- * sincronización con Identity y correlación con Commander).
+ * sincronización con Identity y correlación con Commander); v19 añade
+ * `cfc_estado` (cursor persistido del pull del inbox CFC: reanuda donde se
+ * quedó tras reiniciar, sin re-traer pedidos ya procesados).
  * Schema exportado a `app/schemas/` para versionar migraciones futuras igual
  * que Commander.
  */
@@ -56,8 +58,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         OpcionModificador::class,
         ProductoGrupo::class,
         Zona::class,
+        CfcEstado::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -371,6 +374,20 @@ abstract class AppDatabase : RoomDatabase() {
                 // (sin DEFAULT SQL). ADD COLUMN con NOT NULL exige DEFAULT no nulo en
                 // SQLite; el backfill de [RoomBarRepository] rellena el UUID real.
                 db.execSQL("ALTER TABLE mesas ADD COLUMN mesaUuid TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * v18→v19: `cfc_estado` (cursor del inbox CFC). Tabla nueva de una fila;
+         * arranca vacía y el poller la crea en el primer pull (aditiva).
+         */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS cfc_estado (" +
+                        "id TEXT NOT NULL PRIMARY KEY, " +
+                        "cursor INTEGER NOT NULL)"
+                )
             }
         }
     }

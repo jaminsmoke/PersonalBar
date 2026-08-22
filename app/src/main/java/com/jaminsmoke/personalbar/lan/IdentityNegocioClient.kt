@@ -212,6 +212,36 @@ data class MesaCfcResponse(
     @SerialName("url_publica") val urlPublica: String? = null,
 )
 
+/** Línea de un pedido CFC (catálogo canónico de Identity, espejado por Bar). */
+@Serializable
+data class PedidoCfcLinea(
+    @SerialName("producto_id") val productoId: String = "",
+    val nombre: String = "",
+    val cantidad: Int = 1,
+    @SerialName("precio_centimos") val precioCentimos: Int = 0,
+    val destino: String = "",
+)
+
+/** Pedido CFC del inbox (cliente escaneó el QR de la mesa y pidió). */
+@Serializable
+data class PedidoCfcResponse(
+    val id: String = "",
+    @SerialName("mesa_uuid") val mesaUuid: String = "",
+    val etiqueta: String = "",
+    val estado: String = "",
+    val seq: Int = 0,
+    val lineas: List<PedidoCfcLinea> = emptyList(),
+    @SerialName("total_centimos") val totalCentimos: Int = 0,
+    @SerialName("creado_en") val creadoEn: String = "",
+)
+
+/** Respuesta del pull de pedidos: solo PENDIENTE con seq > cursor. */
+@Serializable
+data class PedidosCfcListaResponse(
+    val pedidos: List<PedidoCfcResponse> = emptyList(),
+    val cursor: Int = 0,
+)
+
 @Serializable
 data class IdentityImagenGaleria(
     val id: String,
@@ -1226,6 +1256,44 @@ object IdentityNegocioClient {
             )
             if (code in 200..299) {
                 runCatching { LanJson.decodeFromString<MesaCfcResponse>(text) }.getOrNull()
+            } else null
+        }
+
+    // ── Inbox CFC (pedidos de cliente) ───────────────────────────────────
+
+    /**
+     * `GET /v1/establecimientos/{id}/cfc/pedidos?cursor=N` → pull de pedidos
+     * pendientes con `seq > cursor` (ordenados por seq). Devuelve la lista y el
+     * nuevo cursor; null si no hay sesión o la petición falla.
+     */
+    suspend fun listarPedidosCfc(cursor: Int): PedidosCfcListaResponse? =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext null
+            val (code, text) = IdentityHttp.request(
+                baseUrl, "GET", "/v1/establecimientos/$id/cfc/pedidos?cursor=$cursor",
+                token = negocioToken,
+            )
+            if (code in 200..299) {
+                runCatching { LanJson.decodeFromString<PedidosCfcListaResponse>(text) }.getOrNull()
+            } else null
+        }
+
+    /**
+     * `POST /v1/establecimientos/{id}/cfc/pedidos/{pedidoId}/ack` → confirma un
+     * pedido (aceptado/rechazado). Idempotente en el server: si el pedido ya no
+     * está PENDIENTE, devuelve su estado actual sin cambiar nada. Devuelve null
+     * si falla la petición o no hay sesión.
+     */
+    suspend fun ackPedidoCfc(pedidoId: String, aceptado: Boolean): PedidoCfcResponse? =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext null
+            val body = """{"decision":"${if (aceptado) "aceptado" else "rechazado"}"}"""
+            val (code, text) = IdentityHttp.request(
+                baseUrl, "POST", "/v1/establecimientos/$id/cfc/pedidos/$pedidoId/ack",
+                body = body, token = negocioToken,
+            )
+            if (code in 200..299) {
+                runCatching { LanJson.decodeFromString<PedidoCfcResponse>(text) }.getOrNull()
             } else null
         }
 
