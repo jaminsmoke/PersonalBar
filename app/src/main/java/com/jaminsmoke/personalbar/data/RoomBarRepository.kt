@@ -659,7 +659,9 @@ class RoomBarRepository(
             sesion: SesionNegocio?,
         ): IdentityConfig {
             val base = config ?: IdentityConfig()
-            val haySesion = sesion?.token != null
+            // v21: el bearer persistido está cifrado (tokenCifrado); el claro solo
+            // existe en memoria. Ambos cuentan como «hay sesión».
+            val haySesion = sesion?.token != null || sesion?.tokenCifrado != null
             return if (haySesion) base else base.copy(conectado = false)
         }
 

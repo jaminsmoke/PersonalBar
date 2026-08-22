@@ -531,4 +531,23 @@ class RoomBarRepositoryTest {
         assertEquals(1, db.barDao().getRondas().size) // solo dup-1 (una vez)
         assertEquals(1, db.barDao().getTickets().count { it.rondaId == "dup-1" })
     }
+
+    // ═══ Sesión v21: tokenCifrado cuenta como sesión ═══
+
+    @Test
+    fun sesion_con_tokenCifrado_es_reconocida_al_cargar() = runBlocking {
+        // Sesión v21 persistida: token en claro null, tokenCifrado presente
+        db.barDao().upsertSesionNegocio(
+            SesionNegocio(id = "local", token = null, tokenCifrado = "cifrado", email = "negocio@Test")
+        )
+        val repo = nuevoRepo()
+        // identityConfigConSesion: tokenCifrado cuenta como «hay sesión»
+        assertTrue(repo.identityConfig.first().conectado)
+    }
+
+    @Test
+    fun sin_sesion_conectado_false_al_cargar() = runBlocking {
+        val repo = repoVacio()
+        assertFalse(repo.identityConfig.first().conectado)
+    }
 }

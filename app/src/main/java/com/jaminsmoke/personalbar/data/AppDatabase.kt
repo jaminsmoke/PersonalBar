@@ -31,7 +31,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * `cfc_estado` (cursor persistido del pull del inbox CFC: reanuda donde se
  * quedó tras reiniciar, sin re-traer pedidos ya procesados); v20 añade
  * `mesas.camareroId` (asignación directa de camarero responsable, precede a
- * la zona en el reparto de pedidos CFC).
+ * la zona en el reparto de pedidos CFC); v21 añade
+ * `sesion_negocio.tokenCifrado` (bearer cifrado AES-GCM con clave Android
+ * Keystore; el token en claro nunca se persiste).
  * Schema exportado a `app/schemas/` para versionar migraciones futuras igual
  * que Commander.
  */
@@ -62,7 +64,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Zona::class,
         CfcEstado::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -401,6 +403,17 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_19_20 = object : Migration(19, 20) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE mesas ADD COLUMN camareroId TEXT")
+            }
+        }
+
+        /**
+         * v20→v21: `sesion_negocio.tokenCifrado` (bearer cifrado con Keystore).
+         * Nullable: las sesiones pre-v21 conservan `token` en claro hasta que
+         * [PersonalBarApp.restaurarSesion] hace el backfill (cifra y borra el claro).
+         */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sesion_negocio ADD COLUMN tokenCifrado TEXT")
             }
         }
     }

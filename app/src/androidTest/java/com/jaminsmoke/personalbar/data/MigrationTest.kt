@@ -522,6 +522,28 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v20_a_v21_anade_tokenCifrado() {
+        // 1. BD en v20 con una sesión (token en claro, sin tokenCifrado)
+        helper.createDatabase(TEST_DB, 20).use { db ->
+            db.execSQL(
+                "INSERT INTO sesion_negocio (id, token, email, nombreMostrar, establecimientoUuid) " +
+                    "VALUES ('local', 'jwt-en-claro', 'negocio@Test', 'Bar Test', 'uuid-1')"
+            )
+        }
+
+        // 2. Migrar a v21 y validar contra 21.json: tokenCifrado TEXT nullable
+        val db = helper.runMigrationsAndValidate(TEST_DB, 21, true, AppDatabase.MIGRATION_20_21)
+        db.use {
+            val cursor = it.query("SELECT token, tokenCifrado FROM sesion_negocio WHERE id = 'local'")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("El token pre-v21 se conserva hasta el backfill", "jwt-en-claro", c.getString(0))
+                assertEquals("tokenCifrado arranca null (backfill en restaurarSesion)", null, c.getString(1))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }
