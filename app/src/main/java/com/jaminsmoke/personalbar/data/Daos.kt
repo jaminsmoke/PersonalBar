@@ -296,6 +296,14 @@ interface BarDao {
     @Upsert
     suspend fun upsertCatalogoSyncEstado(estado: CatalogoSyncEstado)
 
+    // ── Cursor del inbox CFC (singleton) ───────────────────────────────────
+
+    @Query("SELECT * FROM cfc_estado LIMIT 1")
+    suspend fun getCfcEstado(): CfcEstado?
+
+    @Upsert
+    suspend fun upsertCfcEstado(estado: CfcEstado)
+
     // ── Grupos de modificadores (carta) ─────────────────────────────────────
 
     @Query("SELECT * FROM grupos_modificador ORDER BY nombre")

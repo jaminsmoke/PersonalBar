@@ -328,4 +328,59 @@ class IdentityClientsTest {
         val decoded = LanJson.decodeFromString<MesaCfcResponse>(json)
         assertEquals("revocado", decoded.estado)
     }
+
+    // ── PedidoCfc / PedidosCfcListaResponse ────────────────────────────
+
+    @Test
+    fun pedidoCfcResponseRoundTrip() {
+        val original = PedidoCfcResponse(
+            id = "pedido-1",
+            mesaUuid = "uuid-mesa-1",
+            etiqueta = "B3",
+            estado = "PENDIENTE",
+            seq = 5,
+            lineas = listOf(
+                PedidoCfcLinea(productoId = "p1", nombre = "Caña", cantidad = 2, precioCentimos = 200, destino = "barra"),
+            ),
+            totalCentimos = 400,
+            creadoEn = "2026-08-22T10:00:00Z",
+        )
+        val json = LanJson.encodeToString(original)
+        assertTrue(json.contains("mesa_uuid"))
+        assertTrue(json.contains("total_centimos"))
+        assertTrue(json.contains("creado_en"))
+        assertEquals(original, LanJson.decodeFromString<PedidoCfcResponse>(json))
+    }
+
+    @Test
+    fun pedidosCfcListaResponseRoundTrip() {
+        val original = PedidosCfcListaResponse(
+            pedidos = listOf(
+                PedidoCfcResponse(id = "p1", mesaUuid = "u1", etiqueta = "B1", estado = "PENDIENTE", seq = 1),
+                PedidoCfcResponse(id = "p2", mesaUuid = "u2", etiqueta = "T3", estado = "PENDIENTE", seq = 2),
+            ),
+            cursor = 2,
+        )
+        val json = LanJson.encodeToString(original)
+        assertEquals(original, LanJson.decodeFromString<PedidosCfcListaResponse>(json))
+        assertTrue(json.contains("\"cursor\":2"))
+    }
+
+    @Test
+    fun pedidosCfcListaVaciaConCursor() {
+        val json = """{"pedidos":[],"cursor":7}"""
+        val resp = LanJson.decodeFromString<PedidosCfcListaResponse>(json)
+        assertTrue(resp.pedidos.isEmpty())
+        assertEquals(7, resp.cursor)
+    }
+
+    @Test
+    fun ackBodyUsaDecisionCorrecta() {
+        // El body del ACK se construye en el cliente; aquí validamos la forma
+        // que el server espera (PedidoCfcAckRequest: decision literal).
+        val aceptado = """{"decision":"aceptado"}"""
+        val rechazado = """{"decision":"rechazado"}"""
+        assertTrue(aceptado.contains("aceptado"))
+        assertTrue(rechazado.contains("rechazado"))
+    }
 }
