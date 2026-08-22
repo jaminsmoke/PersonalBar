@@ -57,6 +57,19 @@
     <string name="jornada_cfc_solo_horario">CFC abierto · solo horario</string>
     <string name="jornada_cfc_toggle_descripcion">Abrir o cerrar la admisión de pedidos CFC</string>
 
+    <!-- QR Mesas (CFC) -->
+    <string name="gestion_qr_mesas">QR Mesas</string>
+    <string name="qr_mesas_sin_identity">Conéctate a Identity para gestionar los QRs de las mesas</string>
+    <string name="qr_mesas_vacio">Sin mesas sincronizadas. Modifica el mapa para sincronizar.</string>
+    <string name="qr_mesas_estado_activo">Activo</string>
+    <string name="qr_mesas_estado_revocado">Revocado</string>
+    <string name="qr_mesas_rotar">Rotar</string>
+    <string name="qr_mesas_rotar_titulo">Rotar QR de mesa</string>
+    <string name="qr_mesas_rotar_texto">El QR actual de "%1$s" dejará de funcionar. Se generará uno nuevo.</string>
+    <string name="qr_mesas_rotar_confirmar">Rotar</string>
+    <string name="qr_mesas_qr_desc">QR de la mesa %1$s</string>
+    <string name="cancelar">Cancelar</string>
+
     <!-- Parada del nodo (confirmación) -->
     <string name="local_parar_titulo">¿Parar el nodo de sala?</string>
     <string name="local_parar_mensaje">Los Commanders de la sala se quedarán sin conexión hasta que vuelvas a arrancarlo.</string>

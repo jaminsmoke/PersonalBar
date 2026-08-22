@@ -196,6 +196,22 @@ data class JornadaCfcResponse(
     @SerialName("bar_en_linea") val barEnLinea: Boolean = true,
 )
 
+/** Una mesa del conjunto que Bar envía a Identity (UUID estable + etiqueta UX). */
+@Serializable
+data class MesaCfcItem(
+    @SerialName("mesa_uuid") val mesaUuid: String,
+    val etiqueta: String,
+)
+
+/** Respuesta de los endpoints de mesas CFC (PUT GET rotar). */
+@Serializable
+data class MesaCfcResponse(
+    @SerialName("mesa_uuid") val mesaUuid: String = "",
+    val etiqueta: String = "",
+    val estado: String = "",
+    @SerialName("url_publica") val urlPublica: String? = null,
+)
+
 @Serializable
 data class IdentityImagenGaleria(
     val id: String,
@@ -1158,6 +1174,60 @@ object IdentityNegocioClient {
         val (code, text) = IdentityHttp.request(baseUrl, "PUT", "/v1/establecimientos/$id/cfc/heartbeat", token = negocioToken)
         if (code in 200..299) runCatching { LanJson.decodeFromString<JornadaCfcResponse>(text) }.getOrNull() else null
     }
+
+    // ── Mesas CFC (conjunto público por mesa) ────────────────────────────
+
+    /**
+     * `PUT /v1/establecimientos/{id}/mesas-cfc` → envía el conjunto completo
+     * de mesas públicas. Identity emite tokens nuevos, actualiza etiquetas y
+     * revoca las ausentes. Devuelve la lista resultante con `url_publica`.
+     */
+    suspend fun sincronizarMesasCfc(mesas: List<MesaCfcItem>): List<MesaCfcResponse> =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext emptyList()
+            val body = LanJson.encodeToString(mapOf("mesas" to mesas))
+            val (code, text) = IdentityHttp.request(
+                baseUrl, "PUT", "/v1/establecimientos/$id/mesas-cfc",
+                body = body, token = negocioToken,
+            )
+            if (code in 200..299) {
+                runCatching { LanJson.decodeFromString<List<MesaCfcResponse>>(text) }
+                    .getOrDefault(emptyList())
+            } else emptyList()
+        }
+
+    /**
+     * `GET /v1/establecimientos/{id}/mesas-cfc` → lista de mesas CFC activas
+     * con `url_publica`. Devuelve vacío si no hay sesión o la petición falla.
+     */
+    suspend fun listarMesasCfc(): List<MesaCfcResponse> = withContext(Dispatchers.IO) {
+        val id = establecimientoUuid ?: return@withContext emptyList()
+        val (code, text) = IdentityHttp.request(
+            baseUrl, "GET", "/v1/establecimientos/$id/mesas-cfc", token = negocioToken,
+        )
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<List<MesaCfcResponse>>(text) }
+                .getOrDefault(emptyList())
+        } else emptyList()
+    }
+
+    /**
+     * `POST /v1/establecimientos/{id}/mesas-cfc/{mesaUuid}/rotar` → rota el
+     * token de una mesa (el QR impreso viejo deja de valer con 410). Devuelve
+     * la nueva entrada con `url_publica` o null si falla / no existe.
+     */
+    suspend fun rotarMesaCfc(mesaUuid: String): MesaCfcResponse? =
+        withContext(Dispatchers.IO) {
+            val id = establecimientoUuid ?: return@withContext null
+            val (code, text) = IdentityHttp.request(
+                baseUrl, "POST",
+                "/v1/establecimientos/$id/mesas-cfc/$mesaUuid/rotar",
+                token = negocioToken,
+            )
+            if (code in 200..299) {
+                runCatching { LanJson.decodeFromString<MesaCfcResponse>(text) }.getOrNull()
+            } else null
+        }
 
     // ── Libro de oficio (productor: estadísticas de servicio) ────────────────
 

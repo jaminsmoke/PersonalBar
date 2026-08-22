@@ -630,7 +630,27 @@ class PersonalBarApp : Application() {
             // Espejo de invitaciones: el estado (incluida `expirada`) lo deriva Identity.
             val invitaciones = IdentityNegocioClient.listarInvitaciones().map { it.toInvitacion() }
             repository.sincronizarInvitaciones(invitaciones)
+            // Sync mesas CFC: re-enviar el conjunto actual (best-effort, tras restaurar layout)
+            sincronizarMesasCfcBestEffort()
         }
+    }
+
+    /**
+     * Sincroniza el conjunto de mesas públicas con Identity. Best-effort: si no
+     * hay sesión o falla, se ignora silenciosamente.
+     */
+    private suspend fun sincronizarMesasCfcBestEffort() {
+        if (!IdentityNegocioClient.conectado) return
+        val salasMap = repository.salas.value.associateBy { it.id }
+        val mesasActuales = repository.mesas.value
+        val items = mesasActuales.map { mesa ->
+            val salaNombre = salasMap[mesa.salaId]?.nombre ?: ""
+            com.jaminsmoke.personalbar.lan.MesaCfcItem(
+                mesaUuid = mesa.mesaUuid,
+                etiqueta = mesa.nombreVisible(salaNombre),
+            )
+        }
+        IdentityNegocioClient.sincronizarMesasCfc(items)
     }
 
     override fun onTerminate() {

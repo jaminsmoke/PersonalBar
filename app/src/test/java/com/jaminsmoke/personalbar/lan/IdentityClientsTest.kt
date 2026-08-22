@@ -274,4 +274,58 @@ class IdentityClientsTest {
         assertEquals(original, LanJson.decodeFromString<JornadaCfcResponse>(json))
         assertTrue(json.contains("bar_en_linea"))
     }
+
+    // ── MesaCfcItem / MesaCfcResponse ────────────────────────────────
+
+    @Test
+    fun mesaCfcItemSerializaCamposEsperados() {
+        val item = MesaCfcItem(mesaUuid = "abc-123", etiqueta = "T3")
+        val json = LanJson.encodeToString(item)
+        assertTrue(json.contains("mesa_uuid"))
+        assertTrue(json.contains("abc-123"))
+        assertTrue(json.contains("T3"))
+    }
+
+    @Test
+    fun mesaCfcItemRoundTrip() {
+        val original = MesaCfcItem(mesaUuid = "uuid-42", etiqueta = "Barra 1")
+        val json = LanJson.encodeToString(original)
+        assertEquals(original, LanJson.decodeFromString<MesaCfcItem>(json))
+    }
+
+    @Test
+    fun mesaCfcResponseRoundTrip() {
+        val original = MesaCfcResponse(
+            mesaUuid = "uuid-42",
+            etiqueta = "T3",
+            estado = "activo",
+            urlPublica = "https://cfc.example.com/m/abc123",
+        )
+        val json = LanJson.encodeToString(original)
+        assertEquals(original, LanJson.decodeFromString<MesaCfcResponse>(json))
+        assertTrue(json.contains("url_publica"))
+    }
+
+    @Test
+    fun mesaCfcResponseSinUrl() {
+        val json = """{"mesa_uuid":"u1","etiqueta":"B2","estado":"activo"}"""
+        val resp = LanJson.decodeFromString<MesaCfcResponse>(json)
+        assertEquals("u1", resp.mesaUuid)
+        assertEquals("activo", resp.estado)
+        assertNull(resp.urlPublica)
+    }
+
+    @Test
+    fun mesaCfcResponseRevocado() {
+        val original = MesaCfcResponse(
+            mesaUuid = "uuid-99",
+            etiqueta = "T1",
+            estado = "revocado",
+            urlPublica = null,
+        )
+        val json = LanJson.encodeToString(original)
+        assertTrue(json.contains("revocado"))
+        val decoded = LanJson.decodeFromString<MesaCfcResponse>(json)
+        assertEquals("revocado", decoded.estado)
+    }
 }

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +46,7 @@ import com.jaminsmoke.personalbar.ui.EnlacesNegocioScreen
 import com.jaminsmoke.personalbar.ui.LocalScreen
 import com.jaminsmoke.personalbar.ui.PerfilCuentaScreen
 
+
 /**
  * Acceso del hub de Gestión: icono + nombre de contexto debajo.
  * Extensible: la carta del bar y otras pantallas de gestión serán nuevas entradas.
@@ -56,6 +58,7 @@ enum class GestionAcceso(
     CAMAREROS(R.string.gestion_camareros, Icons.Default.People),
     CARTA(R.string.gestion_carta, Icons.Default.RestaurantMenu),
     ENLACES(R.string.gestion_enlaces, Icons.Default.QrCode),
+    QR_MESAS(R.string.gestion_qr_mesas, Icons.Outlined.QrCode2),
     LOCAL(R.string.gestion_local, Icons.Default.Storefront),
     PERFIL(R.string.gestion_perfil, Icons.Default.ManageAccounts),
 }
@@ -112,6 +115,12 @@ fun GestionScreen(
             onVolver = { seleccion = null },
         ) {
             EnlacesNegocioScreen()
+        }
+        GestionAcceso.QR_MESAS -> GestionSubPantalla(
+            titulo = stringResource(R.string.gestion_qr_mesas),
+            onVolver = { seleccion = null },
+        ) {
+            QrMesasScreen()
         }
         GestionAcceso.LOCAL -> GestionSubPantalla(
             titulo = stringResource(R.string.gestion_local),

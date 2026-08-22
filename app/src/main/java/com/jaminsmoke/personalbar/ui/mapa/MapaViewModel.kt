@@ -15,6 +15,8 @@ import com.jaminsmoke.personalbar.data.Ticket
 import com.jaminsmoke.personalbar.data.Zona
 import com.jaminsmoke.personalbar.data.ZonaColor
 import com.jaminsmoke.personalbar.data.derivarEstadoMesas
+import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
+import com.jaminsmoke.personalbar.lan.MesaCfcItem
 import com.jaminsmoke.personalbar.lan.LayoutBackup
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -113,9 +115,30 @@ class MapaViewModel : ViewModel() {
     fun asignarCamareroZona(zonaId: String, camareroId: String?): Boolean =
         repository.asignarCamareroZona(zonaId, camareroId).also { if (it) respaldar() }
 
-    /** Respalda el layout en Identity (best-effort, si conectado). */
+    /** Respalda el layout en Identity y sincroniza mesas CFC (best-effort). */
     private fun respaldar() {
-        viewModelScope.launch { LayoutBackup.respaldar(repository) }
+        viewModelScope.launch {
+            LayoutBackup.respaldar(repository)
+            sincronizarMesasCfcBestEffort()
+        }
+    }
+
+    /**
+     * Sincroniza el conjunto de mesas públicas con Identity tras cada mutación
+     * del layout. Best-effort: si no hay sesión o falla, se ignora silenciosamente.
+     */
+    private suspend fun sincronizarMesasCfcBestEffort() {
+        if (!IdentityNegocioClient.conectado) return
+        val salasMap = repository.salas.value.associateBy { it.id }
+        val mesasActuales = repository.mesas.value
+        val items = mesasActuales.map { mesa ->
+            val salaNombre = salasMap[mesa.salaId]?.nombre ?: ""
+            MesaCfcItem(
+                mesaUuid = mesa.mesaUuid,
+                etiqueta = mesa.nombreVisible(salaNombre),
+            )
+        }
+        IdentityNegocioClient.sincronizarMesasCfc(items)
     }
 
     // ── Reservas / bloqueos ──
