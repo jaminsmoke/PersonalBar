@@ -342,6 +342,19 @@ data class QrKey(
 )
 
 /**
+ * Secreto HMAC del nodo LAN (auth de sesión v0.2, migración Room v22).
+ * Singleton: se genera una vez con `SecureRandom` y se persiste **cifrado**
+ * con `TokenCifrador` (AndroidKeyStore) para que los tokens firmados
+ * sobrevivan reinicios del proceso sin exponer el secreto en claro.
+ */
+@Entity(tableName = "nodo_secreto")
+data class NodoSecreto(
+    @PrimaryKey val id: String = "local",
+    /** Secreto HMAC-SHA256 (32 bytes) cifrado AES-GCM y en Base64. */
+    val secretoCifrado: String = "",
+)
+
+/**
  * Alta de camarero hecha offline (verificada localmente) pendiente de subir a
  * Identity (membresia) cuando vuelva la conexión. [payload] es el QR `phid1`
  * completo para reenviar a `POST /miembros/qr`.

@@ -56,6 +56,16 @@ class LanContractTest {
     fun sesionIniciarFixtureDecodifica() {
         val resp = LanJson.decodeFromString<SesionIniciarResponse>(fixture("sesion-iniciar.json"))
         assertEquals(true, resp.sesionActiva)
+        // v0.2: la respuesta de iniciar lleva el token de sesión (campo aditivo).
+        assertEquals("phbar1.bHVjaWEtMSMxNzUwMDAwMDAwMDAw.firmaEjemplo", resp.token)
+    }
+
+    @Test
+    fun sesionIniciarSinTokenSigueDecodificando() {
+        // Nodo 0.1 (sin auth): el campo token es opcional → Commander no se rompe.
+        val resp = LanJson.decodeFromString<SesionIniciarResponse>("""{"sesionActiva":true}""")
+        assertEquals(true, resp.sesionActiva)
+        assertEquals(null, resp.token)
     }
 
     @Test
