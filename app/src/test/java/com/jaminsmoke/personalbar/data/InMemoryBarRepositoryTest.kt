@@ -735,4 +735,44 @@ class InMemoryBarRepositoryTest {
         assertEquals("", mod.grupoId)
         assertEquals("", mod.opcionId)
     }
+
+    // ═══ Snapshot / rollback del agregado (atomicidad) ═══
+
+    @Test
+    fun restaurarAgregadoRondaPermiteReintentarLaRonda() {
+        val repo = repo()
+        val ronda = Ronda(
+            "r-rollback", "B1", 1,
+            lineas = listOf(Linea("cana", "Caña", 1)),
+        )
+        val antes = repo.snapshotAgregadoRonda()
+
+        assertTrue(repo.crearRonda(ronda))
+        assertEquals(1, repo.bebidaQueue.value.size)
+
+        // Rollback simulado (commit Room fallido): el estado vuelve al snapshot
+        repo.restaurarAgregadoRonda(antes)
+        assertEquals(0, repo.bebidaQueue.value.size)
+        assertFalse(repo.rondas.value.any { it.id == "r-rollback" })
+
+        // El id salió de `rondasRecibidas`: un reintento vuelve a crear la ronda
+        assertTrue(repo.crearRonda(ronda))
+        assertEquals(1, repo.bebidaQueue.value.size)
+    }
+
+    @Test
+    fun restaurarAgregadoRondaConservaRondasAnteriores() {
+        val repo = repo()
+        val r1 = Ronda("r1", "B1", 1, lineas = listOf(Linea("cana", "Caña", 1)))
+        assertTrue(repo.crearRonda(r1))
+        val antes = repo.snapshotAgregadoRonda()
+
+        val r2 = Ronda("r2", "B1", 2, lineas = listOf(Linea("cana", "Caña", 2)))
+        assertTrue(repo.crearRonda(r2))
+        repo.restaurarAgregadoRonda(antes)
+
+        // r1 sigue (existía en el snapshot); r2 se revirtió
+        assertTrue(repo.rondas.value.any { it.id == "r1" })
+        assertFalse(repo.rondas.value.any { it.id == "r2" })
+    }
 }

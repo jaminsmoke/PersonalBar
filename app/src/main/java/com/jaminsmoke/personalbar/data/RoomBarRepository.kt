@@ -158,10 +158,23 @@ class RoomBarRepository(
 
     // ── Rondas / tickets ─────────────────────────────────────────────────────
 
+    /**
+     * Crea la comanda **síncronamente**: el commit Room de ronda+tickets (una única
+     * transacción) ocurre antes de devolver true. Si el commit falla, el estado en
+     * memoria se revierte (rollback) y se devuelve false → el LAN responde no-2xx.
+     */
     override fun crearRonda(ronda: Ronda): Boolean {
+        val snapshot = inner.snapshotAgregadoRonda()
         val ok = inner.crearRonda(ronda)
-        if (ok) persist { dao.replaceRondas(inner.rondas.value); dao.replaceTickets(ticketsActuales()) }
-        return ok
+        if (!ok) return false
+        return try {
+            runBlocking { dao.reemplazarAgregadoRonda(inner.rondas.value, ticketsActuales()) }
+            true
+        } catch (t: Throwable) {
+            Log.e(TAG, "Commit atómico de ronda fallido, revirtiendo", t)
+            inner.restaurarAgregadoRonda(snapshot)
+            false
+        }
     }
 
     override fun crearProducto(nombre: String, categoria: String, precio: Double, subfamilia: String?, permiteNota: Boolean, descripcion: String?): Boolean {
@@ -260,21 +273,39 @@ class RoomBarRepository(
     }
 
 
+    /** Igual que [crearRonda]: el cambio de estado queda durable antes de devolver true. */
     override fun marcarPreparado(ticketId: String, preparadoPor: String): Boolean {
+        val snapshot = inner.snapshotAgregadoRonda()
         val ok = inner.marcarPreparado(ticketId, preparadoPor)
-        if (ok) persist { dao.replaceTickets(ticketsActuales()) }
-        return ok
+        if (!ok) return false
+        return try {
+            runBlocking { dao.replaceTickets(ticketsActuales()) }
+            true
+        } catch (t: Throwable) {
+            Log.e(TAG, "Commit atómico de preparado fallido, revirtiendo", t)
+            inner.restaurarAgregadoRonda(snapshot)
+            false
+        }
     }
 
+    /**
+     * Igual que [crearRonda]: tickets + `servicios_pendientes` (libro de oficio)
+     * se persisten en una única transacción antes de devolver true.
+     */
     override fun marcarRecogido(ticketId: String): Boolean {
+        val snapshot = inner.snapshotAgregadoRonda()
         val ok = inner.marcarRecogido(ticketId)
-        if (ok) persist {
-            dao.replaceTickets(ticketsActuales())
-            // Recoger el último ticket de una ronda encola «ronda servida» (libro de
-            // oficio): persistirlo para que sobreviva al reinicio.
-            dao.replaceServiciosPendientes(inner.serviciosPendientes.value)
+        if (!ok) return false
+        return try {
+            runBlocking {
+                dao.reemplazarTicketsYServicios(ticketsActuales(), inner.serviciosPendientes.value)
+            }
+            true
+        } catch (t: Throwable) {
+            Log.e(TAG, "Commit atómico de recogido fallido, revirtiendo", t)
+            inner.restaurarAgregadoRonda(snapshot)
+            false
         }
-        return ok
     }
 
     // ── Salas / mesas ────────────────────────────────────────────────────────

@@ -127,6 +127,32 @@ interface BarDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTickets(tickets: List<Ticket>)
 
+    /**
+     * Persiste el agregado ronda+tickets en **una única transacción**: nunca
+     * quedan desalineados en disco (un fallo revierte ambas tablas). Usado por
+     * `crearRonda`, que responde 2xx al LAN solo tras el commit.
+     */
+    @Transaction
+    suspend fun reemplazarAgregadoRonda(rondas: List<Ronda>, tickets: List<Ticket>) {
+        deleteRondas()
+        insertRondas(rondas)
+        deleteTickets()
+        insertTickets(tickets)
+    }
+
+    /**
+     * Persiste tickets + `servicios_pendientes` en una única transacción
+     * (usado por `marcarRecogido`: nunca un evento del libro de oficio sin su
+     * ticket recogido).
+     */
+    @Transaction
+    suspend fun reemplazarTicketsYServicios(tickets: List<Ticket>, servicios: List<ServicioPendiente>) {
+        deleteTickets()
+        insertTickets(tickets)
+        deleteServiciosPendientes()
+        insertServiciosPendientes(servicios)
+    }
+
     // ── Reservas ─────────────────────────────────────────────────────────────
 
     @Query("SELECT * FROM reservas ORDER BY creadaEn")

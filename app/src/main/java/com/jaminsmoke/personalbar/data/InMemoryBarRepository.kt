@@ -174,6 +174,28 @@ class InMemoryBarRepository(
         return true
     }
 
+    /** Snapshot del agregado ronda+tickets (para rollback si el commit Room falla). */
+    fun snapshotAgregadoRonda(): SnapshotAgregadoRonda = SnapshotAgregadoRonda(
+        rondas = _rondas.value,
+        bebida = _bebidaQueue.value,
+        comida = _comidaQueue.value,
+        servidos = _servidos.value,
+    )
+
+    /**
+     * Restaura el agregado ronda+tickets a un snapshot previo (rollback). También
+     * quita de `rondasRecibidas` los ids que el snapshot no tenía, para que un
+     * reintento del cliente LAN/CFC vuelva a crear la ronda (y el disco se recupere).
+     */
+    fun restaurarAgregadoRonda(s: SnapshotAgregadoRonda) {
+        _rondas.value = s.rondas
+        _bebidaQueue.value = s.bebida
+        _comidaQueue.value = s.comida
+        _servidos.value = s.servidos
+        val idsSnapshot = s.rondas.mapTo(mutableSetOf()) { it.id }
+        rondasRecibidas.removeIf { it !in idsSnapshot }
+    }
+
     /**
      * Rellena los ids internos (`grupoId`/`opcionId`) de los modificadores de cada
      * línea resolviendo por nombre contra el catálogo actual. Best-effort: si un
@@ -1008,3 +1030,15 @@ class InMemoryBarRepository(
         _catalogoSyncDesde.value = revision
     }
 }
+
+/**
+ * Snapshot del agregado ronda+tickets para rollback: si el commit Room de una
+ * mutación crítica falla, [InMemoryBarRepository.restaurarAgregadoRonda] vuelve
+ * a este estado y la UI nunca muestra lo que el disco no tiene.
+ */
+data class SnapshotAgregadoRonda(
+    val rondas: List<Ronda>,
+    val bebida: List<Ticket>,
+    val comida: List<Ticket>,
+    val servidos: List<Ticket>,
+)
