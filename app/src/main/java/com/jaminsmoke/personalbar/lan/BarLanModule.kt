@@ -15,16 +15,26 @@ import com.jaminsmoke.personalbar.data.Ticket
 import com.jaminsmoke.personalbar.data.Zona
 import com.jaminsmoke.personalbar.data.convertirLayout
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCallPipeline
+import io.ktor.server.application.call
 import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
+import io.ktor.server.auth.Principal
+import io.ktor.server.auth.authenticate
+import io.ktor.server.auth.bearer
+import io.ktor.server.auth.principal
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
+import io.ktor.server.routing.intercept
 import io.ktor.server.routing.post
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
 import io.ktor.server.sse.sse
@@ -46,10 +56,16 @@ data class PreparadoRequest(
     @SerialName("preparado_por") val preparadoPor: String,
 )
 
-/** Respuesta de `POST /v1/sesion/iniciar`: jornada concedida (`sesionActiva=true`). */
+/** Respuesta de `POST /v1/sesion/iniciar`: jornada concedida + token de sesión LAN (v0.2). */
 @Serializable
 data class SesionIniciarResponse(
     @SerialName("sesionActiva") val sesionActiva: Boolean,
+    /**
+     * Credencial de sesión firmada (HMAC, `phbar1.*`). Las rutas privadas
+     * la exigen en `Authorization: Bearer`; SSE en `?token=`. Aditivo para
+     * Commander: un nodo 0.1 no lo emite y el cliente lo ignora.
+     */
+    val token: String? = null,
 )
 
 /** Cuerpo de `POST /v1/heartbeat`: latido del Commander con su id de Identity. */
@@ -126,10 +142,28 @@ data class JornadasResponse(
     val resumen: JornadasResumen,
 )
 
-/** Módulo Ktor del nodo de sala: /health, contrato /v1 y SSE /v1/eventos. */
-fun Application.barModule(repository: BarRepository) {
+/** Principal autenticado: el camarero derivado del token de sesión LAN. */
+data class CamareroSesion(val camareroId: String) : Principal
+
+/**
+ * Módulo Ktor del nodo de sala: /health, contrato /v1 y SSE /v1/eventos.
+ *
+ * Auth v0.2 ([secretoSesion] HMAC): `POST /v1/sesion/iniciar` emite un token
+ * firmado y todas las rutas privadas lo exigen en `Authorization: Bearer`;
+ * SSE lo exige en `?token=` (EventSource no envía headers). Si [secretoSesion]
+ * está vacío, la auth queda deshabilitada y toda ruta privada responde 401.
+ */
+fun Application.barModule(repository: BarRepository, secretoSesion: String = "") {
     install(ContentNegotiation) { json(LanJson) }
     install(SSE)
+    install(Authentication) {
+        bearer("sesion-lan") {
+            authenticate { credencial ->
+                val camareroId = NodoSesion.verificar(credencial.token, secretoSesion)
+                camareroId?.let { CamareroSesion(it) }
+            }
+        }
+    }
 
     routing {
         get("/health") {
@@ -163,151 +197,184 @@ fun Application.barModule(repository: BarRepository) {
             val phid = QrParser.parsear(qr)
             when {
                 phid == null -> call.respond(HttpStatusCode.BadRequest)
-                repository.iniciarSesion(phid.camareroId) ->
-                    call.respond(HttpStatusCode.OK, SesionIniciarResponse(sesionActiva = true))
+                repository.iniciarSesion(phid.camareroId) -> {
+                    val token = NodoSesion.emitir(phid.camareroId, secretoSesion)
+                    call.respond(
+                        HttpStatusCode.OK,
+                        SesionIniciarResponse(sesionActiva = true, token = token),
+                    )
+                }
                 else -> call.respond(HttpStatusCode.Forbidden)
             }
         }
 
         post("/v1/sesion/cortar") {
-            val qr = runCatching { call.receive<SesionRequest>().qr }
-                .getOrNull()?.trim().orEmpty()
-            val phid = QrParser.parsear(qr)
+            // v0.2: el camarero puede cortar con el token (Bearer) o con el QR (compat).
+            // Esta ruta es pública a propósito (Commander viejo corta con QR sin token):
+            // el Bearer se verifica manualmente en lugar de usar el plugin de auth.
+            val camareroAutenticado = call.request.headers[HttpHeaders.Authorization]
+                ?.removePrefix("Bearer ")
+                ?.trim()
+                ?.let { NodoSesion.verificar(it, secretoSesion) }
+            val phid = runCatching { call.receive<SesionRequest>().qr }
+                .getOrNull()?.trim()?.let { QrParser.parsear(it) }
+            val camareroId = camareroAutenticado ?: phid?.camareroId
             when {
-                phid == null -> call.respond(HttpStatusCode.BadRequest)
-                repository.cortarSesion(phid.camareroId) -> call.respond(HttpStatusCode.OK)
+                camareroId == null -> call.respond(HttpStatusCode.BadRequest)
+                repository.cortarSesion(camareroId) -> call.respond(HttpStatusCode.OK)
                 else -> call.respond(HttpStatusCode.NotFound)
             }
         }
 
-        post("/v1/heartbeat") {
-            val camareroId = runCatching { call.receive<HeartbeatRequest>().camareroId }
-                .getOrNull()?.trim().orEmpty()
-            when {
-                camareroId.isEmpty() -> call.respond(HttpStatusCode.BadRequest)
-                repository.registrarHeartbeat(camareroId) -> call.respond(HttpStatusCode.OK)
-                else -> call.respond(HttpStatusCode.Forbidden)
-            }
-        }
+        authenticate("sesion-lan") {
 
-        post("/v1/rondas") {
-            val ronda = call.receive<Ronda>()
-            if (!CandadoComandas.admitida(ronda, repository.camareros.value)) {
-                call.respond(HttpStatusCode.Forbidden)
-            } else {
-                val creada = repository.crearRonda(ronda)
-                val tickets = (repository.bebidaQueue.value + repository.comidaQueue.value)
-                    .filter { it.rondaId == ronda.id }
-                val status = if (creada) HttpStatusCode.Created else HttpStatusCode.OK
-                call.respond(status, tickets)
-            }
-        }
-
-        post("/v1/tickets/{id}/preparado") {
-            val id = call.parameters["id"]
-            if (id.isNullOrBlank()) {
-                call.respond(HttpStatusCode.BadRequest)
-            } else {
-                val preparadoPor = runCatching { call.receive<PreparadoRequest>().preparadoPor }
-                    .getOrNull()?.trim().orEmpty()
+            post("/v1/heartbeat") {
+                // v0.2: el camarero sale del token, nunca del body (no suplantable).
+                val camareroId = call.principal<CamareroSesion>()?.camareroId
+                    ?: return@post call.respond(HttpStatusCode.Unauthorized)
                 when {
-                    preparadoPor.isEmpty() -> call.respond(HttpStatusCode.BadRequest)
-                    repository.marcarPreparado(id, preparadoPor) -> call.respond(HttpStatusCode.OK)
+                    repository.registrarHeartbeat(camareroId) -> call.respond(HttpStatusCode.OK)
+                    else -> call.respond(HttpStatusCode.Forbidden)
+                }
+            }
+
+            post("/v1/rondas") {
+                val camareroId = call.principal<CamareroSesion>()?.camareroId
+                    ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val ronda = call.receive<Ronda>()
+                if (!CandadoComandas.admitida(ronda, repository.camareros.value, camareroId)) {
+                    call.respond(HttpStatusCode.Forbidden)
+                } else {
+                    val creada = repository.crearRonda(ronda)
+                    val tickets = (repository.bebidaQueue.value + repository.comidaQueue.value)
+                        .filter { it.rondaId == ronda.id }
+                    val status = if (creada) HttpStatusCode.Created else HttpStatusCode.OK
+                    call.respond(status, tickets)
+                }
+            }
+
+            post("/v1/tickets/{id}/preparado") {
+                val camareroId = call.principal<CamareroSesion>()?.camareroId
+                    ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                val id = call.parameters["id"]
+                if (id.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.BadRequest)
+                } else {
+                    val preparadoPor = runCatching { call.receive<PreparadoRequest>().preparadoPor }
+                        .getOrNull()?.trim().orEmpty()
+                    when {
+                        preparadoPor.isEmpty() -> call.respond(HttpStatusCode.BadRequest)
+                        // v0.2: solo el camarero autenticado puede marcar su propio trabajo.
+                        preparadoPor != repository.camareros.value
+                            .firstOrNull { it.id == camareroId }?.nombre
+                            -> call.respond(HttpStatusCode.Forbidden)
+                        repository.marcarPreparado(id, preparadoPor) -> call.respond(HttpStatusCode.OK)
+                        else -> call.respond(HttpStatusCode.NotFound)
+                    }
+                }
+            }
+
+            post("/v1/tickets/{id}/recogido") {
+                val id = call.parameters["id"]
+                when {
+                    id.isNullOrBlank() -> call.respond(HttpStatusCode.BadRequest)
+                    repository.marcarRecogido(id) -> call.respond(HttpStatusCode.OK)
                     else -> call.respond(HttpStatusCode.NotFound)
                 }
             }
-        }
 
-        post("/v1/tickets/{id}/recogido") {
-            val id = call.parameters["id"]
-            when {
-                id.isNullOrBlank() -> call.respond(HttpStatusCode.BadRequest)
-                repository.marcarRecogido(id) -> call.respond(HttpStatusCode.OK)
-                else -> call.respond(HttpStatusCode.NotFound)
+            get("/v1/estado") {
+                // El layout canónico vive en el canvas horizontal de Bar; al exportar se
+                // convierten las posiciones al canvas 2000×2600 de Commander (escala
+                // uniforme + centrado). El repositorio conserva las posiciones canónicas.
+                val mesas = repository.mesas.value
+                val convertidas = convertirLayout(mesas)
+                val zonas = repository.zonas.value
+                val zonaConvertidas = convertirRectangulos(zonas)
+                call.respond(
+                    EstadoResponse(
+                        version = BarLanConfig.VERSION,
+                        establecimiento = repository.establecimiento.value,
+                        salas = repository.salas.value,
+                        bebida = repository.bebidaQueue.value,
+                        comida = repository.comidaQueue.value,
+                        servidos = repository.servidos.value,
+                        mesas = mesas.map { m ->
+                            convertidas[m.id]?.let { (x, y) -> m.copy(posX = x, posY = y) } ?: m
+                        },
+                        zonas = zonas.map { z ->
+                            zonaConvertidas[z.id] ?: z
+                        },
+                    )
+                )
+            }
+
+            get("/v1/carta") {
+                val asignaciones = repository.productoGrupo.value
+                val grupos = repository.gruposModificador.value
+                val opciones = repository.opcionesModificador.value
+                call.respond(
+                    CartaResponse(
+                        productos = repository.catalogo.value.map { p ->
+                            ProductoCarta(
+                                id = p.id,
+                                nombre = p.nombre,
+                                categoria = p.categoria,
+                                precio = p.precio,
+                                disponible = p.disponible,
+                                subfamilia = p.subfamilia,
+                                permiteNota = p.permiteNota,
+                                grupos = asignaciones.filter { it.productoId == p.id }.map { it.grupoId },
+                            )
+                        },
+                        gruposModificador = grupos.map { g ->
+                            GrupoModificadorCarta(
+                                id = g.id,
+                                nombre = g.nombre,
+                                multiple = g.multiple,
+                                obligatorio = g.obligatorio,
+                                opciones = opciones.filter { it.grupoId == g.id }.map { o ->
+                                    OpcionModificadorCarta(
+                                        id = o.id,
+                                        nombre = o.nombre,
+                                        deltaPrecio = o.deltaPrecio,
+                                        alias = o.alias,
+                                    )
+                                },
+                            )
+                        },
+                    )
+                )
+            }
+
+            get("/v1/sesion/jornadas") {
+                // Historial de jornadas + resumen por camarero (horas y mesas distintas
+                // servidas) del periodo. `desde`/`hasta` son epoch ms opcionales.
+                val desde = call.request.queryParameters["desde"]?.toLongOrNull()
+                val hasta = call.request.queryParameters["hasta"]?.toLongOrNull()
+                call.respond(JornadasResponse(resumen = repository.resumenJornadas(desde, hasta)))
             }
         }
 
-        get("/v1/estado") {
-            // El layout canónico vive en el canvas horizontal de Bar; al exportar se
-            // convierten las posiciones al canvas 2000×2600 de Commander (escala
-            // uniforme + centrado). El repositorio conserva las posiciones canónicas.
-            val mesas = repository.mesas.value
-            val convertidas = convertirLayout(mesas)
-            val zonas = repository.zonas.value
-            val zonaConvertidas = convertirRectangulos(zonas)
-            call.respond(
-                EstadoResponse(
-                    version = BarLanConfig.VERSION,
-                    establecimiento = repository.establecimiento.value,
-                    salas = repository.salas.value,
-                    bebida = repository.bebidaQueue.value,
-                    comida = repository.comidaQueue.value,
-                    servidos = repository.servidos.value,
-                    mesas = mesas.map { m ->
-                        convertidas[m.id]?.let { (x, y) -> m.copy(posX = x, posY = y) } ?: m
-                    },
-                    zonas = zonas.map { z ->
-                        zonaConvertidas[z.id] ?: z
-                    },
-                )            )
-        }
-
-        get("/v1/carta") {
-
-            val asignaciones = repository.productoGrupo.value
-            val grupos = repository.gruposModificador.value
-            val opciones = repository.opcionesModificador.value
-            call.respond(
-                CartaResponse(
-                    productos = repository.catalogo.value.map { p ->
-                        ProductoCarta(
-                            id = p.id,
-                            nombre = p.nombre,
-                            categoria = p.categoria,
-                            precio = p.precio,
-                            disponible = p.disponible,
-                            subfamilia = p.subfamilia,
-                            permiteNota = p.permiteNota,
-                            grupos = asignaciones.filter { it.productoId == p.id }.map { it.grupoId },
+        route("/v1/eventos") {
+            // EventSource no puede enviar headers → el token va en query param.
+            // Se valida ANTES del handler sse (que ya inicia la respuesta SSE).
+            intercept(ApplicationCallPipeline.Call) {
+                val token = call.request.queryParameters["token"].orEmpty()
+                if (NodoSesion.verificar(token, secretoSesion) == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    finish()
+                }
+            }
+            sse {
+                repository.eventos.collect { evento ->
+                    send(
+                        ServerSentEvent(
+                            data = LanJson.encodeToString(evento),
+                            event = evento.tipo,
                         )
-                    },
-                    gruposModificador = grupos.map { g ->
-                        GrupoModificadorCarta(
-                            id = g.id,
-                            nombre = g.nombre,
-                            multiple = g.multiple,
-                            obligatorio = g.obligatorio,
-                            opciones = opciones.filter { it.grupoId == g.id }.map { o ->
-                                OpcionModificadorCarta(
-                                    id = o.id,
-                                    nombre = o.nombre,
-                                    deltaPrecio = o.deltaPrecio,
-                                    alias = o.alias,
-                                )
-                            },
-                        )
-                    },
-                )
-            )
-        }
-
-
-        get("/v1/sesion/jornadas") {
-            // Historial de jornadas + resumen por camarero (horas y mesas distintas
-            // servidas) del periodo. `desde`/`hasta` son epoch ms opcionales.
-            val desde = call.request.queryParameters["desde"]?.toLongOrNull()
-            val hasta = call.request.queryParameters["hasta"]?.toLongOrNull()
-            call.respond(JornadasResponse(resumen = repository.resumenJornadas(desde, hasta)))
-        }
-
-        sse("/v1/eventos") {
-            repository.eventos.collect { evento ->
-                send(
-                    ServerSentEvent(
-                        data = LanJson.encodeToString(evento),
-                        event = evento.tipo,
                     )
-                )
+                }
             }
         }
     }

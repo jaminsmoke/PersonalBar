@@ -544,6 +544,22 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun migracion_v21_a_v22_crea_nodo_secreto() {
+        // 1. BD en v21 (sin nodo_secreto)
+        helper.createDatabase(TEST_DB, 21).use { }
+
+        // 2. Migrar a v22 y validar contra 22.json: tabla nueva nodo_secreto vacía
+        val db = helper.runMigrationsAndValidate(TEST_DB, 22, true, AppDatabase.MIGRATION_21_22)
+        db.use {
+            val cursor = it.query("SELECT COUNT(*) FROM nodo_secreto")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals("nodo_secreto arranca vacía (el secreto se genera al arrancar)", 0, c.getInt(0))
+            }
+        }
+    }
+
     companion object {
         private const val TEST_DB = "migration-test"
     }

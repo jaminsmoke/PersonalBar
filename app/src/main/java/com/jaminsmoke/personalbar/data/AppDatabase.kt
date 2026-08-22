@@ -63,8 +63,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ProductoGrupo::class,
         Zona::class,
         CfcEstado::class,
+        NodoSecreto::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -414,6 +415,21 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_20_21 = object : Migration(20, 21) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE sesion_negocio ADD COLUMN tokenCifrado TEXT")
+            }
+        }
+
+        /**
+         * v21→v22: `nodo_secreto` — secreto HMAC del nodo LAN (auth de sesión v0.2),
+         * persistido cifrado con AndroidKeyStore para que los tokens firmados
+         * sobrevivan reinicios. Tabla nueva, aditiva.
+         */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `nodo_secreto` " +
+                        "(`id` TEXT NOT NULL, `secretoCifrado` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`id`))"
+                )
             }
         }
     }

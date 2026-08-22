@@ -16,6 +16,8 @@ import kotlinx.coroutines.SupervisorJob
 class BarLanServer(
     private val repository: BarRepository,
     private val port: Int = BarLanConfig.PORT,
+    /** Secreto HMAC de sesión LAN (v0.2). Vacío = auth deshabilitada (todo 401). */
+    private val secretoSesion: String = "",
 ) {
 
     private var server: EmbeddedServer<*, *>? = null
@@ -39,7 +41,7 @@ class BarLanServer(
                 }
             )
             val s = engineScope.embeddedServer(CIO, port = port, host = "0.0.0.0") {
-                barModule(repository)
+                barModule(repository, secretoSesion)
             }
             s.start(wait = false)
             server = s

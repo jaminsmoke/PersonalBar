@@ -18,6 +18,7 @@ import com.jaminsmoke.personalbar.data.SesionNegocio
 import com.jaminsmoke.personalbar.data.apiValor
 import com.jaminsmoke.personalbar.data.sesionEstadoDe
 import com.jaminsmoke.personalbar.lan.BarLanServer
+import com.jaminsmoke.personalbar.lan.NodoSesion
 import com.jaminsmoke.personalbar.lan.Conectividad
 import com.jaminsmoke.personalbar.lan.IdentityCuentaNegocio
 import com.jaminsmoke.personalbar.lan.IdentityNegocioClient
@@ -47,7 +48,13 @@ import java.util.UUID
  */
 class PersonalBarApp : Application() {
 
-    val lanServer: BarLanServer by lazy { BarLanServer(repository) }
+    val lanServer: BarLanServer by lazy {
+        // Secreto HMAC de sesión LAN (v0.2): se genera una vez, se persiste
+        // cifrado con Keystore y sobrevive reinicios. Si el Keystore falla,
+        // el nodo arranca sin auth (todas las rutas privadas → 401).
+        val secreto = runBlocking { NodoSesion.obtenerSecreto(db.barDao()) }.orEmpty()
+        BarLanServer(repository, secretoSesion = secreto)
+    }
 
     /** Detector de conectividad (para degradar acciones online sin red). */
     val conectividad: Conectividad by lazy { Conectividad(applicationContext) }
@@ -66,7 +73,7 @@ class PersonalBarApp : Application() {
             AppDatabase.MIGRATION_13_14, AppDatabase.MIGRATION_14_15, AppDatabase.MIGRATION_15_16,
             AppDatabase.MIGRATION_16_17, AppDatabase.MIGRATION_17_18,
             AppDatabase.MIGRATION_18_19, AppDatabase.MIGRATION_19_20,
-            AppDatabase.MIGRATION_20_21,
+            AppDatabase.MIGRATION_20_21, AppDatabase.MIGRATION_21_22,
         ).build()
     }
 

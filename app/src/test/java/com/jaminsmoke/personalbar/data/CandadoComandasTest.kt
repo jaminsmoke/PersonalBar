@@ -21,57 +21,64 @@ class CandadoComandasTest {
         lineas = listOf(Linea("cana", "Caña", 1)),
     )
 
+    private val lucia = camarero("c-1", "Lucía García")
+
     @Test
-    fun rondaSinCamareroAdmitida() {
-        assertTrue(CandadoComandas.admitida(ronda(null), emptyList()))
+    fun sinCamareroAutenticadoSiempreRechazado() {
+        // v0.2: la ruta ya es privada, pero el candado nunca debe pasar sin sesión.
+        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), listOf(lucia.copy(sesionActiva = true)), ""))
+        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), listOf(lucia.copy(sesionActiva = true)), "desconocido"))
     }
 
     @Test
-    fun camareroFueraDeListaAdmitido() {
-        // La admisión de membresía la gestiona POST /v1/sesion; aquí no se bloquea.
-        assertTrue(CandadoComandas.admitida(ronda("Lucía García"), listOf(camarero("c-1", "Ana"))))
+    fun rondaSinCamareroRechazada() {
+        // v0.2: nombre vacío ya no pasa (suplantación bloqueada).
+        assertFalse(CandadoComandas.admitida(ronda(null), listOf(lucia.copy(sesionActiva = true)), "c-1"))
+        assertFalse(CandadoComandas.admitida(ronda(""), listOf(lucia.copy(sesionActiva = true)), "c-1"))
+    }
+
+    @Test
+    fun rondaDeOtroCamareroRechazada() {
+        // Suplantación: el autenticado es Ana, la ronda es de Lucía → bloqueada.
+        val ana = camarero("c-2", "Ana", sesionActiva = true)
+        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), listOf(ana, lucia.copy(sesionActiva = true)), "c-2"))
+    }
+
+    @Test
+    fun camareroFueraDeListaRechazado() {
+        // v0.2: fuera de la lista blanca ya no pasa.
+        val camareros = listOf(camarero("c-1", "Ana", sesionActiva = true))
+        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), camareros, "c-1"))
     }
 
     @Test
     fun contratadoConSesionActivaAdmitido() {
-        val camareros = listOf(camarero("c-1", "Lucía García", sesionActiva = true))
-        assertTrue(CandadoComandas.admitida(ronda("Lucía García"), camareros))
+        val camareros = listOf(lucia.copy(sesionActiva = true))
+        assertTrue(CandadoComandas.admitida(ronda("Lucía García"), camareros, "c-1"))
     }
 
     @Test
     fun contratadoSinSesionActivaRechazado() {
-        val camareros = listOf(camarero("c-1", "Lucía García", sesionActiva = false))
-        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), camareros))
+        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), listOf(lucia), "c-1"))
     }
 
     @Test
     fun revocadoRechazadoAunqueTengaSesion() {
-        val camareros = listOf(
-            camarero("c-1", "Lucía García", estado = CamareroEstado.REVOCADA, sesionActiva = true),
-        )
-        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), camareros))
+        val camareros = listOf(lucia.copy(estado = CamareroEstado.REVOCADA, sesionActiva = true))
+        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), camareros, "c-1"))
     }
 
     @Test
     fun emparejaPorNombreNormalizado() {
-        val camareros = listOf(camarero("c-1", "LUCÍA García", sesionActiva = true))
-        assertTrue(CandadoComandas.admitida(ronda("lucia garcía"), camareros))
-        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), listOf(camarero("c-1", "Lucía García"))))
+        val camareros = listOf(lucia.copy(nombre = "LUCÍA García", sesionActiva = true))
+        assertTrue(CandadoComandas.admitida(ronda("lucia garcía"), camareros, "c-1"))
+        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), listOf(lucia), "c-1"))
     }
 
     @Test
-    fun camareroSinNombreNoBloquea() {
-        // Nombre null tras sincronizarMiembros: no hay emparejamiento posible → no bloquea aquí.
-        val camareros = listOf(camarero("c-1", null))
-        assertTrue(CandadoComandas.admitida(ronda("Lucía García"), camareros))
-    }
-
-    @Test
-    fun unoDeVariosActivoAdmite() {
-        val camareros = listOf(
-            camarero("c-1", "Lucía García", estado = CamareroEstado.REVOCADA),
-            camarero("c-2", "Lucía García", sesionActiva = true),
-        )
-        assertTrue(CandadoComandas.admitida(ronda("Lucía García"), camareros))
+    fun camareroSinNombreNoPuedeComandar() {
+        // Nombre null en lista blanca: el autenticado no tiene nombre que emparejar → no comanda.
+        val camareros = listOf(camarero("c-1", null, sesionActiva = true))
+        assertFalse(CandadoComandas.admitida(ronda("Lucía García"), camareros, "c-1"))
     }
 }
