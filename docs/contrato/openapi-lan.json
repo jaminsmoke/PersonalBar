@@ -3,7 +3,7 @@
   "info": {
     "title": "Personal Bar — Protocolo LAN de sala",
     "description": "Contrato del nodo de sala en el puerto 8787: rutas HTTP y evento SSE que Personal Commander consume. La versión es espejo de `BarLanConfig.VERSION` y la coherencia se verifica con `scripts/check_lan_contract.py` + `LanContractTest` (fixtures en docs/contrato/fixtures/). HTTP en claro solo en LAN de confianza.",
-    "version": "0.1"
+    "version": "0.2"
   },
   "servers": [
     {
@@ -16,10 +16,16 @@
       }
     }
   ],
+  "security": [
+    {
+      "sesionLan": []
+    }
+  ],
   "paths": {
     "/health": {
       "get": {
         "summary": "Liveness del nodo. `sala` es alias deprecado de `establecimiento`.",
+        "security": [],
         "responses": {
           "200": {
             "description": "Nodo vivo.",
@@ -32,7 +38,7 @@
                   "establecimiento": "La Terraza",
                   "sala": "La Terraza",
                   "establecimiento_id": "11111111-1111-4111-8111-111111111111",
-                  "version": "0.1"
+                  "version": "0.2"
                 }
               }
             }
@@ -43,6 +49,7 @@
     "/v1/sesion": {
       "post": {
         "summary": "Consulta de lista blanca con el QR permanente del camarero. No da de alta ni inicia jornada.",
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -68,7 +75,8 @@
     },
     "/v1/sesion/iniciar": {
       "post": {
-        "summary": "Petición de jornada de trabajo. Concede `sesionActiva=true` si el camarero está activo.",
+        "summary": "Petición de jornada de trabajo. Concede `sesionActiva=true` si el camarero está activo y devuelve el `token` de sesión (v0.2).",
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -97,7 +105,11 @@
     },
     "/v1/sesion/cortar": {
       "post": {
-        "summary": "Corte de jornada de trabajo (fin de jornada / revocación / salida de LAN).",
+        "summary": "Corte de jornada de trabajo (fin de jornada / revocación / salida de LAN). Acepta el QR del camarero o el token de sesión (Bearer).",
+        "security": [
+          {},
+          { "sesionLan": [] }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -121,21 +133,13 @@
     },
     "/v1/heartbeat": {
       "post": {
-        "summary": "Latido del Commander con su id de Identity mientras hay jornada (~10 s).",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/HeartbeatRequest" }
-            }
-          }
-        },
+        "summary": "Latido del Commander con su id de Identity mientras hay jornada (~10 s). v0.2: el camarero sale del token de sesión (Bearer), no del body.",
         "responses": {
           "200": {
             "description": "Jornada viva."
           },
-          "400": {
-            "description": "camareroId vacío."
+          "401": {
+            "description": "Token de sesión ausente, inválido o vencido."
           },
           "403": {
             "description": "Sin jornada activa para ese camarero."
@@ -171,6 +175,9 @@
           },
           "403": {
             "description": "Con lista blanca presente y sin jornada activa: comanda denegada."
+          },
+          "401": {
+            "description": "Token de sesión ausente, inválido o vencido."
           }
         }
       }
@@ -201,6 +208,12 @@
           "400": {
             "description": "id o preparado_por vacíos."
           },
+          "401": {
+            "description": "Token de sesión ausente, inválido o vencido."
+          },
+          "403": {
+            "description": "preparado_por no coincide con el camarero autenticado (v0.2)."
+          },
           "404": {
             "description": "Ticket inexistente o ya fuera de la cola."
           }
@@ -225,6 +238,9 @@
           "400": {
             "description": "id vacío."
           },
+          "401": {
+            "description": "Token de sesión ausente, inválido o vencido."
+          },
           "404": {
             "description": "Ticket inexistente o no preparado."
           }
@@ -242,6 +258,9 @@
                 "schema": { "$ref": "#/components/schemas/EstadoResponse" }
               }
             }
+          },
+          "401": {
+            "description": "Token de sesión ausente, inválido o vencido."
           }
         }
       }
@@ -257,6 +276,9 @@
                 "schema": { "$ref": "#/components/schemas/CartaResponse" }
               }
             }
+          },
+          "401": {
+            "description": "Token de sesión ausente, inválido o vencido."
           }
         }
       }
@@ -284,13 +306,25 @@
                 "schema": { "$ref": "#/components/schemas/JornadasResponse" }
               }
             }
+          },
+          "401": {
+            "description": "Token de sesión ausente, inválido o vencido."
           }
         }
       }
     },
     "/v1/eventos": {
       "get": {
-        "summary": "Eventos SSE del nodo. `event` = tipo (`ticket.preparado`, `ticket.recogido`, `sesion.cortada`); `data` = JSON SalaEvent.",
+        "summary": "Eventos SSE del nodo. `event` = tipo (`ticket.preparado`, `ticket.recogido`, `sesion.cortada`); `data` = JSON SalaEvent. v0.2: exige `?token=` (EventSource no puede mandar cabeceras).",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Token de sesión `phbar1.<payload>.<firma>` emitido por `/v1/sesion/iniciar`."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Stream de eventos (text/event-stream).",
@@ -300,12 +334,23 @@
                 "example": "event: ticket.preparado\ndata: {\"version\":1,\"tipo\":\"ticket.preparado\",\"ticketId\":\"r1-barra\",\"preparadoPor\":\"Ana\",\"mesaId\":\"T3\",\"camarero\":\"Lucía\",\"resumen\":\"2× Caña\",\"ticket\":{\"id\":\"r1-barra\",\"rondaId\":\"r1\",\"destino\":\"BARRA\",\"estado\":\"PREPARADO\",\"preparadoPor\":\"Ana\",\"numeroCola\":1,\"lineas\":[{\"productoId\":\"cana\",\"nombreProducto\":\"Caña\",\"cantidad\":2}]}}\n\n"
               }
             }
+          },
+          "401": {
+            "description": "Token de sesión ausente, inválido o vencido."
           }
         }
       }
     }
   },
   "components": {
+    "securitySchemes": {
+      "sesionLan": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "phbar1.<payload>.<firma>",
+        "description": "Token de sesión LAN emitido por `POST /v1/sesion/iniciar` (HMAC firmado con secreto del nodo, TTL 24 h). Todas las rutas privadas lo exigen como `Authorization: Bearer <token>`; `/v1/eventos` lo recibe por query `?token=`."
+      }
+    },
     "schemas": {
       "HealthPayload": {
         "type": "object",
@@ -338,16 +383,13 @@
       "SesionIniciarResponse": {
         "type": "object",
         "properties": {
-          "sesionActiva": { "type": "boolean" }
+          "sesionActiva": { "type": "boolean" },
+          "token": {
+            "type": ["string", "null"],
+            "description": "Token de sesión `phbar1.<payload>.<firma>` (TTL 24 h). v0.2: aditivo; un nodo 0.1 no lo emite."
+          }
         },
         "required": ["sesionActiva"]
-      },
-      "HeartbeatRequest": {
-        "type": "object",
-        "properties": {
-          "camareroId": { "type": "string" }
-        },
-        "required": ["camareroId"]
       },
       "PreparadoRequest": {
         "type": "object",
