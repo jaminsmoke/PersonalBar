@@ -7,6 +7,9 @@ import com.jaminsmoke.personalbar.data.Ticket
 import com.jaminsmoke.personalbar.data.TicketEstado
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -26,7 +29,9 @@ class LanContractTest {
     private fun fixture(nombre: String): String {
         val candidatas = listOf(
             Paths.get("docs/contrato/fixtures", nombre),
+            Paths.get("docs/contrato", nombre),
             Paths.get("../docs/contrato/fixtures", nombre),
+            Paths.get("../docs/contrato", nombre),
         )
         val fichero = candidatas.firstOrNull { Files.exists(it) }
             ?: error("Fixture no encontrada: $nombre (cwd=${Path.of(".").toAbsolutePath()})")
@@ -145,5 +150,105 @@ class LanContractTest {
         assertEquals(1, resumen.porCamarero.size)
         assertEquals(3_600_000L, resumen.porCamarero.single().horasMs)
         assertEquals(3, resumen.porCamarero.single().mesasDistintas)
+    }
+
+    /**
+     * Fixtures vs spec: cada fixture dorada debe contener todos los campos `required`
+     * del schema correspondiente del OpenAPI. Si el spec exige un campo nuevo o el
+     * fixture pierde uno, este test falla — el productor regenera el corpus.
+     */
+    @Test
+    fun fixturesCumplenLosCamposRequiredDelSpec() {
+        val spec = LanJson.decodeFromString<JsonObject>(fixture("openapi-lan.json"))
+        val schemas = spec["components"]!!.jsonObject["schemas"]!!.jsonObject
+
+        // (fixture, schema del spec). El array se resuelve contra el item.
+        val pares = listOf(
+            "health.json" to "HealthPayload",
+            "sesion.json" to "SesionResponse",
+            "sesion-iniciar.json" to "SesionIniciarResponse",
+            "ronda.json" to "Ronda",
+            "estado.json" to "EstadoResponse",
+            "carta.json" to "CartaResponse",
+            "sala-event-preparado.json" to "SalaEvent",
+            "jornadas.json" to "JornadasResponse",
+        )
+
+        for ((nombre, schemaNombre) in pares) {
+            val payload = LanJson.decodeFromString<JsonObject>(fixture(nombre))
+            val schema = schemas[schemaNombre]!!.jsonObject
+            val required = schema["required"]?.jsonArray?.map { it.jsonPrimitive.content }.orEmpty()
+            val ausentes = required.filter { payload[it] == null }
+            assertTrue(
+                "Fixture $nombre no cumple los required de $schemaNombre: faltan $ausentes",
+                ausentes.isEmpty(),
+            )
+        }
+
+        // tickets.json es un array de Ticket: validar cada elemento.
+        val tickets = LanJson.decodeFromString<kotlinx.serialization.json.JsonArray>(fixture("tickets.json"))
+        val ticketSchema = schemas["Ticket"]!!.jsonObject
+        val ticketRequired = ticketSchema["required"]!!.jsonArray.map { it.jsonPrimitive.content }
+        for (t in tickets) {
+            val ausentes = ticketRequired.filter { t.jsonObject[it] == null }
+            assertTrue("tickets.json no cumple los required de Ticket: faltan $ausentes", ausentes.isEmpty())
+        }
+    }
+
+    /**
+     * Auth v0.2 en el spec: el esquema de sesión bearer existe y el token es
+     * aditivo/nullable (un nodo 0.1 no lo emite, Commander no se rompe).
+     */
+    @Test
+    fun specDeclaraAuthBearerConTokenAditivo() {
+        val spec = LanJson.decodeFromString<JsonObject>(fixture("openapi-lan.json"))
+        val schemes = spec["components"]!!.jsonObject["securitySchemes"]!!.jsonObject
+        val sesionLan = schemes["sesionLan"]!!.jsonObject
+        assertEquals("http", sesionLan["type"]?.jsonPrimitive?.content)
+        assertEquals("bearer", sesionLan["scheme"]?.jsonPrimitive?.content)
+
+        val iniciar = spec["components"]!!.jsonObject["schemas"]!!.jsonObject["SesionIniciarResponse"]!!.jsonObject
+        val token = iniciar["properties"]!!.jsonObject["token"]!!.jsonObject
+        assertEquals("string", token["type"]?.jsonArray?.first()?.jsonPrimitive?.content)
+        assertTrue(token["type"]!!.jsonArray.any { it.jsonPrimitive.content == "null" })
+    }
+
+    /**
+     * Auth v0.2 en el spec: toda ruta privada declara 401 y las públicas lo anulan.
+     */
+    @Test
+    fun specExige401EnLasRutasPrivadas() {
+        val spec = LanJson.decodeFromString<JsonObject>(fixture("openapi-lan.json"))
+        val paths = spec["paths"]!!.jsonObject
+        val publicas = setOf("/health", "/v1/sesion", "/v1/sesion/iniciar")
+        val cortar = "/v1/sesion/cortar"
+
+        for ((ruta, item) in paths) {
+            val op = item.jsonObject.values.first { it.jsonObject["responses"] != null }.jsonObject
+            if (ruta in publicas) {
+                assertEquals("$ruta debe ser pública (security: [])", emptyList<Any>(), op["security"]?.jsonArray?.toList())
+            } else if (ruta != cortar) {
+                assertTrue("$ruta es privada y debe declarar 401", op["responses"]!!.jsonObject["401"] != null)
+            } else {
+                // cortar acepta QR o Bearer: la lista de security contiene una opción vacía.
+                val sec = op["security"]!!.jsonArray
+                assertTrue("cortar debe admitir opción sin token (QR)", sec.any { it.jsonObject.isEmpty() })
+            }
+        }
+        // El SSE exige el query param token.
+        val eventos = paths["/v1/eventos"]!!.jsonObject.values.first().jsonObject
+        val tokenParam = eventos["parameters"]!!.jsonArray.first { it.jsonObject["name"]?.jsonPrimitive?.content == "token" }.jsonObject
+        assertEquals(true, tokenParam["required"]?.jsonPrimitive?.content?.toBoolean())
+    }
+
+    /**
+     * Caso negativo de auth: la respuesta de `iniciar` con `sesionActiva=false`
+     * (sin token) sigue siendo un payload válido del contrato.
+     */
+    @Test
+    fun iniciarSesionRechazadaSinTokenEsPayloadValido() {
+        val resp = LanJson.decodeFromString<SesionIniciarResponse>("""{"sesionActiva":false}""")
+        assertEquals(false, resp.sesionActiva)
+        assertEquals(null, resp.token)
     }
 }
