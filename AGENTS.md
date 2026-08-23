@@ -24,9 +24,9 @@ Familia de producto de hostelería. Owner GitHub: [`jaminsmoke`](https://github.
 | **Personal Bar** (este) | [`jaminsmoke/PersonalBar`](https://github.com/jaminsmoke/PersonalBar) | Puesto del negocio (tablet apaisada): nodo LAN `:8787`, colas, lista blanca, mapa | [Project 11](https://github.com/users/jaminsmoke/projects/11) |
 | **PersonalHostel Server** | [`jaminsmoke/PersonalHostel-Server`](https://github.com/jaminsmoke/PersonalHostel-Server) | Registro canónico (Docker/VPS): camareros `:8080`, negocio `:8082` | [Project 10](https://github.com/users/jaminsmoke/projects/10) |
 
-Kanban: cada app tiene el suyo. Cambio que necesite al otro lado → Detectado en **su** Project. Commander no llama a `:8082`.
+Kanban: cada app tiene el suyo. Cambio que necesite al otro lado → Detectado en **su** Project. Commander no llama a `:8082`. Las rondas ya se reciben desde Commander vía `POST /v1/rondas`.
 
-## Stack (provisional)
+## Stack
 
 Align with Commander unless there is a strong reason not to.
 
@@ -35,35 +35,34 @@ Align with Commander unless there is a strong reason not to.
 | UI | Jetpack Compose + Material 3 |
 | Navigation | `androidx.navigation.compose` |
 | State | `ViewModel` + `StateFlow` |
-| DB | Room (SQLite) with KSP — or in-memory until Debate decides |
-| Build | Gradle KTS + Version Catalog |
-| LAN server | Chosen in Debate (Ktor, NanoHTTPD, …). Document the port in README. |
+| DB | Room (SQLite) with KSP — 22 migraciones, esquemas en `app/schemas/` |
+| Build | Gradle KTS + Version Catalog + `./gradlew` |
+| LAN server | Ktor 3.5.2 (`ktor-server-cio`, `ktor-server-auth` bearer HMAC v0.2, `ktor-server-sse`) |
+| Identity | Cliente HTTP separado para camareros (`:8080`) y negocio (`:8082`) |
 | Desugaring | `desugar_jdk_libs` if Java 11 APIs are needed on API 24 |
-
-There is no `./gradlew` until the bootstrap item lands.
 
 ## Relación con el resto
 
 ```
 [Identidad — PersonalHostel-Server]     QR permanente, login, foto
         ▲
-        │ HTTPS (cuando exista registro)
+        │ HTTPS (registro + sync)
         │
 [Personal Bar  ← ESTE REPO]  ◄──LAN──►  [Personal Comander…]
   nodo de sala (fuente de verdad)         clientes: mapa + comandas
   lista blanca del local                  alta = QR pasado a Bar
-  colas: bebida | comida
+  colas: bebida | comida                  auth = token de sesión (v0.2)
 ```
 
 | Repo | Oficio | Rol |
 |---|---|---|
 | **Personal Bar** (este) | Expo barra + **host LAN** | Fuente de verdad de mesas, rondas, tickets |
 | Personal Comander | Sala / terraza | Cliente LAN; un tablet solo sigue offline hasta que este nodo reciba |
-| PersonalHostel-Server | Identidad de profesionales | Docker local `localhost:8080` (scaffold); no es el nodo de sala |
+| PersonalHostel-Server | Identidad de profesionales | Docker `localhost:8080` (camareros) + `:8082` (negocio); no es el nodo de sala |
 | Personal Kitchen (futuro) | Tickets de comida | Se lleva el destino COCINA; Bar se queda BARRA |
 | Personal TPV (futuro) | Cobro / contabilidad | Puede **heredar el nodo**; Bar sigue siendo expo |
 
-Kanban Commander (diferido): *Sala LAN: Personal Bar como nodo…* `PVTI_lAHOBM87Yc4BgJWOzg2ZsaU`. Se reabre cuando **este** repo pueda recibir una ronda. Hasta entonces Commander **no** quita `enviarACocina`.
+Kanban Commander: la ronda ya se recibe (`POST /v1/rondas` con auth v0.2). El ítem diferido de sala LAN en Commander fue reabierto.
 
 ## Producto (acordado)
 
@@ -76,7 +75,7 @@ Kanban Commander (diferido): *Sala LAN: Personal Bar como nodo…* `PVTI_lAHOBM8
 7. **Catálogo y layout de mesas** canónicos en el nodo (no 16 mesas seed distintas por tablet).
 8. El aparato de Bar conviene que se quede encendido (servicio en primer plano «Sala activa»). Si Bar se apaga, la sala se queda ciega.
 
-## Qué hay ahora (scaffold)
+## Qué hay ahora
 
 ```
 PersonalBar/
@@ -85,38 +84,72 @@ PersonalBar/
 ├── .gitignore
 ├── .kanbanrc.json.template   # IDs del Project (versionado)
 ├── .kanbanrc.json            # copia local (gitignored)
+├── emulador.bat              # lanza Tablet-PixelTablet (es-ES, puerto 5558)
+├── emulador-hide.vbs         # arranque sin consola
+├── gradlew / gradlew.bat     # Gradle wrapper
+├── gradle/                   # libs.versions.toml (Version Catalog)
+├── app/
+│   ├── build.gradle.kts
+│   ├── schemas/              # Room: 22 migraciones (1.json – 22.json)
+│   └── src/
+│       ├── main/java/com/jaminsmoke/personalbar/
+│       │   ├── data/         # Entities, DAOs, AppDatabase, Domain, Mapa, Repository
+│       │   ├── lan/          # BarLanServer (Ktor 3.5.2), BarLanModule (rutas + auth),
+│       │   │                   IdentityNegocioClient, IdentityCamareroClient,
+│       │   │                   NodoSesion (HMAC), TokenCifrador (AndroidKeyStore)
+│       │   └── ui/           # Compose: components, gestion, mapa, sesion, theme, voz
+│       ├── test/             # Unit tests: módulo LAN, contrato, smoke, NodoSesion
+│       └── androidTest/      # GMD: migraciones, Room, TokenCifrador
+├── scripts/                  # check_lan_contract.py (spec v0.2 + auth),
+│                               check_family_contracts.py, check_ci_policy.py,
+│                               check_docs_links.py, generate_assets_bar.py
+├── docs/
+│   ├── contrato/
+│   │   ├── openapi-lan.json  # Spec canónico v0.2 (securitySchemes bearer, 401, token)
+│   │   └── fixtures/         # 9 payloads dorados (health, sesion, ronda, tickets, …)
+│   └── index.md              # Sitio MkDocs
+├── .github/workflows/        # CI: 10 jobs, 7 required checks
 └── tools/
     ├── README.md
     ├── kanban-cli/           # bun install aquí
     └── agent-skills/         # jarvis-github-kanban + jarvis-github-agentuse
 ```
 
-No hay `app/` ni Gradle.
+## Contrato LAN (implementado, v0.2)
 
-## Contrato LAN (intención, no implementado)
+El nodo de sala expone HTTP en `:8787` (cleartext, solo LAN de confianza). El spec canónico está en `docs/contrato/openapi-lan.json` y se verifica con `scripts/check_lan_contract.py` + `LanContractTest`.
 
-El detalle vive aquí hasta que Commander retome el ítem diferido. Propuesta de superficie:
+| Ruta | Método | Auth | Notas |
+|---|---|---|---|
+| `/health` | GET | pública | Liveness: `ok`, `role=bar`, `establecimiento`, `version` |
+| `/v1/sesion` | POST | pública | Consulta de lista blanca con QR |
+| `/v1/sesion/iniciar` | POST | pública | Emite `token` de sesión (HMAC, TTL 24 h) |
+| `/v1/sesion/cortar` | POST | QR o Bearer | Corte de jornada |
+| `/v1/heartbeat` | POST | Bearer | Latido (~10 s); camarero del token |
+| `/v1/rondas` | POST | Bearer | Recibe ronda, parte en tickets BARRA/COCINA |
+| `/v1/tickets/{id}/preparado` | POST | Bearer | Marca preparado (solo el camarero autenticado) |
+| `/v1/tickets/{id}/recogido` | POST | Bearer | Saca ticket de la cola |
+| `/v1/estado` | GET | Bearer | Snapshot completo (establecimiento, colas, mesas, zonas) |
+| `/v1/carta` | GET | Bearer | Catálogo canónico (schema 2 = UUID) |
+| `/v1/sesion/jornadas` | GET | Bearer | Resumen de jornadas |
+| `/v1/eventos` | GET | `?token=` | SSE: `ticket.preparado`, `ticket.recogido`, `sesion.cortada` |
 
-| Idea | Notas |
-|---|---|
-| Descubrimiento | Reutilizar la idea de escaneo TCP de Commander (`TpvCliente` /24) o mDNS `_personalbar._tcp`. Puerto fijo documentado. |
-| Auth de sala | Commander presenta el QR/id de identidad; Bar acepta o rechaza (lista blanca). |
-| Estado | Mesas (identidad estable `zona`+`indiceZona` o UUID, **no** `Mesa.id` local), pedidos, rondas, líneas, destinos. |
-| Eventos | ronda enviada → ticket en cola; ticket listo → aviso al Commander; servido → sale de expo. |
-| Cleartext | Solo LAN privada, igual que Commander (`network_security_config`). |
+**Auth v0.2**: token `phbar1.<payload>.<firma>` (HMAC-SHA256 firmado con secreto del nodo, cifrado con AndroidKeyStore). Commander lo recibe en `iniciar` y lo envía en `Authorization: Bearer`. SSE usa query param `?token=` (EventSource no manda cabeceras). 401 en todas las privadas sin token.
 
-Cleartext en internet para identidad: no. Identidad = HTTPS al servidor Identity.
+**Descubrimiento**: Commander escanea la LAN (`/24`) preguntando `/health` al puerto `:8787`. Sin health, no hay nodo.
 
-## UI a diseñar
+## UI implementada
 
-- **Target de dispositivo (v0.3): tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). No se adapta a móvil en v0.3. Pruebas en emulador `Tablet-PixelTablet`.
-- Cola **Bebida** y cola **Comida** (separadas, mismo dispositivo; dos columnas fijas aprovechando el ancho de la tablet, no tabs).
-- Ticket: mesa, ronda, camarero (cuando haya nombre), líneas, acciones listo.
-- Alta de camarero (pegar/escanear QR).
-- Estado de sala (host activo / tablets conectados).
-- Vista mapa opcional, no el flujo principal.
+- **Target de dispositivo: tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). Pruebas en emulador `Tablet-PixelTablet` (puerto 5558).
+- Cola **Bebida** y cola **Comida** (separadas, mismo dispositivo; dos columnas fijas aprovechando el ancho de la tablet).
+- Ticket: mesa, ronda, camarero, líneas, acciones listo/recogido. Estados por color (pendiente/preparado).
+- Alta de camarero (pegar/escanear QR) + invitación por email desde Identity.
+- **Zonas** en el mapa: áreas coloreadas semi-transparentes asignables a camareros.
+- Estado de sala (host activo / tablets conectados vía heartbeat).
+- Vista mapa con canvas sepia + comanda en vista; navegación por tabs.
+- Reconocimiento de voz: "Cola N Bebida" / "Cola N Comida" para cambiar estado.
 
-Strings en español (`res/values`). Marca dark premium / gold alineada a Commander si se comparte tema; no copiar el APK entero.
+Strings en español (`res/values`). Marca dark premium / gold alineada a Commander si se comparte tema.
 
 ## Oficios (división acordada 14-08-2026)
 
@@ -129,7 +162,6 @@ Strings en español (`res/values`). Marca dark premium / gold alineada a Command
 - No copiar Personal Comander y «cambiar el título».
 - No sync P2P entre Commanders como fuente de verdad.
 - No implementar el servidor de identidad aquí (repo hermano Docker).
-- No pedir a Commander que borre `enviarACocina` hasta que `POST`/`evento` de ronda exista de verdad.
 - No rankings ni marketplace.
 - No Kitchen/TPV.
 - No saltarse Debate ni convertir draft→issue antes de Ejecutando.
@@ -285,7 +317,7 @@ Hasta que no exista Gradle: documentar en `Verificación` qué se comprobó (p. 
 `main` está protegida por el ruleset **`main-protegida`** (ver `gh api repos/jaminsmoke/PersonalBar/rulesets`):
 
 - **PR obligatorio** para integrar (0 approvals requeridas; merge por squash recomendado).
-- **Required checks** (strict): `Lint`, `Unit tests`, `Assemble debug`, `Instrumented tests (GMD)`, `Workflow security`.
+- **Required checks** (strict): `Lint`, `Unit tests`, `Assemble debug`, `Instrumented tests (GMD)`, `Workflow security (actionlint + zizmor + policy)`, `Family contracts`, `Docs build`.
 - **Non-fast-forward** y **deletion** bloqueadas.
 - **Bypass solo el owner** (`jaminsmoke`), para emergencias — no es el flujo habitual.
 
@@ -435,26 +467,15 @@ Después, comprobar que ningún ítem perdió el valor del campo modificado, rep
 por nombre si fuera necesario y actualizar `.kanbanrc.json.template` con los IDs
 nuevos. Nunca ejecutar `convert-draft` mientras `repoId` sea `REPLACE_ME`.
 
-## Backlog Detectado (deriva de arranque)
+## Backlog
 
-Ítems ya creados en el Project #11. Están en **Detectado** (drafts). El equipo los mueve a Debate, investiga, presenta las 4 alternativas y **para a preguntar**. No empieces código en un ítem que siga en Detectado.
+El backlog de arranque (bootstrap, expo, LAN, modelo, rondas, lista blanca, FGS, mapa) está completado — los 8 ítems están en **Changelog**. Los ítems actuales se consultan desde el kanban:
 
-Deriva sugerida: bootstrap → expo de colas → health LAN → modelo → recibir ronda. QR y FGS en paralelo más tarde. Mapa al final (no es el home).
+```bash
+$KANBAN list --estado Detectado
+```
 
-| Pri | Área | Título | Item ID |
-|---|---|---|---|
-| Alta | Android | Bootstrap del proyecto Android (Compose, Gradle, package) | `PVTI_lAHOBM87Yc4BgQqazg2aLzQ` |
-| Alta | UI/UX | Expo de barra: colas Bebida y Comida + estado Sala activa | `PVTI_lAHOBM87Yc4BgQqazg2aLw4` |
-| Alta | Sync | Nodo LAN: GET /health y descubrimiento para Commander | `PVTI_lAHOBM87Yc4BgQqazg2aLus` |
-| Alta | Datos | Modelo de datos: mesa canónica, ronda y ticket por destino | `PVTI_lAHOBM87Yc4BgQqazg2aLp0` |
-| Alta | Sync | Recibir ronda y listo por destino (colas reales) | `PVTI_lAHOBM87Yc4BgQqazg2aLsY` |
-| Media | Sync | Lista blanca del local: alta de camarero por QR pegado o escaneado | `PVTI_lAHOBM87Yc4BgQqazg2aLn0` |
-| Media | Android | Servicio en primer plano «Sala activa» mientras Bar es el nodo | `PVTI_lAHOBM87Yc4BgQqazg2aLlY` |
-| Baja | UI/UX | Vista mapa secundaria (no es el flujo principal de Bar) | `PVTI_lAHOBM87Yc4BgQqazg2aLig` |
-
-`$KANBAN show <itemId>` y `$KANBAN body <itemId>` para el texto completo (preguntas de Debate ya van en cada body).
-
-El ítem de **recibir ronda** es la condición para reabrir el Detectado Diferido de sala LAN en Commander. No lo des por hecho en un comentario: tiene que existir el POST/evento de verdad.
+No empieces código en un ítem que siga en Detectado.
 
 ## Code conventions
 
@@ -474,6 +495,7 @@ Cuando exista `app/`, alinear con Commander:
 
 - `keystore.properties` / `local.properties` gitignored
 - Cleartext solo LAN (`network_security_config`); identidad = HTTPS a Identity
+- **Token de sesión**: el bearer JWT del negocio se cifra con AndroidKeyStore AES-GCM (`TokenCifrador`); nunca se persiste en claro. La BD está excluida del cloud-backup (`backup_rules.xml`)
 - GraphQL token for kanban CLI: `GH_TOKEN` / `GITHUB_TOKEN` from `gh auth`
 - **Dependabot / grafo Gradle**: el job `dependency-submission` envía solo el runtime del APK (`:app`, `debugRuntimeClasspath` / `releaseRuntimeClasspath`). El toolchain (KGP, AGP, GMD/UTP, classpaths de test) no es el puesto: no se silencia con `ignore`. Si aparecen flavors, ampliar el regex del workflow. Constraints de BouncyCastle en `build.gradle.kts` cubren el grafo del proyecto si algo lo pide; el APK actual no lleva BC (Tink Android). No forzar Netty: rompe GMD.
 
@@ -493,3 +515,7 @@ emulador-hide.vbs          # arranque + locale sin consola de emulator.exe / Win
 ```
 
 Lanzar el emulador: `emulador.bat` en Windows (un clic; oculta la consola de `emulator.exe` y aplica `es-ES` tras el boot). Puerto fijo **5558** para no chocar con el móvil de Commander (5554). Equivalente manual: `emulator -avd Tablet-PixelTablet -port 5558 -timezone Europe/Madrid -change-locale es-ES`.
+
+## Mantenimiento de esta guía
+
+Al cerrar un ítem que cambie arquitectura, stack, contrato, estructura de directorios, required checks o decisiones de producto, revisar que AGENTS.md sigue siendo verdad. Si el cambio afecta a la tabla de Familia PersonalHostel, reflejarlo también en los AGENTS.md de Commander e Identity (item cross si procede).
