@@ -7,6 +7,7 @@ on:
       - "requirements-docs.txt"
       - "docs/**"
       - "README.md"
+      - "AGENTS.md"
       - "scripts/check_docs_links.py"
       - ".github/workflows/docs-check.yml"
   workflow_dispatch:
