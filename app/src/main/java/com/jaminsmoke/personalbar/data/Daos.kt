@@ -212,6 +212,14 @@ interface BarDao {
     @Upsert
     suspend fun upsertQrKey(key: QrKey)
 
+    // ── NodoSecreto (secreto HMAC del nodo LAN, singleton) ────────────────
+
+    @Query("SELECT * FROM nodo_secreto LIMIT 1")
+    suspend fun getNodoSecreto(): NodoSecreto?
+
+    @Upsert
+    suspend fun upsertNodoSecreto(secreto: NodoSecreto)
+
     // ── Altas pendientes (offline → sync diferido a Identity) ─────────────
 
     @Query("SELECT * FROM altas_pendientes ORDER BY creadaEn")
