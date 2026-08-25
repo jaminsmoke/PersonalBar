@@ -65,7 +65,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CfcEstado::class,
         NodoSecreto::class,
     ],
-    version = 22,
+    version = 23,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -430,6 +430,17 @@ abstract class AppDatabase : RoomDatabase() {
                         "(`id` TEXT NOT NULL, `secretoCifrado` TEXT NOT NULL, " +
                         "PRIMARY KEY(`id`))"
                 )
+            }
+        }
+
+        /**
+         * v22→v23: `sesion_negocio.refreshTokenCifrado` (refresh opaco de la sesión
+         * de negocio, v0.4). Nullable: las sesiones pre-v23 quedan sin refresh y
+         * revalidan con `GET /me` hasta el siguiente login.
+         */
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sesion_negocio ADD COLUMN refreshTokenCifrado TEXT")
             }
         }
     }

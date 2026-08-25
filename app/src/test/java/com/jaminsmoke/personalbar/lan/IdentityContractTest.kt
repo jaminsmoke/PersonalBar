@@ -128,6 +128,12 @@ class IdentityContractTest {
         "POST /v1/auth/negocio/login" to Validador.Dato(
             IdentityLoginResponse.serializer(), LoginRequest.serializer()
         ),
+        "POST /v1/auth/negocio/refresh" to Validador.Dato(
+            RefreshResponse.serializer(), RefreshRequest.serializer()
+        ),
+        "GET /v1/auth/negocio/me/sesiones" to Validador.Lista(SesionItem.serializer()),
+        "POST /v1/auth/negocio/me/sesiones/revocar" to Validador.Estado(),
+        "POST /v1/auth/negocio/me/sesiones/*/revocar" to Validador.Estado(),
         "POST /v1/auth/negocio/me/logo" to Validador.Estado(),
         "GET /v1/auth/negocio/me/logo" to Validador.Binario,
         "GET /v1/auth/negocio/me" to Validador.Dato(IdentityCuentaNegocio.serializer()),

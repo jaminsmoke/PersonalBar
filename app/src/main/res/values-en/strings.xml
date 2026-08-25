@@ -85,6 +85,16 @@
 
     <!-- Settings -->
     <string name="ajustes_titulo_establecimiento">Venue</string>
+    <string name="ajustes_sesiones_titulo">Venue sessions</string>
+    <string name="ajustes_sesiones_vacia">No other active sessions</string>
+    <string name="ajustes_sesiones_actual">This device</string>
+    <string name="ajustes_sesiones_revocar">Revoke</string>
+    <string name="ajustes_sesiones_revocar_otras">Revoke others</string>
+    <string name="ajustes_sesiones_confirmar_una">Revoke this session?</string>
+    <string name="ajustes_sesiones_confirmar_otras">Sign out on other devices?</string>
+    <string name="ajustes_sesiones_creada">Created %1$s</string>
+    <string name="ajustes_sesiones_ultimo_uso">Last used %1$s</string>
+    <string name="ajustes_sesiones_error">Could not complete the sessions operation</string>
 
     <!-- Queues -->
     <string name="cola_bebida">Drinks</string>

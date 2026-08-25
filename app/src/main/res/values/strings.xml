@@ -85,6 +85,16 @@
 
     <!-- Ajustes -->
     <string name="ajustes_titulo_establecimiento">Establecimiento</string>
+    <string name="ajustes_sesiones_titulo">Sesiones del puesto</string>
+    <string name="ajustes_sesiones_vacia">No hay otras sesiones activas</string>
+    <string name="ajustes_sesiones_actual">Este dispositivo</string>
+    <string name="ajustes_sesiones_revocar">Revocar</string>
+    <string name="ajustes_sesiones_revocar_otras">Revocar las demás</string>
+    <string name="ajustes_sesiones_confirmar_una">¿Revocar esta sesión?</string>
+    <string name="ajustes_sesiones_confirmar_otras">¿Cerrar sesión en los demás dispositivos?</string>
+    <string name="ajustes_sesiones_creada">Creada %1$s</string>
+    <string name="ajustes_sesiones_ultimo_uso">Último uso %1$s</string>
+    <string name="ajustes_sesiones_error">No se pudo completar la operación de sesiones</string>
 
     <!-- Colas -->
     <string name="cola_bebida">Bebida</string>

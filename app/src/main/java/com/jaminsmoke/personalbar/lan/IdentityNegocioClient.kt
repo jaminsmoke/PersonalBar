@@ -56,7 +56,14 @@ enum class CambioPasswordResult {
 }
 
 @Serializable
-data class IdentityLoginResponse(val token: String, val cuenta: IdentityCuentaNegocio = IdentityCuentaNegocio())
+data class IdentityLoginResponse(
+    val token: String,
+    val cuenta: IdentityCuentaNegocio = IdentityCuentaNegocio(),
+    /** Sesiones revocables (v0.4): refresh opaco rotado + id de sesión. Aditivos. */
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    @SerialName("expires_in") val expiresIn: Int? = null,
+    @SerialName("sesion_id") val sesionId: String? = null,
+)
 
 @Serializable
 data class IdentityCuentaNegocio(
@@ -78,6 +85,37 @@ data class IdentityRegistroResponse(
 @Serializable
 data class LoginRequest(val email: String, val password: String)
 
+/** Cuerpo de `POST /v1/auth/negocio/refresh` (refresh opaco rotado). */
+@Serializable
+data class RefreshRequest(@SerialName("refresh_token") val refreshToken: String)
+
+/** Respuesta de `POST /v1/auth/negocio/refresh` (rota token + refresh). */
+@Serializable
+data class RefreshResponse(
+    val token: String,
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    @SerialName("expires_in") val expiresIn: Int? = null,
+    @SerialName("sesion_id") val sesionId: String? = null,
+)
+
+/** Una sesión de dispositivo de la cuenta (`GET /v1/auth/negocio/me/sesiones`). */
+@Serializable
+data class SesionItem(
+    val id: String,
+    val etiqueta: String? = null,
+    @SerialName("creada_en") val creadaEn: String = "",
+    @SerialName("ultimo_uso_en") val ultimoUsoEn: String = "",
+    /** true si es la sesión del puesto actual (la del token en uso). */
+    val actual: Boolean = false,
+)
+
+/** Respuesta de revocar sesiones (`status` + cuántas se revocaron). */
+@Serializable
+data class RevocarSesionResponse(
+    val status: String = "",
+    val revocadas: Int = 0,
+)
+
 /** Cuerpo de `POST /v1/auth/negocio/me/password` (rotación de la contraseña de negocio). */
 @Serializable
 data class CambioPasswordRequest(
@@ -88,6 +126,11 @@ data class CambioPasswordRequest(
 @Serializable
 data class CambioPasswordResponse(
     val status: String,
+    /** Rotación de sesión: el server devuelve token+refresh nuevos (aditivos). */
+    val token: String? = null,
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    @SerialName("expires_in") val expiresIn: Int? = null,
+    @SerialName("sesion_id") val sesionId: String? = null,
 )
 
 @Serializable
@@ -741,6 +784,14 @@ object IdentityNegocioClient {
     @Volatile
     var negocioToken: String? = null
 
+    /**
+     * Refresh opaco de la sesión de negocio (v0.4): rota en cada refresh y al
+     * cambiar la contraseña. Solo en memoria; en disco vive cifrado en
+     * `SesionNegocio.refreshTokenCifrado` (migración v23, patrón `tokenCifrado`).
+     */
+    @Volatile
+    var refreshToken: String? = null
+
     @Volatile
     var establecimientoUuid: String? = null
 
@@ -754,6 +805,22 @@ object IdentityNegocioClient {
 
     val conectado: Boolean get() = baseUrl != null && negocioToken != null && establecimientoUuid != null
 
+    /**
+     * Un solo refresh a la vez (v0.4): el contrato rota el refresh opaco, así que
+     * dos refrescos concurrentes invalidarían el primero. Los llamantes que llegan
+     * mientras otro refresca esperan (synchronized) y reintentan con el token nuevo.
+     */
+    private val refreshLock = Any()
+
+    init {
+        // 401-interception: cualquier llamada autenticada que reciba 401 refresca
+        // una vez con el refresh opaco y reintenta con el token nuevo. Si el refresh
+        // falla (401), devuelve null y el 401 original llega al llamante (que invalida).
+        IdentityHttp.onUnauthorized = {
+            if (refrescarSesionBloqueante() == RevalidacionResultado.OK) negocioToken else null
+        }
+    }
+
     fun configurar(url: String) {
         baseUrl = url.trim().trimEnd('/')
     }
@@ -761,6 +828,7 @@ object IdentityNegocioClient {
     fun desconectar() {
         baseUrl = null
         negocioToken = null
+        refreshToken = null
         establecimientoUuid = null
         cuentaNegocio = null
         establecimientoDataOrigin = null
@@ -777,6 +845,7 @@ object IdentityNegocioClient {
      */
     fun desconectarConservandoBaseUrl() {
         negocioToken = null
+        refreshToken = null
         establecimientoUuid = null
         cuentaNegocio = null
         establecimientoDataOrigin = null
@@ -817,6 +886,7 @@ object IdentityNegocioClient {
             val resp = runCatching { LanJson.decodeFromString<IdentityLoginResponse>(text) }.getOrNull()
             if (resp != null && resp.token.isNotBlank()) {
                 negocioToken = resp.token
+                refreshToken = resp.refreshToken
                 cuentaNegocio = resp.cuenta.takeIf { it.id.isNotBlank() || it.nombreMostrar.isNotBlank() }
                 true
             } else {
@@ -847,16 +917,73 @@ object IdentityNegocioClient {
      */
     enum class RevalidacionResultado { OK, REVOCADA, SIN_RED }
 
-    /** `GET /v1/auth/negocio/me` → comprueba que el token guardado sigue siendo válido
-     *  contra Identity. 2xx → [RevalidacionResultado.OK]; 401 → [RevalidacionResultado.REVOCADA];
-     *  fallo de red (-1) → [RevalidacionResultado.SIN_RED]. No cambia el perfil en memoria. */
-    suspend fun revalidarToken(): RevalidacionResultado = withContext(Dispatchers.IO) {
-        val (code, _) = IdentityHttp.request(baseUrl, "GET", "/v1/auth/negocio/me", token = negocioToken)
+    /**
+     * `POST /v1/auth/negocio/refresh` → rota el access con el refresh opaco (v0.4).
+     * Síncrona (se usa también desde el hook de 401 de [IdentityHttp]) y con mutex:
+     * un solo refresh a la vez. 200 → [RevalidacionResultado.OK] (actualiza token +
+     * refresh); 401 → [RevalidacionResultado.REVOCADA] (refresh inválido/revocado);
+     * red caída → [RevalidacionResultado.SIN_RED].
+     */
+    private fun refrescarSesionBloqueante(): RevalidacionResultado = synchronized(refreshLock) {
+        val refresh = refreshToken ?: return@synchronized RevalidacionResultado.SIN_RED
+        val body = LanJson.encodeToString(RefreshRequest(refreshToken = refresh))
+        val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/auth/negocio/refresh", body = body, auth = false)
         when {
-            code in 200..299 -> RevalidacionResultado.OK
+            code in 200..299 -> {
+                val resp = runCatching { LanJson.decodeFromString<RefreshResponse>(text) }.getOrNull()
+                if (resp != null && resp.token.isNotBlank()) {
+                    negocioToken = resp.token
+                    refreshToken = resp.refreshToken
+                    RevalidacionResultado.OK
+                } else {
+                    RevalidacionResultado.REVOCADA
+                }
+            }
             code == 401 -> RevalidacionResultado.REVOCADA
             else -> RevalidacionResultado.SIN_RED
         }
+    }
+
+    /** Revalida la sesión: con refresh opaco usa `POST /refresh`; sin él (sesión
+     *  legacy pre-v0.4) cae al `GET /v1/auth/negocio/me` de siempre. 2xx → [OK];
+     *  401 → [REVOCADA]; red caída → [SIN_RED]. */
+    suspend fun revalidarToken(): RevalidacionResultado = withContext(Dispatchers.IO) {
+        if (refreshToken != null) {
+            refrescarSesionBloqueante()
+        } else {
+            val (code, _) = IdentityHttp.request(baseUrl, "GET", "/v1/auth/negocio/me", token = negocioToken)
+            when {
+                code in 200..299 -> RevalidacionResultado.OK
+                code == 401 -> RevalidacionResultado.REVOCADA
+                else -> RevalidacionResultado.SIN_RED
+            }
+        }
+    }
+
+    /** `GET /v1/auth/negocio/me/sesiones` → sesiones activas de la cuenta de negocio.
+     *  La del puesto actual viene marcada con `actual = true`. */
+    suspend fun listarSesiones(): List<SesionItem> = withContext(Dispatchers.IO) {
+        val (code, text) = IdentityHttp.request(baseUrl, "GET", "/v1/auth/negocio/me/sesiones", token = negocioToken)
+        if (code in 200..299) {
+            runCatching { LanJson.decodeFromString<List<SesionItem>>(text) }.getOrNull().orEmpty()
+        } else {
+            emptyList()
+        }
+    }
+
+    /** `POST /v1/auth/negocio/me/sesiones/{sesionId}/revocar` → revoca una sesión. */
+    suspend fun revocarSesion(sesionId: String): Boolean = withContext(Dispatchers.IO) {
+        IdentityHttp.request(
+            baseUrl, "POST", "/v1/auth/negocio/me/sesiones/$sesionId/revocar", token = negocioToken
+        ).first in 200..299
+    }
+
+    /** `POST /v1/auth/negocio/me/sesiones/revocar` → revoca el resto de sesiones
+     *  (conserva la actual del puesto). */
+    suspend fun revocarOtrasSesiones(): Boolean = withContext(Dispatchers.IO) {
+        IdentityHttp.request(
+            baseUrl, "POST", "/v1/auth/negocio/me/sesiones/revocar", token = negocioToken
+        ).first in 200..299
     }
 
     /** `POST /v1/auth/negocio/me/password` → rota la contraseña de la cuenta de negocio.
@@ -866,9 +993,18 @@ object IdentityNegocioClient {
         val body = LanJson.encodeToString(
             CambioPasswordRequest(passwordActual = actual, passwordNueva = nueva)
         )
-        val (code, _) = IdentityHttp.request(baseUrl, "POST", "/v1/auth/negocio/me/password", body = body, token = negocioToken)
+        val (code, text) = IdentityHttp.request(baseUrl, "POST", "/v1/auth/negocio/me/password", body = body, token = negocioToken)
         when (code) {
-            in 200..299 -> CambioPasswordResult.OK
+            in 200..299 -> {
+                // La rotación de password devuelve token+refresh nuevos: los adopta
+                // para no dejar un refresh huérfano (el siguiente refresh daría 401).
+                val resp = runCatching { LanJson.decodeFromString<CambioPasswordResponse>(text) }.getOrNull()
+                if (resp != null) {
+                    if (!resp.token.isNullOrBlank()) negocioToken = resp.token
+                    if (resp.refreshToken != null) refreshToken = resp.refreshToken
+                }
+                CambioPasswordResult.OK
+            }
             401 -> CambioPasswordResult.ACTUAL_INCORRECTA
             else -> CambioPasswordResult.ERROR
         }
