@@ -138,6 +138,12 @@ El nodo de sala expone HTTP en `:8787` (cleartext, solo LAN de confianza). El sp
 
 **Descubrimiento**: Commander escanea la LAN (`/24`) preguntando `/health` al puerto `:8787`. Sin health, no hay nodo.
 
+### Contrato con Identity (pack de contrato)
+
+Identity publica un **pack de contrato** en `docs/contracts/` del repo `jaminsmoke/PersonalHostel-Server` (`index.json` + `negocio.ops.json` + `camareros.ops.json`): fixtures por operación (`"METHOD /path"` → `{request, response_200, error, security}`) validadas contra los schemas OpenAPI en el CI de Identity (`family_contract_pack.py`).
+
+Bar lo consume en **`IdentityContractTest`** (unit, `./gradlew test`): por cada operación que `IdentityNegocioClient`/`IdentityCamareroClient` llama, decodifica `response_200` con el DTO real, verifica que el DTO de request cubre las claves documentadas, y que `error` decodifica con `IdentityError`. Si Identity renombra/elimina un campo o añade uno `required`, el test falla (el hueco que hoy se colaría a runtime con `LanJson.ignoreUnknownKeys = true`). El job `unit-tests` de CI baja el pack con sparse checkout (`.family/identity`); en local se resuelve desde el repo hermano `PersonalHostelIdentity-Server` (o `-Didentity.contractsDir=...`). El checker Python `check_family_contracts.py` sigue validando método+path.
+
 ## UI implementada
 
 - **Target de dispositivo: tablet apaisado (landscape) solo.** Bar es un puesto estático (nodo de sala), a diferencia de Commander (móvil vertical). Pruebas en emulador `Tablet-PixelTablet` (puerto 5558).
