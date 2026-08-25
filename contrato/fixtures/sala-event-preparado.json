@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "tipo": "ticket.preparado",
+  "ticketId": "r1-barra",
+  "preparadoPor": "anaTest",
+  "mesaId": "T3",
+  "camarero": "luciaTest",
+  "resumen": "2× Caña",
+  "ticket": {
+    "id": "r1-barra",
+    "rondaId": "r1",
+    "destino": "BARRA",
+    "estado": "PREPARADO",
+    "preparadoPor": "anaTest",
+    "numeroCola": 1,
+    "lineas": [
+      {
+        "productoId": "cana",
+        "nombreProducto": "Caña",
+        "cantidad": 2
+      }
+    ]
+  }
+}

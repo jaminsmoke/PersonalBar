@@ -1,0 +1,28 @@
+{
+  "id": "p42-t1730000000000",
+  "mesaId": "T3",
+  "numero": 1,
+  "camarero": "luciaTest",
+  "creadoEn": 1730000000000,
+  "lineas": [
+    {
+      "productoId": "cana",
+      "nombreProducto": "Caña",
+      "cantidad": 2,
+      "modificadores": []
+    },
+    {
+      "productoId": "croquetas",
+      "nombreProducto": "Croquetas",
+      "cantidad": 1,
+      "nota": "sin cebolla",
+      "modificadores": [
+        {
+          "grupo": "Punto",
+          "opcion": "Al punto",
+          "delta": 0
+        }
+      ]
+    }
+  ]
+}
