@@ -15,12 +15,23 @@ internal fun InputStream.readBodyUtf8(): String =
  */
 object IdentityHttp {
 
+    /**
+     * Hook de sesión (v0.4): ante un 401 de una llamada autenticada se invoca **una**
+     * vez para refrescar el token; si devuelve el token nuevo, la llamada se reintenta
+     * con él. Lo registra `IdentityNegocioClient` (refresh opaco con mutex). null =
+     * no se pudo refrescar → se devuelve el 401 original (el flujo de revalidación
+     * invalida la sesión).
+     */
+    @Volatile
+    var onUnauthorized: (() -> String?)? = null
+
     /** GET binario. Devuelve (statusCode, bytes). -1 si falló la red. */
     fun requestBytes(
         baseUrl: String?,
         method: String,
         path: String,
         token: String? = null,
+        reintento: Boolean = false,
     ): Pair<Int, ByteArray> {
         val base = baseUrl ?: return -1 to ByteArray(0)
         var connection: HttpURLConnection? = null
@@ -35,6 +46,12 @@ object IdentityHttp {
             val code = connection.responseCode
             val bytes = (if (code in 200..299) connection.inputStream else connection.errorStream)
                 ?.readBytes() ?: ByteArray(0)
+            if (code == 401 && !reintento && token != null) {
+                val nuevo = onUnauthorized?.invoke()
+                if (nuevo != null) {
+                    return requestBytes(baseUrl, method, path, nuevo, reintento = true)
+                }
+            }
             code to bytes
         } catch (_: Exception) {
             -1 to ByteArray(0)
@@ -77,6 +94,7 @@ object IdentityHttp {
         body: String? = null,
         token: String? = null,
         auth: Boolean = true,
+        reintento: Boolean = false,
     ): Pair<Int, String> {
         val base = baseUrl ?: return -1 to ""
         var connection: HttpURLConnection? = null
@@ -98,6 +116,12 @@ object IdentityHttp {
             val code = connection.responseCode
             val text = (if (code in 200..299) connection.inputStream else connection.errorStream)
                 ?.readBodyUtf8().orEmpty()
+            if (code == 401 && !reintento && auth && token != null) {
+                val nuevo = onUnauthorized?.invoke()
+                if (nuevo != null) {
+                    return request(baseUrl, method, path, body, nuevo, auth, reintento = true)
+                }
+            }
             code to text
         } catch (_: Exception) {
             -1 to ""

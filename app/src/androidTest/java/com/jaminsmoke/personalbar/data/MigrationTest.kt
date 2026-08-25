@@ -545,6 +545,25 @@ class MigrationTest {
     }
 
     @Test
+    fun migracion_v22_a_v23_anade_refresh_token_cifrado() {
+        // 1. BD en v22 (sin refreshTokenCifrado)
+        helper.createDatabase(TEST_DB, 22).use { }
+
+        // 2. Migrar a v23 y validar contra 23.json: columna nueva nullable
+        val db = helper.runMigrationsAndValidate(TEST_DB, 23, true, AppDatabase.MIGRATION_22_23)
+        db.use {
+            val cursor = it.query("SELECT refreshTokenCifrado FROM sesion_negocio")
+            cursor.use { c ->
+                c.moveToFirst()
+                assertEquals(
+                    "refreshTokenCifrado arranca null (las sesiones pre-v23 revalidan con GET /me)",
+                    null, c.getString(0)
+                )
+            }
+        }
+    }
+
+    @Test
     fun migracion_v21_a_v22_crea_nodo_secreto() {
         // 1. BD en v21 (sin nodo_secreto)
         helper.createDatabase(TEST_DB, 21).use { }

@@ -311,6 +311,13 @@ data class SesionNegocio(
      * Migración Room v21.
      */
     val tokenCifrado: String? = null,
+    /**
+     * Refresh opaco de la sesión (v0.4), cifrado AES-GCM con la misma clave
+     * Keystore que [tokenCifrado]. Permite renovar el access sin re-login (~12 h)
+     * y sobrevive a reinicios. `null` en sesiones legacy pre-v23 (caen al `GET /me`
+     * hasta el siguiente login). Migración Room v23.
+     */
+    val refreshTokenCifrado: String? = null,
     val email: String? = null,
     val nombreMostrar: String? = null,
     val establecimientoUuid: String? = null,

@@ -74,6 +74,7 @@ class PersonalBarApp : Application() {
             AppDatabase.MIGRATION_16_17, AppDatabase.MIGRATION_17_18,
             AppDatabase.MIGRATION_18_19, AppDatabase.MIGRATION_19_20,
             AppDatabase.MIGRATION_20_21, AppDatabase.MIGRATION_21_22,
+            AppDatabase.MIGRATION_22_23,
         ).build()
     }
 
@@ -576,6 +577,9 @@ class PersonalBarApp : Application() {
             }
             if (tokenClaro != null) {
                 val restaurada = guardada.copy(token = tokenClaro)
+                // v23: restaurar el refresh opaco (cifrado) para poder renovar sin re-login.
+                IdentityNegocioClient.refreshToken =
+                    guardada.refreshTokenCifrado?.let { TokenCifrador.descifrar(it) }
                 hidratarIdentity(restaurada)
                 _sesion.value = restaurada
                 _sesionEstado.value = sesionEstadoDe(restaurada, System.currentTimeMillis())
@@ -601,9 +605,13 @@ class PersonalBarApp : Application() {
         catalogoSeedDecidido = false
         sessionScope.launch {
             if (recordar) {
-                // El bearer en claro nunca se persiste: se guarda cifrado (Keystore).
+                // El bearer y el refresh en claro nunca se persisten: solo cifrados (Keystore).
                 val cifrado = runCatching { TokenCifrador.cifrar(sesion.token ?: "") }.getOrNull()
-                db.barDao().upsertSesionNegocio(sesion.copy(token = null, tokenCifrado = cifrado))
+                val refreshCifrado =
+                    IdentityNegocioClient.refreshToken?.let { runCatching { TokenCifrador.cifrar(it) }.getOrNull() }
+                db.barDao().upsertSesionNegocio(
+                    sesion.copy(token = null, tokenCifrado = cifrado, refreshTokenCifrado = refreshCifrado)
+                )
             } else {
                 db.barDao().clearSesionNegocio()
             }
@@ -657,7 +665,12 @@ class PersonalBarApp : Application() {
                     val renovada = sesion.copy(validaHasta = System.currentTimeMillis() + SESION_VALIDEZ_MS)
                     _sesion.value = renovada
                     _sesionEstado.value = sesionEstadoDe(renovada, System.currentTimeMillis())
-                    db.barDao().upsertSesionNegocio(renovada.copy(token = null))
+                    // El refresh rota en cada renovación: persistir el nuevo cifrado (v23).
+                    val refreshCifrado = IdentityNegocioClient.refreshToken
+                        ?.let { runCatching { TokenCifrador.cifrar(it) }.getOrNull() }
+                    db.barDao().upsertSesionNegocio(
+                        renovada.copy(token = null, refreshTokenCifrado = refreshCifrado)
+                    )
                 }
                 IdentityNegocioClient.RevalidacionResultado.REVOCADA -> {
                     // «Logout técnico»: la cuenta ya no vale. Se desconecta el cliente
@@ -668,7 +681,10 @@ class PersonalBarApp : Application() {
                     val invalida = sesion.copy(validaHasta = 0L)
                     _sesion.value = invalida
                     _sesionEstado.value = SesionEstado.INVALIDA
-                    db.barDao().upsertSesionNegocio(invalida.copy(token = null))
+                    // El refresh ya no vale: limpiarlo del disco junto al token.
+                    db.barDao().upsertSesionNegocio(
+                        invalida.copy(token = null, refreshTokenCifrado = null)
+                    )
                     IdentityNegocioClient.desconectarConservandoBaseUrl()
                     repository.setIdentityConfig(IdentityConfig())
                 }
